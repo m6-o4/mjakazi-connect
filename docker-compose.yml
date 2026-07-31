@@ -1,0 +1,20 @@
+services:
+  payload-template-project:
+    image: ghcr.io/m6o4/payload-template-project:latest
+    container_name: payload-template-project
+    restart: unless-stopped
+    networks:
+      - m6o4-prd-network
+    env_file:
+      - stack.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.payload-template-project.rule=Host(`payload-template.s3.co.ke`)"
+      - "traefik.http.routers.payload-template-project.entrypoints=websecure"
+      - "traefik.http.routers.payload-template-project.tls.certresolver=letsencrypt"
+      - "traefik.http.services.payload-template-project.loadbalancer.server.port=3000"
+
+networks:
+  m6o4-prd-network:
+    external: true
+    name: m6o4-prd-network

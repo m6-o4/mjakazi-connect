@@ -1,0 +1,36 @@
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - jsdom@30.0.0
+  - '@aws-sdk/checksums@3.1000.21 || 3.1000.23 || 3.1000.24'
+  - '@aws-sdk/client-s3@3.1096.0 || 3.1098.0 || 3.1099.0 || 3.1100.0'
+  - '@aws-sdk/credential-provider-env@3.972.62 || 3.972.64 || 3.972.65'
+  - '@aws-sdk/credential-provider-http@3.972.64 || 3.972.66 || 3.972.67'
+  - '@aws-sdk/credential-provider-ini@3.973.7 || 3.973.9 || 3.973.10'
+  - '@aws-sdk/credential-provider-login@3.972.69 || 3.972.71 || 3.972.72'
+  - '@aws-sdk/credential-provider-node@3.972.73 || 3.972.75 || 3.972.76'
+  - '@aws-sdk/credential-provider-process@3.972.62 || 3.972.64 || 3.972.65'
+  - '@aws-sdk/credential-provider-sso@3.973.6 || 3.973.8 || 3.973.9'
+  - '@aws-sdk/credential-provider-web-identity@3.972.68 || 3.972.70 || 3.972.71'
+  - '@aws-sdk/middleware-sdk-s3@3.972.67 || 3.972.69 || 3.972.70'
+  - '@aws-sdk/nested-clients@3.997.36 || 3.997.38 || 3.997.39'
+  - '@aws-sdk/token-providers@3.1096.0 || 3.1098.0 || 3.1100.0'
+  - '@clerk/backend@3.13.2 || 3.14.0'
+  - '@clerk/nextjs@7.6.2 || 7.6.3'
+  - '@types/node@26.1.2'
+  - postcss@8.5.24 || 8.5.25
+  - shadcn@4.16.0
+  - '@aws-sdk/core@3.977.3 || 3.977.4'
+  - '@aws-sdk/signature-v4-multi-region@3.996.43'
+  - '@clerk/react@6.12.9'
+  - '@clerk/shared@4.25.9'
+  - '@smithy/core@3.31.1'
+  - '@smithy/credential-provider-imds@4.4.16'
+  - '@smithy/fetch-http-handler@5.6.13'
+  - '@smithy/node-http-handler@4.9.13'
+  - '@smithy/signature-v4@5.6.12'
+  - lucide-react@1.28.0
+  - '@types/react-dom@19.2.4'
+  - '@types/react@19.2.18'
