@@ -11,7 +11,7 @@ import "@/globals.css";
 const metadata: Metadata = {
 	description: "Sign in to continue.",
 	robots: { follow: false, index: false },
-	title: "Sign In | Superior Software Solutions",
+	title: "Sign In | Mjakazi Connect",
 	icons: "/favicon.png",
 };
 
