@@ -25,7 +25,7 @@ const AuthLayout = (props: { children: ReactNode }) => {
 			<html lang="en" suppressHydrationWarning>
 				<body
 					className={cn(
-						"bg-muted flex min-h-screen items-center justify-center p-4",
+						"flex min-h-screen items-center justify-center p-4 antialiased",
 						jakartaSans.className,
 					)}
 				>

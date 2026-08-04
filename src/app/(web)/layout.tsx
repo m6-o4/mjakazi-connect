@@ -22,7 +22,7 @@ const WebLayout = (props: { children: ReactNode }) => {
 			<html lang="en" suppressHydrationWarning>
 				<body
 					className={cn(
-						"bg-muted flex min-h-screen flex-col antialiased",
+						"flex min-h-screen flex-col antialiased",
 						jakartaSans.className,
 					)}
 				>

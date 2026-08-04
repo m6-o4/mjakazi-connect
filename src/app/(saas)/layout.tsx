@@ -27,7 +27,7 @@ const SaasLayout = async (props: { children: ReactNode }) => {
 	return (
 		<ClerkProvider>
 			<html lang="en" suppressHydrationWarning>
-				<body className={cn("bg-muted", jakartaSans.className)}>
+				<body className={cn("antialiased", jakartaSans.className)}>
 					<ThemeProvider
 						attribute="class"
 						defaultTheme="dark"
