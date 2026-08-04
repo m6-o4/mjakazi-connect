@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { geist } from "@/lib/fonts";
+import { jakartaSans } from "@/lib/fonts";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
 // load foundational styles for the application auth
@@ -26,7 +26,7 @@ const AuthLayout = (props: { children: ReactNode }) => {
 				<body
 					className={cn(
 						"bg-muted flex min-h-screen items-center justify-center p-4",
-						geist.className,
+						jakartaSans.className,
 					)}
 				>
 					<ThemeProvider

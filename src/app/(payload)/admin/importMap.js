@@ -17,6 +17,7 @@ import { PreviewComponent as PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860 }
 import { SlugComponent as SlugComponent_60dacf04f87cd44337964496348f153c } from '@/payload/fields/slug/component'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { RowLabel as RowLabel_5b4634141fdeb6a8d4d768540dd63bb0 } from '@/payload/blocks/globals/header/row-label'
 import { CustomSignOutButton as CustomSignOutButton_4cb0f74c05bc3948505444af6aee62e3 } from '../../../components/admin/custom-signout-button'
 import { Icon as Icon_abede1266a0d202441bb52ac6102d05c } from '../../../components/payload/icon'
 import { ClerkAdminProvider as ClerkAdminProvider_439e4e814dce4f427859b388021a29e6 } from '../../../components/admin/clerk-admin-provider'
@@ -44,6 +45,7 @@ export const importMap = {
   "@/payload/fields/slug/component#SlugComponent": SlugComponent_60dacf04f87cd44337964496348f153c,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/payload/blocks/globals/header/row-label#RowLabel": RowLabel_5b4634141fdeb6a8d4d768540dd63bb0,
   "/components/admin/custom-signout-button#CustomSignOutButton": CustomSignOutButton_4cb0f74c05bc3948505444af6aee62e3,
   "/components/payload/icon#Icon": Icon_abede1266a0d202441bb52ac6102d05c,
   "/components/admin/clerk-admin-provider#ClerkAdminProvider": ClerkAdminProvider_439e4e814dce4f427859b388021a29e6,

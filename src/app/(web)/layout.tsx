@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { geist } from "@/lib/fonts";
+import { jakartaSans } from "@/lib/fonts";
 import { Footer } from "@/payload/blocks/globals/footer/component";
 import { Header } from "@/payload/blocks/globals/header/component";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -23,12 +23,12 @@ const WebLayout = (props: { children: ReactNode }) => {
 				<body
 					className={cn(
 						"bg-muted flex min-h-screen flex-col antialiased",
-						geist.className,
+						jakartaSans.className,
 					)}
 				>
 					<ThemeProvider
 						attribute="class"
-						defaultTheme="dark"
+						defaultTheme="system"
 						enableSystem
 						disableTransitionOnChange
 					>
