@@ -28,6 +28,10 @@ const nextConfig: NextConfig = {
 				protocol: "https",
 				hostname: "*.ngrok-free.dev",
 			},
+			{
+				protocol: "https",
+				hostname: "images.unsplash.com",
+			},
 		],
 	},
 	output: "standalone",

@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { Hero } from "@/payload-types";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronRight, Lock } from "lucide-react";
+import Image from "next/image";
 
 // maps cms variant values to tailwind background utility classes
 const bgMap: Record<string, string> = {
@@ -26,9 +26,7 @@ const HeroBlock = ({
 		return (
 			<section className={cn("py-12 pt-28", backgroundClass)}>
 				<Container className="px-4 sm:px-6 lg:px-8">
-					{/* emphasizes page identity with bold display typography */}
 					<h1 className="text-heading text-3xl font-bold md:text-4xl">{heroHeadline}</h1>
-					{/* provides supporting context using secondary text colors for hierarchy */}
 					<p className="text-muted-foreground mt-3">{heroDescription}</p>
 				</Container>
 			</section>
@@ -111,9 +109,11 @@ const HeroBlock = ({
 								<div className="space-y-4">
 									<div className="hover:border-primary/20 hover:bg-primary/5 border-border flex items-center rounded-xl border p-3 transition-colors">
 										<div className="bg-border size-12 shrink-0 overflow-hidden rounded-full">
-											<img
+											<Image
 												src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100"
 												alt="User"
+												width={100}
+												height={100}
 												className="h-full w-full object-cover"
 											/>
 										</div>
@@ -130,14 +130,16 @@ const HeroBlock = ({
 											className="hover:text-primary text-muted-foreground ml-4 p-2"
 											aria-label="Open"
 										>
-											<i data-lucide="chevron-right" className="size-5"></i>
+											<ChevronRight className="size-5" />
 										</button>
 									</div>
 									<div className="hover:border-primary/20 hover:bg-primary/5 border-border flex items-center rounded-xl border p-3 transition-colors">
 										<div className="bg-border h-12 w-12 shrink-0 overflow-hidden rounded-full">
-											<img
+											<Image
 												src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&q=80&w=100&h=100"
 												alt="User"
+												width={100}
+												height={100}
 												className="h-full w-full object-cover"
 											/>
 										</div>
@@ -154,17 +156,14 @@ const HeroBlock = ({
 											className="hover:text-primary text-muted-foreground ml-4 p-2"
 											aria-label="Open"
 										>
-											<i data-lucide="chevron-right" className="h-5 w-5"></i>
+											<ChevronRight className="size-5" />
 										</button>
 									</div>
 								</div>
 								{/* communicates platform security measures and background check standards */}
 								<div className="border-border bg-primary mt-6 rounded-xl border p-4">
 									<div className="flex items-start">
-										<i
-											data-lucide="lock"
-											className="text-primary-foreground/70 mt-0.5 mr-3 h-5 w-5"
-										></i>
+										<Lock className="text-primary-foreground/70 mt-0.5 mr-3 h-5 w-5" />
 										<div>
 											<p className="text-primary-foreground text-sm font-medium">
 												Identity Verification Active
