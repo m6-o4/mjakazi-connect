@@ -1,10 +1,11 @@
 import { ComponentType, Fragment } from "react";
 import type { Page } from "@/payload-types";
 import { ArchiveBlock } from "@/payload/blocks/archive/component";
+import { HeroBlock } from "@/payload/blocks/hero/component";
 
 // defines which payload block types map to which react components.
 // this acts as a registry that drives dynamic page rendering.
-const blockComponents = { archive: ArchiveBlock } as const;
+const blockComponents = { archive: ArchiveBlock, hero: HeroBlock } as const;
 
 type BlockKey = keyof typeof blockComponents;
 
