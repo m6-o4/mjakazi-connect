@@ -23,7 +23,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 
 	return (
 		<nav className="border-border bg-card/80 fixed z-50 w-full border-b backdrop-blur-md">
-			<Container className="py-0">
+			<Container className="py-px">
 				<div className="flex h-20 items-center justify-between">
 					{/* branding section with logo icon and organization name */}
 					<Link href="/" className="flex cursor-pointer items-center">
@@ -31,9 +31,9 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 							<Image
 								src={organizationLogo.url || ""}
 								alt={organizationLogo.alt || ""}
-								width={organizationLogo.width || 32}
-								height={organizationLogo.height || 32}
-								className="mr-3 size-8 rounded-lg object-contain"
+								width={organizationLogo.width || 160}
+								height={organizationLogo.height || 80}
+								className="mr-3 hidden h-20 w-40 object-contain lg:flex"
 								priority
 							/>
 						)}

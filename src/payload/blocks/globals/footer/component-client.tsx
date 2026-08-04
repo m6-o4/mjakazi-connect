@@ -31,9 +31,9 @@ const FooterClient = async ({ data }: FooterClientProps) => {
 								<Image
 									src={organizationLogo.url || ""}
 									alt={organizationLogo.alt || ""}
-									width={organizationLogo.width || 144}
-									height={organizationLogo.height || 144}
-									className="mr-3 size-40 object-contain"
+									width={organizationLogo.width || 160}
+									height={organizationLogo.height || 80}
+									className="mr-3 hidden h-20 w-40 object-contain lg:flex"
 								/>
 							)}
 							<span className="text-foreground text-xl font-bold tracking-tight">
