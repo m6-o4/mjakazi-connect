@@ -21,10 +21,7 @@ const WebLayout = (props: { children: ReactNode }) => {
 		<ClerkProvider>
 			<html lang="en" suppressHydrationWarning>
 				<body
-					className={cn(
-						"flex min-h-screen flex-col antialiased",
-						jakartaSans.className,
-					)}
+					className={cn("flex min-h-screen flex-col antialiased", jakartaSans.className)}
 				>
 					<ThemeProvider
 						attribute="class"

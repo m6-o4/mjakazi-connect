@@ -22,7 +22,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 	const [main, accent] = parts.length > 1 ? parts : [organizationName ?? "", null];
 
 	return (
-		<nav className="border-border-subtle bg-bg-white/80 fixed z-50 w-full border-b backdrop-blur-md">
+		<nav className="border-border bg-card/80 fixed z-50 w-full border-b backdrop-blur-md">
 			<Container className="py-0">
 				<div className="flex h-20 items-center justify-between">
 					{/* branding section with logo icon and organization name */}
@@ -37,8 +37,8 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 								priority
 							/>
 						)}
-						<span className="font-display text-text-default text-xl font-bold tracking-tight">
-							{main} {accent && <span className="text-brand-primary">{accent}</span>}
+						<span className="text-foreground text-xl font-bold tracking-tight">
+							{main} {accent && <span className="text-primary">{accent}</span>}
 						</span>
 					</Link>
 
@@ -48,7 +48,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 							<Link
 								key={index}
 								href={link.url || "#"}
-								className="text-brand-primary text-sm font-medium transition-colors"
+								className="text-foreground hover:text-primary text-sm font-medium transition-colors"
 							>
 								{link.label || "#"}
 							</Link>
@@ -59,7 +59,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 						{authorization?.link && (
 							<Link
 								href={authorization?.link.url || "#"}
-								className="text-text-default hover:text-brand-primary text-sm font-medium"
+								className="text-foreground hover:text-primary text-sm font-medium"
 							>
 								{authorization?.link.label || "#"}
 							</Link>
@@ -73,7 +73,8 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 									</Link>
 								}
 								nativeButton={false}
-								className="bg-brand-primary text-primary-foreground shadow-brand-primary/20 hover:bg-brand-primary-light focus-visible:ring-brand-primary inline-flex items-center justify-center rounded-lg px-5 py-2 text-sm font-medium shadow-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+								size="lg"
+								className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
 							/>
 						)}
 					</div>
@@ -90,14 +91,14 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 
 						<SheetContent
 							side="right"
-							className="border-border-subtle bg-bg-white w-full border-t p-6 shadow-xl"
+							className="border-border bg-card w-full border-t p-6 shadow-xl"
 						>
 							<nav className="mt-8 flex flex-col space-y-6">
 								{navigationItems?.map(({ link }, index) => (
 									<Link
 										key={index}
 										href={link.url || "#"}
-										className="text-text-default block w-full text-left font-medium"
+										className="text-foreground block w-full text-left font-medium"
 									>
 										{link.label || "#"}
 									</Link>
@@ -106,7 +107,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 								{authorization?.link && (
 									<Link
 										href={authorization?.link.url || "#"}
-										className="text-text-default block w-full text-left font-medium"
+										className="text-foreground block w-full text-left font-medium"
 									>
 										{authorization?.link.label || "#"}
 									</Link>
@@ -120,7 +121,8 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 											</Link>
 										}
 										nativeButton={false}
-										className="bg-brand-primary inline-flex w-full items-center justify-center rounded-lg px-6 py-3 font-medium text-white shadow-lg"
+										size="lg"
+										className="bg-accent text-accent-foreground hover:bg-accent/90 w-full font-semibold"
 									/>
 								)}
 							</nav>
