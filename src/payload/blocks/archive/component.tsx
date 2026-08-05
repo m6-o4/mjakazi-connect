@@ -11,7 +11,6 @@ import type { Post, Archive } from "@/payload-types";
 type ArchiveBlockProps = Archive & { id?: string };
 
 const ArchiveBlock = async (props: ArchiveBlockProps) => {
-	// destructure properties for easier access
 	const {
 		id,
 		categories,
@@ -21,27 +20,22 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 		selectedDocs,
 	} = props;
 
-	// set the post limit, defaulting to 3 if the limit property is not provided
 	const limit = limitFromProps || 3;
 
 	let posts: Post[] = [];
 
-	// check if posts should be fetched dynamically from the collection
 	if (populateBy === "collection") {
 		const payload = await getPayload({ config: config });
 
-		// normalize category data: extract the id string from potentially populated category objects
 		const flattenedCategories = categories?.map((category) => {
 			if (typeof category === "object") return category.id;
 			else return category;
 		});
 
-		// query the 'posts' collection
 		const fetchedPosts = await payload.find({
 			collection: "posts",
-			depth: 1, // ensure related fields like categories are populated
+			depth: 1,
 			limit,
-			// conditionally apply a 'where' filter if categories are selected
 			...(flattenedCategories && flattenedCategories.length > 0
 				? { where: { categories: { in: flattenedCategories } } }
 				: {}),
@@ -49,9 +43,7 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 
 		posts = fetchedPosts.docs;
 	} else {
-		// if populateby is set to manual selection
 		if (selectedDocs?.length) {
-			// map the selected docs array to extract the populated post objects
 			const filteredSelectedPosts = selectedDocs.map((post) => {
 				if (typeof post.value === "object") return post.value;
 			}) as Post[];
@@ -61,7 +53,7 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 	}
 
 	return (
-		<div className="bg-white px-4 py-20">
+		<div className="bg-background px-4 py-20">
 			<div className="mx-auto max-w-6xl">
 				<div className="px-3" id={`block-${id}`}>
 					{introContent && (
@@ -74,7 +66,6 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 
 					{/* responsive grid container for the post cards */}
 					<div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-						{/* map over the final array of posts */}
 						{posts.map((post) => {
 							const image = post.meta?.image;
 
@@ -88,8 +79,7 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 
 							return (
 								<Link key={post.id} href={`/posts/${post.slug}`}>
-									<Card className="h-full cursor-pointer overflow-hidden bg-card p-0 shadow-lg transition-all duration-300 hover:shadow-xl">
-										{/* image container */}
+									<Card className="bg-card h-full cursor-pointer overflow-hidden p-0 shadow-lg transition-all duration-300 hover:shadow-xl">
 										<div className="relative h-64 w-full">
 											<Image
 												src={imageSrc}
@@ -99,16 +89,13 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 											/>
 										</div>
 										<CardContent className="p-6">
-											{/* published date, formatted by a utility function */}
-											<p className="mb-3 text-sm font-semibold text-muted-foreground">
+											<p className="text-muted-foreground mb-3 text-sm font-semibold">
 												{formatDate(post.publishedAt)}
 											</p>
-											{/* post title */}
-											<h3 className="mb-3 text-xl font-semibold text-heading transition-colors hover:text-muted-foreground">
+											<h3 className="text-heading hover:text-muted-foreground mb-3 text-xl font-semibold transition-colors">
 												{post.title}
 											</h3>
-											{/* post excerpt/description */}
-											<p className="leading-relaxed text-muted-foreground">
+											<p className="text-muted-foreground leading-relaxed">
 												{post.meta?.description}
 											</p>
 										</CardContent>
