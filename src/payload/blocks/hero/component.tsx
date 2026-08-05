@@ -1,5 +1,7 @@
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Hero } from "@/payload-types";
 import { ArrowRight, CheckCircle, ChevronRight, Lock } from "lucide-react";
 import Image from "next/image";
@@ -62,22 +64,30 @@ const HeroBlock = ({
 						<div className="flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
 							{/* primary call-to-action for immediate contractor engagement */}
 							{ctaMjakazi?.link && (
-								<a
-									href={ctaMjakazi.link.url || "#"}
-									className="group bg-primary hover:bg-primary/80 text-primary-foreground inline-flex w-full items-center justify-center rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
-								>
-									{ctaMjakazi.link.label || "#"}
-									<ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
-								</a>
+								<Button
+									render={
+										<Link href={ctaMjakazi.link.url || "#"}>
+											{ctaMjakazi.link.label || "#"}
+											<ArrowRight className="ml-2 size-4 transition-transform group-hover/button:translate-x-1" />
+										</Link>
+									}
+									nativeButton={false}
+									className="bg-primary hover:bg-primary/80 text-primary-foreground h-auto w-full gap-0 rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
+								/>
 							)}
+
 							{/* secondary call-to-action for service provider onboarding */}
 							{ctaRegistration?.link && (
-								<a
-									href={ctaRegistration.link.url || "#"}
-									className="text-primary hover:border-primary/20 hover:bg-primary/5 border-border bg-card inline-flex w-full items-center justify-center rounded-lg border px-6 py-3 font-medium shadow-sm transition-all duration-200 sm:w-auto"
-								>
-									{ctaRegistration.link.label || "#"}
-								</a>
+								<Button
+									render={
+										<Link href={ctaRegistration.link.url || "#"}>
+											{ctaRegistration.link.label || "#"}
+										</Link>
+									}
+									nativeButton={false}
+									variant="outline"
+									className="text-primary hover:border-primary/20 hover:bg-primary/5 border-border bg-card h-auto w-full rounded-lg px-6 py-3 font-medium shadow-sm transition-all duration-200 sm:w-auto"
+								/>
 							)}
 						</div>
 						{/* emphasizes platform credibility through verified performance metrics */}

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { CallToAction } from "@/payload-types";
 
@@ -10,8 +11,8 @@ const CallToActionBlock = ({ calltoaction }: CallToAction) => {
 
 	return (
 		<section className="bg-primary relative overflow-hidden py-24">
-			<div className="bg-[color-mix(in_oklch,var(--primary),var(--background)_40%)] absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full opacity-50 blur-3xl"></div>
-			<div className="bg-[color-mix(in_oklch,var(--primary),var(--background)_40%)] absolute bottom-0 left-0 -mb-20 -ml-20 h-96 w-96 rounded-full opacity-50 blur-3xl"></div>
+			<div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-[color-mix(in_oklch,var(--primary),var(--background)_40%)] opacity-50 blur-3xl"></div>
+			<div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-96 w-96 rounded-full bg-[color-mix(in_oklch,var(--primary),var(--background)_40%)] opacity-50 blur-3xl"></div>
 
 			<div className="relative mx-auto px-4 text-center sm:px-6 lg:px-8">
 				<h2 className="text-primary-foreground mb-6 text-4xl font-semibold sm:text-5xl">
@@ -21,19 +22,6 @@ const CallToActionBlock = ({ calltoaction }: CallToAction) => {
 					{headlineDescription}
 				</p>
 				<div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-					{ctaRegister.link && (
-						<Button
-							render={
-								<Link href={ctaRegister.link.url || "#"}>
-									{ctaRegister.link.label || "#"}
-								</Link>
-							}
-							nativeButton={false}
-							size="lg"
-							className="bg-card text-primary hover:bg-card/90 w-full font-semibold shadow-lg sm:w-auto"
-						/>
-					)}
-
 					{ctaDirectory.link && (
 						<Button
 							render={
@@ -42,9 +30,21 @@ const CallToActionBlock = ({ calltoaction }: CallToAction) => {
 								</Link>
 							}
 							nativeButton={false}
-							size="lg"
 							variant="outline"
-							className="border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 w-full font-medium sm:w-auto"
+							className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 h-auto w-full rounded-lg bg-transparent px-6 py-3 font-medium shadow-sm transition-all duration-200 sm:w-auto"
+						/>
+					)}
+
+					{ctaRegister.link && (
+						<Button
+							render={
+								<Link href={ctaRegister.link.url || "#"}>
+									{ctaRegister.link.label || "#"}
+									<ArrowRight className="ml-2 size-4 transition-transform group-hover/button:translate-x-1" />
+								</Link>
+							}
+							nativeButton={false}
+							className="bg-card text-primary hover:bg-card/90 h-auto w-full gap-0 rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
 						/>
 					)}
 				</div>
