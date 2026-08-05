@@ -116,6 +116,7 @@ const PostsArchiveBlock = async (props: PostsArchiveBlockProps) => {
 														src={imageSrc}
 														alt={imageAlt}
 														fill
+														sizes="(max-width: 768px) 100vw, 33vw"
 														className="object-cover transition-transform duration-500 group-hover:scale-105"
 													/>
 													<div className="bg-primary/10 absolute inset-0 transition-colors duration-300 group-hover:bg-transparent" />
