@@ -11,7 +11,6 @@ const Header: GlobalConfig = {
 			name: "organizationName",
 			type: "text",
 			label: "Organization Name",
-			required: true,
 		},
 		{
 			name: "organizationLogo",

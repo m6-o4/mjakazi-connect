@@ -874,7 +874,7 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  */
 export interface Header {
   id: string;
-  organizationName: string;
+  organizationName?: string | null;
   organizationLogo?: (string | null) | Media;
   navigationItems?:
     | {
@@ -939,9 +939,9 @@ export interface Header {
  */
 export interface Footer {
   id: string;
-  organizationName: string;
+  organizationName?: string | null;
   organizationLogo?: (string | null) | Media;
-  organizationSlogan: string;
+  organizationSlogan?: string | null;
   waajiri?: {
     waajiriHeader?: string | null;
     mwaajiriItems?:
