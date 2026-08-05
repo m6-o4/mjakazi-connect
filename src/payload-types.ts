@@ -202,7 +202,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Archive | Hero)[];
+  layout: (Hero | ContentEditor | PostsArchive)[];
   meta?: {
     title?: string | null;
     /**
@@ -220,48 +220,51 @@ export interface Page {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "Archive".
+ * via the `definition` "Hero".
  */
-export interface Archive {
-  introContent?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
+export interface Hero {
+  heroType: 'primary' | 'secondary';
+  heroOverline?: string | null;
+  heroHeadline: string;
+  heroDescription: string;
+  ctaMjakazi?: {
+    link: {
+      type?: ('reference' | 'custom') | null;
+      newTab?: boolean | null;
+      reference?:
+        | ({
+            relationTo: 'pages';
+            value: string | Page;
+          } | null)
+        | ({
+            relationTo: 'posts';
+            value: string | Post;
+          } | null);
+      url?: string | null;
+      label: string;
     };
-    [k: string]: unknown;
-  } | null;
-  populateBy?: ('collection' | 'selection') | null;
-  relationTo?: 'posts' | null;
-  categories?: (string | Category)[] | null;
-  limit?: number | null;
-  selectedDocs?:
-    | {
-        relationTo: 'posts';
-        value: string | Post;
-      }[]
-    | null;
+  };
+  ctaRegistration?: {
+    link: {
+      type?: ('reference' | 'custom') | null;
+      newTab?: boolean | null;
+      reference?:
+        | ({
+            relationTo: 'pages';
+            value: string | Page;
+          } | null)
+        | ({
+            relationTo: 'posts';
+            value: string | Post;
+          } | null);
+      url?: string | null;
+      label: string;
+    };
+  };
+  backgroundVariant: 'muted' | 'background';
   id?: string | null;
   blockName?: string | null;
-  blockType: 'archive';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "categories".
- */
-export interface Category {
-  id: string;
-  title: string;
-  description?: string | null;
-  updatedAt: string;
-  createdAt: string;
+  blockType: 'hero';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -312,6 +315,17 @@ export interface Post {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories".
+ */
+export interface Category {
+  id: string;
+  title: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -329,51 +343,52 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "Hero".
+ * via the `definition` "ContentEditor".
  */
-export interface Hero {
-  heroType: 'primary' | 'secondary';
-  heroOverline?: string | null;
-  heroHeadline: string;
-  heroDescription: string;
-  ctaMjakazi?: {
-    link: {
-      type?: ('reference' | 'custom') | null;
-      newTab?: boolean | null;
-      reference?:
-        | ({
-            relationTo: 'pages';
-            value: string | Page;
-          } | null)
-        | ({
-            relationTo: 'posts';
-            value: string | Post;
-          } | null);
-      url?: string | null;
-      label: string;
+export interface ContentEditor {
+  headline?: string | null;
+  headlineDescription?: string | null;
+  editor?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
     };
-  };
-  ctaRegistration?: {
-    link: {
-      type?: ('reference' | 'custom') | null;
-      newTab?: boolean | null;
-      reference?:
-        | ({
-            relationTo: 'pages';
-            value: string | Page;
-          } | null)
-        | ({
-            relationTo: 'posts';
-            value: string | Post;
-          } | null);
-      url?: string | null;
-      label: string;
-    };
-  };
+    [k: string]: unknown;
+  } | null;
   backgroundVariant: 'muted' | 'background';
   id?: string | null;
   blockName?: string | null;
-  blockType: 'hero';
+  blockType: 'contentEditor';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "PostsArchive".
+ */
+export interface PostsArchive {
+  headline?: string | null;
+  headlineDescription?: string | null;
+  populateBy?: ('collection' | 'selection') | null;
+  relationTo?: 'posts' | null;
+  categories?: (string | Category)[] | null;
+  limit?: number | null;
+  selectedDocs?:
+    | {
+        relationTo: 'posts';
+        value: string | Post;
+      }[]
+    | null;
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'postsArchive';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -655,8 +670,9 @@ export interface PagesSelect<T extends boolean = true> {
   layout?:
     | T
     | {
-        archive?: T | ArchiveSelect<T>;
         hero?: T | HeroSelect<T>;
+        contentEditor?: T | ContentEditorSelect<T>;
+        postsArchive?: T | PostsArchiveSelect<T>;
       };
   meta?:
     | T
@@ -671,20 +687,6 @@ export interface PagesSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "Archive_select".
- */
-export interface ArchiveSelect<T extends boolean = true> {
-  introContent?: T;
-  populateBy?: T;
-  relationTo?: T;
-  categories?: T;
-  limit?: T;
-  selectedDocs?: T;
-  id?: T;
-  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -721,6 +723,34 @@ export interface HeroSelect<T extends boolean = true> {
               label?: T;
             };
       };
+  backgroundVariant?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ContentEditor_select".
+ */
+export interface ContentEditorSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  editor?: T;
+  backgroundVariant?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "PostsArchive_select".
+ */
+export interface PostsArchiveSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  populateBy?: T;
+  relationTo?: T;
+  categories?: T;
+  limit?: T;
+  selectedDocs?: T;
   backgroundVariant?: T;
   id?: T;
   blockName?: T;

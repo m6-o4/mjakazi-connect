@@ -1,32 +1,12 @@
-import {
-	FixedToolbarFeature,
-	HeadingFeature,
-	InlineToolbarFeature,
-	lexicalEditor,
-} from "@payloadcms/richtext-lexical";
-
 import type { Block } from "payload";
 
-const Archive: Block = {
-	slug: "archive",
-	interfaceName: "Archive",
-	labels: { singular: "Post Archive Block", plural: "Post Archive Blocks" },
+const PostsArchive: Block = {
+	slug: "postsArchive",
+	interfaceName: "PostsArchive",
+	labels: { singular: "Posts Archive Block", plural: "Posts Archive Blocks" },
 	fields: [
-		{
-			name: "introContent",
-			type: "richText",
-			label: "Introductory Content",
-			editor: lexicalEditor({
-				features: ({ rootFeatures }) => {
-					return [
-						...rootFeatures,
-						HeadingFeature({ enabledHeadingSizes: ["h1", "h2", "h3", "h4"] }),
-						FixedToolbarFeature(),
-						InlineToolbarFeature(),
-					];
-				},
-			}),
-		},
+		{ name: "headline", type: "text", label: "Headline" },
+		{ name: "headlineDescription", type: "text", label: "Headline Description" },
 		{
 			name: "populateBy",
 			type: "select",
@@ -71,7 +51,18 @@ const Archive: Block = {
 			hasMany: true,
 			admin: { condition: (_, siblingData) => siblingData.populateBy === "selection" },
 		},
+		{
+			name: "backgroundVariant",
+			type: "select",
+			label: "Background Style",
+			defaultValue: "background",
+			options: [
+				{ label: "Muted", value: "muted" },
+				{ label: "Background", value: "background" },
+			],
+			required: true,
+		},
 	],
 };
 
-export { Archive };
+export { PostsArchive };
