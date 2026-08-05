@@ -88,7 +88,7 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 
 							return (
 								<Link key={post.id} href={`/posts/${post.slug}`}>
-									<Card className="h-full cursor-pointer overflow-hidden bg-white p-0 shadow-lg transition-all duration-300 hover:shadow-xl">
+									<Card className="h-full cursor-pointer overflow-hidden bg-card p-0 shadow-lg transition-all duration-300 hover:shadow-xl">
 										{/* image container */}
 										<div className="relative h-64 w-full">
 											<Image
@@ -100,15 +100,15 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 										</div>
 										<CardContent className="p-6">
 											{/* published date, formatted by a utility function */}
-											<p className="mb-3 text-sm font-semibold text-[#B2D2C2]">
+											<p className="mb-3 text-sm font-semibold text-muted-foreground">
 												{formatDate(post.publishedAt)}
 											</p>
 											{/* post title */}
-											<h3 className="mb-3 text-xl font-bold text-[#1A233D] transition-colors hover:text-[#49536C]">
+											<h3 className="mb-3 text-xl font-semibold text-heading transition-colors hover:text-muted-foreground">
 												{post.title}
 											</h3>
 											{/* post excerpt/description */}
-											<p className="leading-relaxed text-[#49536C]">
+											<p className="leading-relaxed text-muted-foreground">
 												{post.meta?.description}
 											</p>
 										</CardContent>
