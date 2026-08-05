@@ -2,6 +2,7 @@ import {
 	isAdminOrEditor,
 	isAdminOrEditorOrPublished,
 } from "@/payload/access/access-control";
+import { CallToAction } from "@/payload/blocks/call-to-action/schema";
 import { ContentEditor } from "@/payload/blocks/content-editor/schema";
 import { Hero } from "@/payload/blocks/hero/schema";
 import { PostsArchive } from "@/payload/blocks/posts-archive/schema";
@@ -66,7 +67,7 @@ const Pages: CollectionConfig<"pages"> = {
 							type: "blocks",
 							required: true,
 							admin: { initCollapsed: true },
-							blocks: [Hero, ContentEditor, PostsArchive],
+							blocks: [Hero, ContentEditor, PostsArchive, CallToAction],
 						},
 					],
 				},

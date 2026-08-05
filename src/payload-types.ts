@@ -71,6 +71,7 @@ export interface Config {
     pages: Page;
     posts: Post;
     categories: Category;
+    callstoaction: Callstoaction;
     users: User;
     redirects: Redirect;
     'payload-kv': PayloadKv;
@@ -85,6 +86,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    callstoaction: CallstoactionSelect<false> | CallstoactionSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -202,7 +204,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Hero | ContentEditor | PostsArchive)[];
+  layout: (Hero | ContentEditor | PostsArchive | CallToAction)[];
   meta?: {
     title?: string | null;
     /**
@@ -392,6 +394,61 @@ export interface PostsArchive {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToAction".
+ */
+export interface CallToAction {
+  calltoaction: string | Callstoaction;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'callToAction';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "callstoaction".
+ */
+export interface Callstoaction {
+  id: string;
+  headline: string;
+  headlineDescription: string;
+  ctaRegister: {
+    link: {
+      type?: ('reference' | 'custom') | null;
+      newTab?: boolean | null;
+      reference?:
+        | ({
+            relationTo: 'pages';
+            value: string | Page;
+          } | null)
+        | ({
+            relationTo: 'posts';
+            value: string | Post;
+          } | null);
+      url?: string | null;
+      label: string;
+    };
+  };
+  ctaDirectory: {
+    link: {
+      type?: ('reference' | 'custom') | null;
+      newTab?: boolean | null;
+      reference?:
+        | ({
+            relationTo: 'pages';
+            value: string | Page;
+          } | null)
+        | ({
+            relationTo: 'posts';
+            value: string | Post;
+          } | null);
+      url?: string | null;
+      label: string;
+    };
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -549,6 +606,10 @@ export interface PayloadLockedDocument {
         value: string | Category;
       } | null)
     | ({
+        relationTo: 'callstoaction';
+        value: string | Callstoaction;
+      } | null)
+    | ({
         relationTo: 'users';
         value: string | User;
       } | null)
@@ -673,6 +734,7 @@ export interface PagesSelect<T extends boolean = true> {
         hero?: T | HeroSelect<T>;
         contentEditor?: T | ContentEditorSelect<T>;
         postsArchive?: T | PostsArchiveSelect<T>;
+        callToAction?: T | CallToActionSelect<T>;
       };
   meta?:
     | T
@@ -757,6 +819,15 @@ export interface PostsArchiveSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToAction_select".
+ */
+export interface CallToActionSelect<T extends boolean = true> {
+  calltoaction?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts_select".
  */
 export interface PostsSelect<T extends boolean = true> {
@@ -793,6 +864,42 @@ export interface PostsSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
   description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "callstoaction_select".
+ */
+export interface CallstoactionSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  ctaRegister?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+            };
+      };
+  ctaDirectory?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              newTab?: T;
+              reference?: T;
+              url?: T;
+              label?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }
