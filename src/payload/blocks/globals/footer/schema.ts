@@ -31,7 +31,7 @@ const Footer: GlobalConfig = {
 			fields: [
 				{ name: "waajiriHeader", type: "text", label: "Header" },
 				{
-					name: "mwaajiriItems",
+					name: "mwajiriItems",
 					type: "array",
 					label: "Mwajiri Items",
 					labels: { singular: "Mwajiri Link", plural: "Mwajiri Links" },

@@ -1133,7 +1133,7 @@ export interface Footer {
   organizationSlogan?: string | null;
   waajiri?: {
     waajiriHeader?: string | null;
-    mwaajiriItems?:
+    mwajiriItems?:
       | {
           link: {
             type?: ('reference' | 'custom') | null;
@@ -1277,7 +1277,7 @@ export interface FooterSelect<T extends boolean = true> {
     | T
     | {
         waajiriHeader?: T;
-        mwaajiriItems?:
+        mwajiriItems?:
           | T
           | {
               link?:

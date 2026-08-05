@@ -51,7 +51,7 @@ const FooterClient = async ({ data }: FooterClientProps) => {
 							{waajiri?.waajiriHeader || "For Waajiri"}
 						</h4>
 						<ul className="space-y-3 text-sm">
-							{waajiri?.mwaajiriItems?.map((item, i) => (
+							{waajiri?.mwajiriItems?.map((item, i) => (
 								<li key={i}>
 									<Link
 										href={item.link?.url || "#"}

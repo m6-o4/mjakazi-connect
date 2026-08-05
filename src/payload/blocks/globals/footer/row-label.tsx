@@ -5,7 +5,7 @@ import { RowLabelProps, useRowLabel } from "@payloadcms/ui";
 
 // maps complex footer array items to a single type for label processing
 type FooterItem =
-	| NonNullable<NonNullable<Footer["waajiri"]>["mwaajiriItems"]>[number]
+	| NonNullable<NonNullable<Footer["waajiri"]>["mwajiriItems"]>[number]
 	| NonNullable<NonNullable<Footer["wajakazi"]>["wajakaziItems"]>[number]
 	| NonNullable<NonNullable<Footer["legal"]>["legalItems"]>[number];
 
