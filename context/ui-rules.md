@@ -31,6 +31,12 @@ wins and this file should be updated.
 - `--destructive` is reserved for errors and destructive actions only. Never
   substitute it for `--accent` on a regular CTA, even though both read as
   "vibrant" — they must stay visually distinct.
+- `--success` and `--warning` always pair with `--success-foreground` /
+  `--warning-foreground` (dark text), no exceptions. Unlike `--accent`, neither
+  gets a "semibold/14px+ unlocks white text" allowance — `--warning` fails
+  outright even at large/bold (2.25:1), and `--success` sits in the same
+  fragile bracket as `--accent` (3.42:1) without a stated reason to take that
+  risk for a status color. Simpler to keep both dark-text-always.
 
 ### Typography
 - `--font-sans` (Plus Jakarta Sans) is the only typeface for UI text — headings

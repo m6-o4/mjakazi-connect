@@ -31,8 +31,10 @@ Both light and dark mode are finalized as of the color/typography pass below.
 | `--accent` | `#E45F2B` (burnt orange) | `#E45F2B` | CTA buttons, vibrant highlights |
 | `--accent-foreground` | `#FFFFFF` | `#FFFFFF` | Text on `--accent` — passes at 3.5:1, so accent buttons must be semibold/14px+ (see `ui-rules.md`) |
 | `--destructive` | `oklch(0.577 0.245 27.325)` | `oklch(0.704 0.191 22.216)` | Errors/destructive actions. Kept as standard red, deliberately separate from the orange accent so error state stays visually distinct from a CTA |
-| `--success` | `#4C9A6A` | `#7ECB98` | Success/positive states (e.g. banner variant). Leaf green, kept distinct from `--primary` sage |
-| `--warning` | `#D9A441` | `#E8BE6E` | Warning/caution states (e.g. banner variant). Golden amber, kept distinct from `--accent` orange and `--secondary` terracotta |
+| `--success` | `#4C9A6A` | `#7ECB98` | Success/positive states. Leaf green, kept distinct from `--primary` sage |
+| `--success-foreground` | `#1F2A24` | `#1F2A24` | Text/icons on `--success` — white only clears 3.42:1 (same bracket as `--accent`), so this stays dark text always rather than carrying a semibold/14px+ exception |
+| `--warning` | `#D9A441` | `#E8BE6E` | Warning/caution states. Golden amber, kept distinct from `--accent` orange and `--secondary` terracotta |
+| `--warning-foreground` | `#1F2A24` | `#1F2A24` | Text/icons on `--warning` — white fails outright at 2.25:1, even at large/bold sizes. Dark text always |
 | `--border` / `--input` | `#E7E2D8` | `#2C332D` | Warm-tinted neutral, replacing stock cold gray |
 | `--ring` | `#7BAE9A` | `#7BAE9A` | Focus ring — matches primary |
 | `--chart-1..5` | sage `#7BAE9A`, terracotta `#D88B6B`, blush `#FBD0C9`, orange `#E45F2B`, yellow `#FFD639` | same | Full five-color brand set, in guideline order. Kept identical across modes for brand recognition |
@@ -55,6 +57,14 @@ Font is declared in `globals.css` via `--font-sans`. Actual webfont loading
 (`next/font/google` in the app's font/layout setup) is not yet wired up — no
 Next.js app scaffold exists in this repo yet, only design/context files. Revisit
 once the Payload Template scaffold is in place.
+
+`@tailwindcss/typography` is registered in `globals.css` via `@plugin`. This is
+separate from the type scale above — it's for styling long-form rendered
+content (blog post bodies, CMS rich text) with the `prose` class, not for
+general UI text. Any `prose` usage should still resolve to the token colors
+above rather than the plugin's own defaults — override `--tw-prose-*` variables
+to point at `--foreground` / `--heading` / `--muted-foreground` when this gets
+wired up.
 
 ### Type scale
 

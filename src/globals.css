@@ -26,7 +26,9 @@
 	--color-border: var(--border);
 	--color-destructive: var(--destructive);
 	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
 	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);
@@ -76,7 +78,9 @@
 	/* Semantic — kept separate from brand orange so errors stay unambiguous */
 	--destructive: oklch(0.577 0.245 27.325);
 	--success: #4c9a6a; /* leaf green — distinct from sage --primary, reserved for success states */
+	--success-foreground: #1f2a24; /* white only clears at 3.42:1 — dark text always, no exception */
 	--warning: #d9a441; /* golden amber — distinct from --accent orange and --secondary terracotta */
+	--warning-foreground: #1f2a24; /* white fails outright (2.25:1) — dark text always */
 
 	/* Neutrals — warm-tinted instead of stock cold gray */
 	--border: #e7e2d8;
@@ -123,7 +127,9 @@
 
 	--destructive: oklch(0.704 0.191 22.216);
 	--success: #7ecb98;
+	--success-foreground: #1f2a24;
 	--warning: #e8be6e;
+	--warning-foreground: #1f2a24;
 
 	--border: #2c332d;
 	--input: #2c332d;
