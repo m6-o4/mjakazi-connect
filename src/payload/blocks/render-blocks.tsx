@@ -4,14 +4,16 @@ import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
 import { HeroBlock } from "@/payload/blocks/hero/component";
 import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
+import { RegistrationBlock } from "@/payload/blocks/registration/component";
 
 // defines which payload block types map to which react components.
 // this acts as a registry that drives dynamic page rendering.
 const blockComponents = {
 	callToAction: CallToActionBlock,
 	contentEditor: ContentEditorBlock,
-	postsArchive: PostsArchiveBlock,
 	hero: HeroBlock,
+	postsArchive: PostsArchiveBlock,
+	registration: RegistrationBlock,
 } as const;
 
 type BlockKey = keyof typeof blockComponents;

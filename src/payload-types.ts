@@ -204,7 +204,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Hero | ContentEditor | PostsArchive | CallToAction)[];
+  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Registration)[];
   meta?: {
     title?: string | null;
     /**
@@ -446,6 +446,30 @@ export interface Callstoaction {
   };
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Registration".
+ */
+export interface Registration {
+  mjakaziCard: {
+    image: string | Media;
+    title: string;
+    description: string;
+    buttonLink: string;
+    buttonText: string;
+  };
+  mwajiriCard: {
+    image: string | Media;
+    title: string;
+    description: string;
+    buttonLink: string;
+    buttonText: string;
+  };
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'registration';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -735,6 +759,7 @@ export interface PagesSelect<T extends boolean = true> {
         contentEditor?: T | ContentEditorSelect<T>;
         postsArchive?: T | PostsArchiveSelect<T>;
         callToAction?: T | CallToActionSelect<T>;
+        registration?: T | RegistrationSelect<T>;
       };
   meta?:
     | T
@@ -823,6 +848,33 @@ export interface PostsArchiveSelect<T extends boolean = true> {
  */
 export interface CallToActionSelect<T extends boolean = true> {
   calltoaction?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Registration_select".
+ */
+export interface RegistrationSelect<T extends boolean = true> {
+  mjakaziCard?:
+    | T
+    | {
+        image?: T;
+        title?: T;
+        description?: T;
+        buttonLink?: T;
+        buttonText?: T;
+      };
+  mwajiriCard?:
+    | T
+    | {
+        image?: T;
+        title?: T;
+        description?: T;
+        buttonLink?: T;
+        buttonText?: T;
+      };
+  backgroundVariant?: T;
   id?: T;
   blockName?: T;
 }
