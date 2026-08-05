@@ -24,6 +24,8 @@
 	--color-input: var(--input);
 	--color-border: var(--border);
 	--color-destructive: var(--destructive);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);
@@ -72,6 +74,8 @@
 
 	/* Semantic — kept separate from brand orange so errors stay unambiguous */
 	--destructive: oklch(0.577 0.245 27.325);
+	--success: #4c9a6a; /* leaf green — distinct from sage --primary, reserved for success states */
+	--warning: #d9a441; /* golden amber — distinct from --accent orange and --secondary terracotta */
 
 	/* Neutrals — warm-tinted instead of stock cold gray */
 	--border: #e7e2d8;
@@ -117,6 +121,8 @@
 	--accent-foreground: #ffffff;
 
 	--destructive: oklch(0.704 0.191 22.216);
+	--success: #7ecb98;
+	--warning: #e8be6e;
 
 	--border: #2c332d;
 	--input: #2c332d;
