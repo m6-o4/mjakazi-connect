@@ -28,7 +28,7 @@ const Media: CollectionConfig = {
 			{ name: "hero", width: 1920, height: 1080, position: "centre" },
 			{ name: "og", width: 1200, height: 630, crop: "center" },
 		],
-		mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+		mimeTypes: ["image/jpeg", "image/png", "image/svg+xml", "image/webp"],
 	},
 };
 

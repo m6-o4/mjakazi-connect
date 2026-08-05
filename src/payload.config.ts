@@ -41,8 +41,8 @@ export default buildConfig({
 					fetchPriority: "high",
 					rel: "icon",
 					sizes: "32x32",
-					type: "image/png",
-					url: "/favicon.png",
+					type: "image/svg+xml",
+					url: "/favicon.svg",
 				},
 			],
 
