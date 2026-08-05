@@ -79,7 +79,9 @@ const ArchiveBlock = async (props: ArchiveBlockProps) => {
 							const image = post.meta?.image;
 
 							const imageSrc =
-								typeof image === "string" ? image : (image?.url ?? "/abstarct-image.jpg");
+								typeof image === "string"
+									? image
+									: (image?.url ?? "/mjakazi-connect.png");
 
 							const imageAlt =
 								typeof image === "string" ? "Post image" : (image?.alt ?? "Post image");
