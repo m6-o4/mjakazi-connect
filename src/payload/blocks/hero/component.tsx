@@ -19,6 +19,10 @@ const HeroBlock = ({
 	heroOverline,
 	heroType = "primary",
 }: Hero) => {
+	// enables dynamic accent styling within the headline via a delimiter character
+	const parts = (heroHeadline ?? "").split("|").map((s) => s.trim());
+	const [main, accent] = parts.length > 1 ? parts : [heroHeadline ?? "", null];
+
 	const backgroundClass = bgMap[backgroundVariant] ?? "bg-background";
 
 	// compact page header used on internal pages
@@ -33,10 +37,7 @@ const HeroBlock = ({
 		);
 	}
 
-	// enables dynamic accent styling within the headline via a delimiter character
-	const parts = (heroHeadline ?? "").split("|").map((s) => s.trim());
-	const [main, accent] = parts.length > 1 ? parts : [heroHeadline ?? "", null];
-
+	// large page header used on main page
 	return (
 		<section
 			id="home"
