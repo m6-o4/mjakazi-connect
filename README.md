@@ -1,113 +1,184 @@
-# Payload Template Project
+# Mjakazi Connect
 
-Internal starter template for building customer websites, landing pages, and SaaS
-applications on a consistent stack. Bootstrap new projects from this repo instead of
-starting from scratch — auth, CMS, storage, and UI conventions are already wired up.
+High-trust digital platform connecting families (Waajiri) with verified domestic
+professionals (Wajakazi).
 
-## Stack
+This version is a clean architectural rebuild focused on deterministic state machines,
+strict domain boundaries, and audit-safe workflows.
 
-- **Framework**: [Next.js](https://nextjs.org) 16 (App Router)
-- **CMS**: [Payload CMS](https://payloadcms.com) 3
-- **Database**: MongoDB
-- **Auth**: [Clerk](https://clerk.com)
-- **Storage**: S3-compatible object storage (media uploads)
-- **Email**: [Resend](https://resend.com)
-- **UI**: Tailwind CSS 4, [shadcn/ui](https://ui.shadcn.com), Lucide icons, Motion
+---
 
-## Requirements
+## Vision
 
-- Node.js `^18.20.2` or `>=20.9.0`
-- pnpm `^9`, `^10`, or `^11`
-- A MongoDB connection string (local, Docker, or Atlas)
+Mjakazi Connect is a structured, moderated hiring platform designed to:
 
-## Setup
+- Enable Wajakazi to register and verify their credentials.
+- Allow Waajiri to subscribe and access verified contact information.
+- Enforce strict verification and subscription state rules.
+- Maintain auditability and regulatory compliance (NDPA-aligned).
 
-1. Clone the repo and install dependencies:
+This system is built around explicit state machines and event-driven domain transitions.
 
-   ```bash
-   pnpm install
-   ```
+---
 
-2. Copy the environment file and fill in the values:
+## Core Architecture Principles
 
-   ```bash
-   cp .env.example .env
-   ```
+1. Deterministic state machines for:
+   - Verification
+   - Subscription
+   - Payment
 
-   | Variable | Purpose |
-   | --- | --- |
-   | `DATABASE_URL` | MongoDB connection string |
-   | `PAYLOAD_SECRET` | Payload's signing secret |
-   | `PREVIEW_SECRET` | Secret used for live preview links |
-   | `CRON_SECRET` | Secret for authenticating scheduled/cron jobs |
-   | `NEXT_PUBLIC_SERVER_URL` | Public URL the app is served from |
-   | `CLERK_SECRET_KEY` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk API keys |
-   | `CLERK_WEBHOOK_SIGNING_SECRET` | Verifies incoming Clerk webhooks |
-   | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `..._SIGN_IN_FALLBACK_REDIRECT_URL`, `..._SIGN_UP_FALLBACK_REDIRECT_URL` | Clerk auth flow routing |
-   | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_ACCESS_KEY_SECRET`, `S3_REGION`, `S3_ENDPOINT` | Media storage (S3-compatible) |
-   | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` | Transactional email |
+2. Strict API boundaries:
+   - Frontend never mutates domain state directly.
+   - Payment confirmation only via callback validation.
+   - Role enforcement via Clerk.
 
-3. Start the dev server:
+3. No duplicated state flags.
+4. All transitions are auditable.
+5. Fail-closed security model.
 
-   ```bash
-   pnpm dev
-   ```
+---
 
-4. Open `http://localhost:3000`. Follow the on-screen instructions to log in via
-   Clerk and complete first-run setup.
+## Tech Stack
 
-### Docker (optional)
+- **Next.js (App Router)**
+- **TypeScript**
+- **Payload CMS**
+- **MongoDB**
+- **Clerk (Authentication)**
+- **M-Pesa (STK Push integration - later phase)**
 
-To run MongoDB locally via Docker instead of a standalone instance or Atlas:
+---
 
-1. Set `DATABASE_URL` in `.env` to `mongodb://127.0.0.1/<dbname>`.
-2. Match `<dbname>` in `docker-compose.yml`.
-3. Run `docker-compose up` (add `-d` to run in the background).
+## Domain Overview
 
-## Available Scripts
+### Roles
 
-| Script | Purpose |
-| --- | --- |
-| `pnpm dev` | Start the Next.js dev server |
-| `pnpm build` | Production build |
-| `pnpm start` | Serve the production build |
-| `pnpm lint` | Run ESLint |
-| `pnpm payload` | Run the Payload CLI |
-| `pnpm generate:types` | Regenerate Payload's TypeScript types from the config |
-| `pnpm generate:importmap` | Regenerate Payload's admin import map |
+- `mjakazi` – Domestic professional
+- `mwajiri` – Employer / Family
+- `admin` – Platform moderator
+- `sa` – Super Admin
 
-Run `pnpm generate:types` after changing any collection, global, or field config so
-generated types stay in sync.
+---
 
-## Project Structure
+## Core State Machines
 
-- `src/` — application code (Next.js routes, Payload config, collections, components)
-- `context/` — living documentation (architecture, UI tokens/rules, code standards,
-  build plan, progress tracker) used to keep new projects built from this template
-  consistent
-- `docker-compose.yml` — local MongoDB for Docker-based development
+### 1. Verification (Wajakazi)
 
-## Collections
+States:
 
-- **Users** — auth-enabled collection with admin panel access, backed by Clerk.
-- **Media** — uploads collection with pre-configured image sizes and focal point
-  support, backed by S3-compatible storage.
+- draft
+- pending_payment
+- pending_review
+- verified
+- rejected
+- verification_expired
+- blacklisted
+- deactivated
 
-See the [Payload Collections docs](https://payloadcms.com/docs/configuration/collections)
-to extend either.
+Only verified profiles are visible in the public directory.
 
-## Using This as a Starter
+---
 
-When bootstrapping a new internal project from this template:
+### 2. Subscription (Mwajiri)
 
-1. Update `package.json` name/description and this README's title.
-2. Review `context/` and update it to describe the new project's purpose, scope, and
-   architecture — it should not still describe this template once customized.
-3. Keep the Clerk, Payload, S3, and Resend wiring unless the new project has a reason
-   to diverge — the point of the template is a consistent baseline across projects.
+States:
 
-## Support
+- none
+- pending_payment
+- active
+- expired
+- suspended
+- blacklisted
 
-Internal questions: ask in the team channel. For upstream framework issues, see the
-[Payload Discord](https://discord.com/invite/payload) or
-[Payload GitHub discussions](https://github.com/payloadcms/payload/discussions).
+Only active subscriptions can reveal contact details.
+
+---
+
+### 3. Payment
+
+States:
+
+- initiated
+- stk_sent
+- callback_received
+- confirmed
+- failed
+- expired
+- cancelled
+
+Only `confirmed` payments may activate verification or subscription.
+
+---
+
+## Collections Overview
+
+- users
+- wajakazi_profiles
+- waajiri_profiles
+- subscriptions
+- payments
+- contact_unlocks
+- audit_logs
+- reviews (planned)
+
+Each concept has a single authoritative source of truth.
+
+---
+
+## Implementation Phases
+
+1. Identity (Clerk + webhook sync)
+2. Wajakazi Verification (draft → review → approved)
+3. Payment Engine (isolated)
+4. Payment → Verification integration
+5. Subscription system
+6. Contact Vault
+7. Directory exposure rules
+8. Expiry automation
+9. Reviews (optional expansion)
+
+Phases must be completed in order.
+
+---
+
+## Security Model
+
+- Role-based access enforced server-side.
+- No frontend-trusted state transitions.
+- No direct Payload writes from client.
+- Payment validation server-side only.
+- Audit logs on every domain mutation.
+
+---
+
+## Development Guidelines
+
+- One feature per commit.
+- One state machine transition per endpoint.
+- No implicit transitions.
+- No boolean duplication of enum states.
+- No cross-domain mutation in a single operation.
+
+All prompts for AI-assisted coding must follow the internal Prompt Template System.
+
+---
+
+## Current Status
+
+Phase: Repository Initialization  
+Focus: Identity Spine (Clerk + Profile Creation)
+
+Next Milestone: Wajakazi self-registration creates a draft profile in the database.
+
+---
+
+## License
+
+Proprietary – All rights reserved.
+
+---
+
+## Maintainer
+
+M6O4 Solutions
