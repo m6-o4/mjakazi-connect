@@ -3,6 +3,7 @@ import type { Page } from "@/payload-types";
 import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
 import { HeroBlock } from "@/payload/blocks/hero/component";
+import { HowItWorksBlock } from "@/payload/blocks/how-it-works/component";
 import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
 import { PricingBlock } from "@/payload/blocks/pricing/component";
 import { RegistrationBlock } from "@/payload/blocks/registration/component";
@@ -14,6 +15,7 @@ const blockComponents = {
 	callToAction: CallToActionBlock,
 	contentEditor: ContentEditorBlock,
 	hero: HeroBlock,
+	howItWorks: HowItWorksBlock,
 	postsArchive: PostsArchiveBlock,
 	pricing: PricingBlock,
 	registration: RegistrationBlock,

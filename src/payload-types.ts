@@ -204,7 +204,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Pricing | Registration | Testimonials)[];
+  layout: (Hero | ContentEditor | PostsArchive | CallToAction | HowItWorks | Pricing | Registration | Testimonials)[];
   meta?: {
     title?: string | null;
     /**
@@ -446,6 +446,29 @@ export interface Callstoaction {
   };
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HowItWorks".
+ */
+export interface HowItWorks {
+  headline: string;
+  headlineDescription: string;
+  workingItems: {
+    workingItem: {
+      workingItemIconType: 'text' | 'icon';
+      workingItemIconTypeText?: string | null;
+      workingItemIconTypeIcon?: ('tallyone' | 'tallytwo' | 'tallythree') | null;
+      workingItemHeadline: string;
+      workingItemDescription: string;
+      workingItemLink?: string | null;
+    };
+    id?: string | null;
+  }[];
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'howItWorks';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -827,6 +850,7 @@ export interface PagesSelect<T extends boolean = true> {
         contentEditor?: T | ContentEditorSelect<T>;
         postsArchive?: T | PostsArchiveSelect<T>;
         callToAction?: T | CallToActionSelect<T>;
+        howItWorks?: T | HowItWorksSelect<T>;
         pricing?: T | PricingSelect<T>;
         registration?: T | RegistrationSelect<T>;
         testimonials?: T | TestimonialsSelect<T>;
@@ -918,6 +942,32 @@ export interface PostsArchiveSelect<T extends boolean = true> {
  */
 export interface CallToActionSelect<T extends boolean = true> {
   calltoaction?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HowItWorks_select".
+ */
+export interface HowItWorksSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  workingItems?:
+    | T
+    | {
+        workingItem?:
+          | T
+          | {
+              workingItemIconType?: T;
+              workingItemIconTypeText?: T;
+              workingItemIconTypeIcon?: T;
+              workingItemHeadline?: T;
+              workingItemDescription?: T;
+              workingItemLink?: T;
+            };
+        id?: T;
+      };
+  backgroundVariant?: T;
   id?: T;
   blockName?: T;
 }
