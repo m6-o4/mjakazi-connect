@@ -1,19 +1,19 @@
-import { isAuthenticated, isPublic } from "@/payload/access/access-control";
+import { isAdminOrEditor, isPublic } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
 
 const Categories: CollectionConfig = {
 	slug: "categories",
 	labels: { singular: "Category", plural: "Categories" },
 	admin: {
-		defaultColumns: ["title", "createdAt", "updatedAt"],
+		defaultColumns: ["title", "description", "createdAt", "updatedAt"],
 		group: "Content",
 		useAsTitle: "title",
 	},
 	access: {
-		create: isAuthenticated,
-		delete: isAuthenticated,
+		create: isAdminOrEditor,
+		delete: isAdminOrEditor,
 		read: isPublic,
-		update: isAuthenticated,
+		update: isAdminOrEditor,
 	},
 	fields: [
 		{ name: "title", type: "text", label: "Title", required: true },
