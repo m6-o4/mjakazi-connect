@@ -16,8 +16,7 @@ const NotFound = () => {
 				<Button
 					render={<Link href="/">Return to Homepage</Link>}
 					nativeButton={false}
-					size="lg"
-					className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+					className="bg-accent text-accent-foreground hover:bg-accent/80 h-auto w-full rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
 				/>
 			</div>
 		</Container>
