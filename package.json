@@ -1,7 +1,7 @@
 {
-	"name": "payload-template-project",
+	"name": "mjakazi-connect",
 	"version": "1.0.0",
-	"description": "Get started quickly with Next.js, Clerk Auth, Payload CMS and MongoDB.",
+	"description": "Mjakazi Connect SaaS web application.",
 	"license": "MIT",
 	"type": "module",
 	"scripts": {

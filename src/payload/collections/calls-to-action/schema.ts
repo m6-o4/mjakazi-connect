@@ -6,7 +6,7 @@ const CallsToAction: CollectionConfig = {
 	slug: "callstoaction",
 	labels: { singular: "Call to Action", plural: "Calls to Action" },
 	admin: {
-		defaultColumns: ["headline", "createdAt", "updatedAt"],
+		defaultColumns: ["headline", "headlineDescription", "createdAt", "updatedAt"],
 		group: "Content",
 		useAsTitle: "headline",
 	},
