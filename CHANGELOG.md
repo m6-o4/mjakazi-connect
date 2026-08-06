@@ -1,15 +1,16 @@
 # [1.1.0](https://github.com/m6-o4/mjakazi-connect/compare/v1.0.0...v1.1.0) (2026-08-06)
 
-
 ### Bug Fixes
 
-* **header-footer:** hide text on large screens to avoid duplication with logo ([b0de808](https://github.com/m6-o4/mjakazi-connect/commit/b0de808d6bb35c7ff4a4d82c3cd222c49f7dcd51))
-
+- **header-footer:** hide text on large screens to avoid duplication with logo
+  ([b0de808](https://github.com/m6-o4/mjakazi-connect/commit/b0de808d6bb35c7ff4a4d82c3cd222c49f7dcd51))
 
 ### Features
 
-* **calls-to-action:** add headlineDescription to default admin columns ([e9439b1](https://github.com/m6-o4/mjakazi-connect/commit/e9439b109968ebe9f714157fa93424a9890935c2))
-* **categories:** restrict CRUD operations to admin or editor roles ([6c679f1](https://github.com/m6-o4/mjakazi-connect/commit/6c679f1b3fee5f512acd2d6d948c6edfe69b77fa))
+- **calls-to-action:** add headlineDescription to default admin columns
+  ([e9439b1](https://github.com/m6-o4/mjakazi-connect/commit/e9439b109968ebe9f714157fa93424a9890935c2))
+- **categories:** restrict CRUD operations to admin or editor roles
+  ([6c679f1](https://github.com/m6-o4/mjakazi-connect/commit/6c679f1b3fee5f512acd2d6d948c6edfe69b77fa))
 
 # 1.0.0 (2026-08-06)
 
