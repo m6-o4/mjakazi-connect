@@ -18,7 +18,7 @@ const ContentEditorBlock = ({
 
 	return (
 		<section className={cn("", backgroundClass)}>
-			<Container className="my-5">
+			<Container className="py-10">
 				{(headline || headlineDescription) && (
 					<div className="mb-12 flex flex-col items-end justify-between md:flex-row">
 						<div>
