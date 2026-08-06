@@ -204,7 +204,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Registration)[];
+  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Registration | Testimonials)[];
   meta?: {
     title?: string | null;
     /**
@@ -470,6 +470,28 @@ export interface Registration {
   id?: string | null;
   blockName?: string | null;
   blockType: 'registration';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Testimonials".
+ */
+export interface Testimonials {
+  headline: string;
+  headlineDescription: string;
+  testimonies?:
+    | {
+        name: string;
+        occupation: string;
+        location: string;
+        rating: number;
+        testimony: string;
+        id?: string | null;
+      }[]
+    | null;
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'testimonials';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -760,6 +782,7 @@ export interface PagesSelect<T extends boolean = true> {
         postsArchive?: T | PostsArchiveSelect<T>;
         callToAction?: T | CallToActionSelect<T>;
         registration?: T | RegistrationSelect<T>;
+        testimonials?: T | TestimonialsSelect<T>;
       };
   meta?:
     | T
@@ -873,6 +896,27 @@ export interface RegistrationSelect<T extends boolean = true> {
         description?: T;
         buttonLink?: T;
         buttonText?: T;
+      };
+  backgroundVariant?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Testimonials_select".
+ */
+export interface TestimonialsSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  testimonies?:
+    | T
+    | {
+        name?: T;
+        occupation?: T;
+        location?: T;
+        rating?: T;
+        testimony?: T;
+        id?: T;
       };
   backgroundVariant?: T;
   id?: T;

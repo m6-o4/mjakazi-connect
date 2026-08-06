@@ -5,6 +5,7 @@ import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
 import { HeroBlock } from "@/payload/blocks/hero/component";
 import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
 import { RegistrationBlock } from "@/payload/blocks/registration/component";
+import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
 
 // defines which payload block types map to which react components.
 // this acts as a registry that drives dynamic page rendering.
@@ -14,6 +15,7 @@ const blockComponents = {
 	hero: HeroBlock,
 	postsArchive: PostsArchiveBlock,
 	registration: RegistrationBlock,
+	testimonials: TestimonialsBlock,
 } as const;
 
 type BlockKey = keyof typeof blockComponents;
