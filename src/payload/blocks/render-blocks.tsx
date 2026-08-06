@@ -2,6 +2,7 @@ import { ComponentType, Fragment } from "react";
 import type { Page } from "@/payload-types";
 import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
+import { FeaturesBlock } from "@/payload/blocks/features/component";
 import { HeroBlock } from "@/payload/blocks/hero/component";
 import { HowItWorksBlock } from "@/payload/blocks/how-it-works/component";
 import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
@@ -14,6 +15,7 @@ import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
 const blockComponents = {
 	callToAction: CallToActionBlock,
 	contentEditor: ContentEditorBlock,
+	features: FeaturesBlock,
 	hero: HeroBlock,
 	howItWorks: HowItWorksBlock,
 	postsArchive: PostsArchiveBlock,

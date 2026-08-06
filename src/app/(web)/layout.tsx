@@ -50,7 +50,7 @@ const metadata: Metadata = {
 	metadataBase: new URL(getServerSideURL()),
 	openGraph: mergeOpenGraph(),
 	twitter: { card: "summary_large_image", creator: "@m6-o4" },
-	icons: { icon: [{ url: "/favicon.png", type: "image/png" }] },
+	icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
 };
 
 export { WebLayout as default, metadata };

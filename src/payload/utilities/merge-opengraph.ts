@@ -5,8 +5,8 @@ import type { Metadata } from "next";
 const defaultOpenGraph: Metadata["openGraph"] = {
 	type: "website",
 	description:
-		"Kenya's premier high-trust digital bureau for domestic help. Find and hire verified wajakazi through our secure, document-backed platform. NDPA-compliant vetting including National ID and Certificate of Good Conduct checks.",
-	images: [{ url: `${getServerSideURL()}/abstract-image.jpg` }],
+		"Kenya's premier high-trust platform for domestic help. Find and hire verified wajakazi through our secure, document-backed platform. NDPA-compliant vetting including National ID and Certificate of Good Conduct checks.",
+	images: [{ url: `${getServerSideURL()}/mjakazi-connect.png` }],
 	siteName: "Mjakazi Connect",
 	title: "Mjakazi Connect",
 };
