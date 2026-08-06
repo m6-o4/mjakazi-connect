@@ -204,7 +204,7 @@ export interface Media {
 export interface Page {
   id: string;
   title: string;
-  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Registration | Testimonials)[];
+  layout: (Hero | ContentEditor | PostsArchive | CallToAction | Pricing | Registration | Testimonials)[];
   meta?: {
     title?: string | null;
     /**
@@ -446,6 +446,52 @@ export interface Callstoaction {
   };
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Pricing".
+ */
+export interface Pricing {
+  headline: string;
+  headlineDescription: string;
+  pricing: {
+    pricingPlans?:
+      | {
+          planName: string;
+          planDescription: string;
+          planPrice: string;
+          mostPopular?: boolean | null;
+          planPerks?:
+            | {
+                perk?: string | null;
+                id?: string | null;
+              }[]
+            | null;
+          ctaPrice: {
+            link: {
+              type?: ('reference' | 'custom') | null;
+              newTab?: boolean | null;
+              reference?:
+                | ({
+                    relationTo: 'pages';
+                    value: string | Page;
+                  } | null)
+                | ({
+                    relationTo: 'posts';
+                    value: string | Post;
+                  } | null);
+              url?: string | null;
+              label: string;
+            };
+          };
+          id?: string | null;
+        }[]
+      | null;
+  };
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'pricing';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -781,6 +827,7 @@ export interface PagesSelect<T extends boolean = true> {
         contentEditor?: T | ContentEditorSelect<T>;
         postsArchive?: T | PostsArchiveSelect<T>;
         callToAction?: T | CallToActionSelect<T>;
+        pricing?: T | PricingSelect<T>;
         registration?: T | RegistrationSelect<T>;
         testimonials?: T | TestimonialsSelect<T>;
       };
@@ -871,6 +918,49 @@ export interface PostsArchiveSelect<T extends boolean = true> {
  */
 export interface CallToActionSelect<T extends boolean = true> {
   calltoaction?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "Pricing_select".
+ */
+export interface PricingSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  pricing?:
+    | T
+    | {
+        pricingPlans?:
+          | T
+          | {
+              planName?: T;
+              planDescription?: T;
+              planPrice?: T;
+              mostPopular?: T;
+              planPerks?:
+                | T
+                | {
+                    perk?: T;
+                    id?: T;
+                  };
+              ctaPrice?:
+                | T
+                | {
+                    link?:
+                      | T
+                      | {
+                          type?: T;
+                          newTab?: T;
+                          reference?: T;
+                          url?: T;
+                          label?: T;
+                        };
+                  };
+              id?: T;
+            };
+      };
+  backgroundVariant?: T;
   id?: T;
   blockName?: T;
 }

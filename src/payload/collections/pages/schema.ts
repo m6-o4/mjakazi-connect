@@ -6,6 +6,7 @@ import { CallToAction } from "@/payload/blocks/call-to-action/schema";
 import { ContentEditor } from "@/payload/blocks/content-editor/schema";
 import { Hero } from "@/payload/blocks/hero/schema";
 import { PostsArchive } from "@/payload/blocks/posts-archive/schema";
+import { Pricing } from "@/payload/blocks/pricing/schema";
 import { Registration } from "@/payload/blocks/registration/schema";
 import { Testimonials } from "@/payload/blocks/testimonials/schema";
 import {
@@ -74,6 +75,7 @@ const Pages: CollectionConfig<"pages"> = {
 								ContentEditor,
 								PostsArchive,
 								CallToAction,
+								Pricing,
 								Registration,
 								Testimonials,
 							],

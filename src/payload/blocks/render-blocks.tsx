@@ -4,6 +4,7 @@ import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
 import { HeroBlock } from "@/payload/blocks/hero/component";
 import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
+import { PricingBlock } from "@/payload/blocks/pricing/component";
 import { RegistrationBlock } from "@/payload/blocks/registration/component";
 import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
 
@@ -14,6 +15,7 @@ const blockComponents = {
 	contentEditor: ContentEditorBlock,
 	hero: HeroBlock,
 	postsArchive: PostsArchiveBlock,
+	pricing: PricingBlock,
 	registration: RegistrationBlock,
 	testimonials: TestimonialsBlock,
 } as const;
