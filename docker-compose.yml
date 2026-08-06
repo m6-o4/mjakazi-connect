@@ -9,7 +9,7 @@ services:
       - stack.env
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mjakazi-connect.rule=Host(`mjakaziconnect.co.ke`) || Host(`www.mjakaziconnect.co.ke`)"
+      - "traefik.http.routers.mjakazi-connect.rule=Host(`mjakaziconnect.co.ke`)"
       - "traefik.http.routers.mjakazi-connect.entrypoints=websecure"
       - "traefik.http.routers.mjakazi-connect.tls.certresolver=letsencrypt"
       - "traefik.http.services.mjakazi-connect.loadbalancer.server.port=3000"
