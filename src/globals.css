@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -24,6 +25,10 @@
 	--color-input: var(--input);
 	--color-border: var(--border);
 	--color-destructive: var(--destructive);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);
@@ -38,6 +43,7 @@
 	--color-card: var(--card);
 	--color-foreground: var(--foreground);
 	--color-background: var(--background);
+	--color-heading: var(--heading);
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
@@ -48,72 +54,101 @@
 }
 
 :root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
+	--font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+	/* Base surfaces — warm off-white instead of stock gray */
+	--background: #fbfaf7;
+	--foreground: #1f2a24;
+	--heading: #2f5a48; /* deep sage — headings only, distinct from body text and the orange accent */
+	--card: #ffffff;
+	--card-foreground: #1f2a24;
+	--popover: #ffffff;
+	--popover-foreground: #1f2a24;
+
+	/* Brand palette — from brand_guideline.pdf */
+	--primary: #7bae9a; /* sage green */
+	--primary-foreground: #1f2a24; /* white fails contrast on sage (2.5:1) */
+	--secondary: #d88b6b; /* terracotta */
+	--secondary-foreground: #1f2a24; /* white fails contrast on terracotta (2.7:1) */
+	--muted: #fbd0c9; /* blush */
+	--muted-foreground: #423f37; /* warm charcoal, also used as general de-emphasized text */
+	--accent: #e45f2b; /* burnt orange */
+	--accent-foreground: #ffffff; /* passes at 3.5:1 — semibold/14px+ only, see ui-rules.md */
+
+	/* Semantic — kept separate from brand orange so errors stay unambiguous */
 	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
+	--success: #4c9a6a; /* leaf green — distinct from sage --primary, reserved for success states */
+	--success-foreground: #1f2a24; /* white only clears at 3.42:1 — dark text always, no exception */
+	--warning: #d9a441; /* golden amber — distinct from --accent orange and --secondary terracotta */
+	--warning-foreground: #1f2a24; /* white fails outright (2.25:1) — dark text always */
+
+	/* Neutrals — warm-tinted instead of stock cold gray */
+	--border: #e7e2d8;
+	--input: #e7e2d8;
+	--ring: #7bae9a; /* sage, matches primary */
+
+	/* Chart palette — the full five-color brand set, in guideline order */
+	--chart-1: #7bae9a; /* sage */
+	--chart-2: #d88b6b; /* terracotta */
+	--chart-3: #fbd0c9; /* blush */
+	--chart-4: #e45f2b; /* orange */
+	--chart-5: #ffd639; /* yellow */
+
 	--radius: 0.625rem;
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
+
+	/* Sidebar — reuses the roles above rather than restating literals */
+	--sidebar: var(--card);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--muted-foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
+	--background: #171c19;
+	--foreground: #f5f2ec;
+	--heading: #8fcbb3; /* light sage — headings only, mirrors the light-mode role */
+	--card: #1d231f;
+	--card-foreground: #f5f2ec;
+	--popover: #1d231f;
+	--popover-foreground: #f5f2ec;
+
+	--primary: #7bae9a;
+	--primary-foreground: #1f2a24; /* same rule as light mode — sage never carries white text */
+	--secondary: #d88b6b;
+	--secondary-foreground: #1f2a24;
+	--muted: #2c332d; /* blush is too light to double as a dark surface — swapped for a dark neutral */
+	--muted-foreground: #c7cbc2;
+	--accent: #e45f2b;
+	--accent-foreground: #ffffff;
+
 	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	--success: #7ecb98;
+	--success-foreground: #1f2a24;
+	--warning: #e8be6e;
+	--warning-foreground: #1f2a24;
+
+	--border: #2c332d;
+	--input: #2c332d;
+	--ring: #7bae9a;
+
+	--chart-1: #7bae9a;
+	--chart-2: #d88b6b;
+	--chart-3: #fbd0c9;
+	--chart-4: #e45f2b;
+	--chart-5: #ffd639;
+
+	--sidebar: var(--card);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--muted-foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
 }
 
 @layer base {
@@ -122,7 +157,7 @@
 	}
 
 	body {
-		@apply bg-muted text-foreground;
+		@apply bg-background text-foreground;
 	}
 
 	html {

@@ -2,7 +2,15 @@ import {
 	isAdminOrEditor,
 	isAdminOrEditorOrPublished,
 } from "@/payload/access/access-control";
-import { Archive } from "@/payload/blocks/archive/schema";
+import { CallToAction } from "@/payload/blocks/call-to-action/schema";
+import { ContentEditor } from "@/payload/blocks/content-editor/schema";
+import { Features } from "@/payload/blocks/features/schema";
+import { Hero } from "@/payload/blocks/hero/schema";
+import { HowItWorks } from "@/payload/blocks/how-it-works/schema";
+import { PostsArchive } from "@/payload/blocks/posts-archive/schema";
+import { Pricing } from "@/payload/blocks/pricing/schema";
+import { Registration } from "@/payload/blocks/registration/schema";
+import { Testimonials } from "@/payload/blocks/testimonials/schema";
 import {
 	revalidateDelete,
 	revalidatePage,
@@ -18,6 +26,7 @@ import {
 	PreviewField,
 } from "@payloadcms/plugin-seo/fields";
 import type { CollectionConfig } from "payload";
+import { features } from "process";
 
 const Pages: CollectionConfig<"pages"> = {
 	slug: "pages",
@@ -64,7 +73,17 @@ const Pages: CollectionConfig<"pages"> = {
 							type: "blocks",
 							required: true,
 							admin: { initCollapsed: true },
-							blocks: [Archive],
+							blocks: [
+								Hero,
+								ContentEditor,
+								Features,
+								PostsArchive,
+								CallToAction,
+								HowItWorks,
+								Pricing,
+								Registration,
+								Testimonials,
+							],
 						},
 					],
 				},

@@ -41,13 +41,13 @@ export default buildConfig({
 					fetchPriority: "high",
 					rel: "icon",
 					sizes: "32x32",
-					type: "image/png",
-					url: "/favicon.png",
+					type: "image/svg+xml",
+					url: "/favicon.svg",
 				},
 			],
 
 			// append a suffix to the browser title for all admin pages
-			titleSuffix: " | Superior Software Solutions",
+			titleSuffix: " | Mjakazi Connect",
 		},
 
 		// set the users collection slug for authentication management

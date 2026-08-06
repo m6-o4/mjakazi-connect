@@ -1,10 +1,28 @@
 import { ComponentType, Fragment } from "react";
 import type { Page } from "@/payload-types";
-import { ArchiveBlock } from "@/payload/blocks/archive/component";
+import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
+import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
+import { FeaturesBlock } from "@/payload/blocks/features/component";
+import { HeroBlock } from "@/payload/blocks/hero/component";
+import { HowItWorksBlock } from "@/payload/blocks/how-it-works/component";
+import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
+import { PricingBlock } from "@/payload/blocks/pricing/component";
+import { RegistrationBlock } from "@/payload/blocks/registration/component";
+import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
 
 // defines which payload block types map to which react components.
 // this acts as a registry that drives dynamic page rendering.
-const blockComponents = { archive: ArchiveBlock } as const;
+const blockComponents = {
+	callToAction: CallToActionBlock,
+	contentEditor: ContentEditorBlock,
+	features: FeaturesBlock,
+	hero: HeroBlock,
+	howItWorks: HowItWorksBlock,
+	postsArchive: PostsArchiveBlock,
+	pricing: PricingBlock,
+	registration: RegistrationBlock,
+	testimonials: TestimonialsBlock,
+} as const;
 
 type BlockKey = keyof typeof blockComponents;
 

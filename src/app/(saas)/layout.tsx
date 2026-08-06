@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { cn } from "@/lib/utils";
-import { geist } from "@/lib/fonts";
+import { jakartaSans } from "@/lib/fonts";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
 // load foundational styles for the saas application
@@ -27,7 +27,7 @@ const SaasLayout = async (props: { children: ReactNode }) => {
 	return (
 		<ClerkProvider>
 			<html lang="en" suppressHydrationWarning>
-				<body className={cn("bg-muted", geist.className)}>
+				<body className={cn("antialiased", jakartaSans.className)}>
 					<ThemeProvider
 						attribute="class"
 						defaultTheme="dark"

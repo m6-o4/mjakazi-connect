@@ -9,15 +9,14 @@ import { useState } from "react";
 const CopyButton = ({ code }: { code: string }) => {
 	const [text, setText] = useState("Copy");
 
-	// helper function to update the button text after a successful copy operation
-	function updateCopyStatus() {
+	const updateCopyStatus = () => {
 		if (text === "Copy") {
 			setText("Copied!");
 			setTimeout(() => {
 				setText("Copy");
 			}, 1000);
 		}
-	}
+	};
 
 	return (
 		<div className="flex justify-end align-middle">

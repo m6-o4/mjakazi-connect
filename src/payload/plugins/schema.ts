@@ -17,9 +17,7 @@ const endpoint = process.env.S3_ENDPOINT!;
 // dynamically constructs seo titles for pages and posts
 // adds brand consistency by appending the company name to each document title
 const generateTitle: GenerateTitle<Post | Page> = ({ doc }) => {
-	return doc?.title
-		? `${doc.title} | Superior Software Solutions`
-		: "Superior Software Solutions";
+	return doc?.title ? `${doc.title} | Mjakazi Connect` : "Mjakazi Connect";
 };
 
 // dynamically constructs canonical urls for pages and posts
