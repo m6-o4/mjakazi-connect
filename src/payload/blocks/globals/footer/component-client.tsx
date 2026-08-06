@@ -36,7 +36,7 @@ const FooterClient = async ({ data }: FooterClientProps) => {
 									className="mr-3 hidden h-20 w-40 object-contain lg:flex"
 								/>
 							)}
-							<span className="text-foreground text-xl font-bold tracking-tight">
+							<span className="text-foreground text-xl font-bold tracking-tight lg:hidden">
 								{main} {accent && <span className="text-primary">{accent}</span>}
 							</span>
 						</Link>

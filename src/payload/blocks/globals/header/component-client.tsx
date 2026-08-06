@@ -37,7 +37,7 @@ const HeaderClient = ({ data }: HeaderClientProps) => {
 								priority
 							/>
 						)}
-						<span className="text-foreground text-xl font-bold tracking-tight">
+						<span className="text-foreground text-xl font-bold tracking-tight lg:hidden">
 							{main} {accent && <span className="text-primary">{accent}</span>}
 						</span>
 					</Link>
