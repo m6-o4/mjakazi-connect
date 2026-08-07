@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.0...v1.1.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **auth:** allow www subdomain for Clerk authorized parties ([3391eea](https://github.com/m6-o4/mjakazi-connect/commit/3391eea1bff128ef3c680221ef7373134ab0ba42))
+* **docker:** include www subdomain in Traefik routing ([f02f86b](https://github.com/m6-o4/mjakazi-connect/commit/f02f86bc67dda5bd0f4db909f8ec8ba62d7396d8))
+
 # [1.1.0](https://github.com/m6-o4/mjakazi-connect/compare/v1.0.0...v1.1.0) (2026-08-06)
 
 ### Bug Fixes
