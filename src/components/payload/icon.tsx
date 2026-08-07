@@ -1,7 +1,8 @@
-import { Media } from "@/payload-types";
-import config from "@/payload-config";
 import Image from "next/image";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
+import { Media } from "@/payload-types";
 
 const Icon = async () => {
 	const payload = await getPayload({ config: config });

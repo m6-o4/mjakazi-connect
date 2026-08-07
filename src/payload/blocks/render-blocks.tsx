@@ -1,4 +1,5 @@
 import { ComponentType, Fragment } from "react";
+
 import type { Page } from "@/payload-types";
 import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";

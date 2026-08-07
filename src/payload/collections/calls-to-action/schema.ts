@@ -1,6 +1,7 @@
+import type { CollectionConfig } from "payload";
+
 import { isAdminOrEditor, isPublic } from "@/payload/access/access-control";
 import { link } from "@/payload/fields/link";
-import type { CollectionConfig } from "payload";
 
 const CallsToAction: CollectionConfig = {
 	slug: "callstoaction",

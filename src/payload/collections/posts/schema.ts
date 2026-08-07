@@ -1,3 +1,5 @@
+import type { CollectionConfig } from "payload";
+
 import {
 	isAdminOrEditor,
 	isAdminOrEditorOrPublished,
@@ -12,6 +14,7 @@ import {
 } from "@/payload/collections/posts/hooks/revalidate-post";
 import { slugField } from "@/payload/fields/slug";
 import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
+
 import {
 	MetaDescriptionField,
 	MetaImageField,
@@ -27,7 +30,6 @@ import {
 	InlineToolbarFeature,
 	lexicalEditor,
 } from "@payloadcms/richtext-lexical";
-import type { CollectionConfig } from "payload";
 
 const Posts: CollectionConfig<"posts"> = {
 	slug: "posts",

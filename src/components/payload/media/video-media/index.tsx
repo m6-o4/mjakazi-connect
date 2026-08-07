@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import type { Props as MediaProps } from "@/components/payload/media/types";
 import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/payload/utilities/get-media-url";
-import { useEffect, useRef } from "react";
 
 // a client-side component that renders a video element.
 // it is specifically configured for decorative, background use:

@@ -1,6 +1,7 @@
-import type { Post } from "@/payload-types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "payload";
+
+import type { Post } from "@/payload-types";
 
 // revalidates the post path and sitemap tag after a post document is changed.
 // handles publishing new posts and unpublishing old paths.

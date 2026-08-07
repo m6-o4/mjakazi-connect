@@ -1,9 +1,9 @@
-import config from "@/payload-config";
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
-import { getPayload } from "payload";
-import type { CollectionSlug, PayloadRequest } from "payload";
+import { getPayload, type CollectionSlug, type PayloadRequest } from "payload";
+
+import config from "@/payload-config";
 
 // next.js api route handler for enabling draft mode (live preview).
 // this endpoint is called by payload cms to start a live preview session,

@@ -1,5 +1,6 @@
-import { resendAdapter } from "@payloadcms/email-resend";
 import { Config } from "payload";
+
+import { resendAdapter } from "@payloadcms/email-resend";
 
 // retrieve values from the environment variables.
 const resendFromEmail = process.env.RESEND_FROM_EMAIL!;

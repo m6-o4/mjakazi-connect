@@ -1,12 +1,13 @@
-import { LivePreviewListener } from "@/components/payload/live-preview-listener";
-import { PayloadRedirects } from "@/components/payload/payload-redirects";
-import { RenderBlocks } from "@/payload/blocks/render-blocks";
-import { generateMeta } from "@/payload/utilities/generate-meta";
-import config from "@/payload-config";
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { getPayload } from "payload";
 import { cache } from "react";
+
+import { LivePreviewListener } from "@/components/payload/live-preview-listener";
+import { PayloadRedirects } from "@/components/payload/payload-redirects";
+import config from "@/payload-config";
+import { RenderBlocks } from "@/payload/blocks/render-blocks";
+import { generateMeta } from "@/payload/utilities/generate-meta";
 
 const generateStaticParams = async () => {
 	const payload = await getPayload({ config: config });

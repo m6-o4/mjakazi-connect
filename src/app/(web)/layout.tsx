@@ -1,13 +1,15 @@
+import type { Metadata } from "next";
 import { ReactNode } from "react";
-import { ClerkProvider } from "@clerk/nextjs";
-import { cn } from "@/lib/utils";
+
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { jakartaSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import { Footer } from "@/payload/blocks/globals/footer/component";
 import { Header } from "@/payload/blocks/globals/header/component";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getServerSideURL } from "@/payload/utilities/get-url";
 import { mergeOpenGraph } from "@/payload/utilities/merge-opengraph";
-import type { Metadata } from "next";
+
+import { ClerkProvider } from "@clerk/nextjs";
 
 // load foundational styles for the web application
 import "@/globals.css";

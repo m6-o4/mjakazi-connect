@@ -1,4 +1,7 @@
+import type { Block } from "payload";
+
 import { Banner } from "@/payload/blocks/banner/schema";
+
 import {
 	AlignFeature,
 	BlocksFeature,
@@ -9,7 +12,6 @@ import {
 	OrderedListFeature,
 	UnorderedListFeature,
 } from "@payloadcms/richtext-lexical";
-import type { Block } from "payload";
 
 const ContentEditor: Block = {
 	slug: "contentEditor",

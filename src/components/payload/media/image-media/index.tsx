@@ -1,11 +1,11 @@
 "use client";
 
+import NextImage, { type StaticImageData } from "next/image";
+
 import type { Props as MediaProps } from "@/components/payload/media/types";
 import { cssVariables } from "@/css-variables";
 import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/payload/utilities/get-media-url";
-import NextImage from "next/image";
-import type { StaticImageData } from "next/image";
 
 // destructure configured tailwind breakpoints.
 const { breakpoints } = cssVariables;

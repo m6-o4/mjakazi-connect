@@ -1,3 +1,5 @@
+import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "payload";
+
 import {
 	isAdmin,
 	isAdminField,
@@ -10,7 +12,6 @@ import {
 	syncClerkUser,
 } from "@/payload/hooks/clerk-sync";
 import { clerkStrategy } from "@/payload/strategy/clerk-strategy";
-import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "payload";
 
 // combines first and last names into a single searchable string
 const populateFullName: FieldHook = async ({ data }) => {

@@ -1,8 +1,10 @@
-import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextRequest } from "next/server";
 import { getPayload } from "payload";
+
 import configPromise from "@/payload-config";
 import { clerkWebhookContext } from "@/payload/utilities/request-context";
+
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
 
 export async function POST(req: NextRequest) {
 	let evt;

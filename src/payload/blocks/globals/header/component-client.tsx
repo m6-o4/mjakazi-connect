@@ -1,13 +1,14 @@
 "use client";
 
-import { Container } from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import type { Header } from "@/payload-types";
 import { Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+
+import { Container } from "@/components/container";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import type { Header } from "@/payload-types";
 
 interface HeaderClientProps {
 	data: Header;

@@ -3,8 +3,9 @@
 import type { Metadata } from "next";
 
 import config from "@/payload-config";
-import { NotFoundPage, generatePageMetadata } from "@payloadcms/next/views";
 import { importMap } from "@/payload-root/admin/importMap";
+
+import { generatePageMetadata, NotFoundPage } from "@payloadcms/next/views";
 
 type Args = {
 	params: Promise<{ segments: string[] }>;

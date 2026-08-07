@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { ComponentProps } from "react";
+
+import { cn } from "@/lib/utils";
 
 type ContainerProps = ComponentProps<"div">;
 

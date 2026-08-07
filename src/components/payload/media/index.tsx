@@ -1,7 +1,8 @@
+import React, { Fragment } from "react";
+
 import { ImageMedia } from "@/components/payload/media/image-media";
 import type { Props } from "@/components/payload/media/types";
 import { VideoMedia } from "@/components/payload/media/video-media";
-import React, { Fragment } from "react";
 
 // the primary media component that acts as a router for image and video rendering.
 // it inspects the payload media object's mime type to determine the correct sub-component

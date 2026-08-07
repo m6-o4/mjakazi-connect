@@ -1,5 +1,6 @@
-import type { User } from "@/payload-types";
 import type { Access, AccessArgs, FieldAccess } from "payload";
+
+import type { User } from "@/payload-types";
 
 type Role = NonNullable<User["role"]>;
 type MaybeUser = Pick<User, "role"> | null | undefined;

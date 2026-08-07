@@ -1,4 +1,5 @@
 import { AuthStrategy } from "payload";
+
 import { createClerkClient } from "@clerk/backend";
 
 const clerkClient = createClerkClient({

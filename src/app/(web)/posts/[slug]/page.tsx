@@ -1,17 +1,18 @@
-import { Container } from "@/components/container";
-import { LivePreviewListener } from "@/components/payload/live-preview-listener";
-import { PayloadRedirects } from "@/components/payload/payload-redirects";
-import { RichText } from "@/components/payload/rich-text";
-import { Badge } from "@/components/ui/badge";
-import { formatAuthors } from "@/payload/utilities/format-authors";
-import { formatDate } from "@/payload/utilities/format-date";
-import { generateMeta } from "@/payload/utilities/generate-meta";
-import config from "@/payload-config";
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import Image from "next/image";
 import { getPayload } from "payload";
 import { cache } from "react";
+
+import { Container } from "@/components/container";
+import { LivePreviewListener } from "@/components/payload/live-preview-listener";
+import { PayloadRedirects } from "@/components/payload/payload-redirects";
+import { RichText } from "@/components/payload/rich-text";
+import { Badge } from "@/components/ui/badge";
+import config from "@/payload-config";
+import { formatAuthors } from "@/payload/utilities/format-authors";
+import { formatDate } from "@/payload/utilities/format-date";
+import { generateMeta } from "@/payload/utilities/generate-meta";
 
 // pre-renders a subset of blog posts to optimize build performance and initial load speed
 const generateStaticParams = async () => {

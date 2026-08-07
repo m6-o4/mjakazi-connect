@@ -1,6 +1,7 @@
-import config from "@/payload-config";
 import { unstable_cache } from "next/cache";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
 
 // retrieves all redirect documents from the payload 'redirects' collection
 // accepts an optional depth parameter for relation population
