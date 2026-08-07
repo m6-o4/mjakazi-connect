@@ -12,8 +12,23 @@ const clerkStrategy: AuthStrategy = {
 		try {
 			// reconstruct a request object to validate request headers via clerk
 			const req = new Request("http://localhost", { headers });
+			const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL!;
+			const authorizedParties = [serverUrl];
+
+			// allow the bare/www variant of the configured host, since Traefik
+			// routes both to this app (see docker-compose.yml)
+			try {
+				const url = new URL(serverUrl);
+				const altHost = url.hostname.startsWith("www.")
+					? url.hostname.slice(4)
+					: `www.${url.hostname}`;
+				authorizedParties.push(`${url.protocol}//${altHost}`);
+			} catch {
+				// serverUrl not a valid URL; skip alt-host handling
+			}
+
 			const requestState = await clerkClient.authenticateRequest(req, {
-				authorizedParties: [process.env.NEXT_PUBLIC_SERVER_URL!],
+				authorizedParties,
 			});
 
 			if (!requestState.isAuthenticated) {
