@@ -30,7 +30,7 @@ const Layout = async ({ children }: Args) => {
 	// button cannot clear a clerk session
 	const user = await getCurrentUser();
 
-	if (user?.role !== "admin" && user?.role !== "editor") {
+	if (user?.role !== "admin" && user?.role !== "staff") {
 		redirect("/sign-out");
 	}
 
