@@ -1,6 +1,6 @@
 import type { CollectionConfig } from "payload";
 
-import { isAdminOrEditor, isPublic } from "@/payload/access/access-control";
+import { isAdminOrStaff, isPublic } from "@/payload/access/access-control";
 import { link } from "@/payload/fields/link";
 
 const CallsToAction: CollectionConfig = {
@@ -12,10 +12,10 @@ const CallsToAction: CollectionConfig = {
 		useAsTitle: "headline",
 	},
 	access: {
-		create: isAdminOrEditor,
-		delete: isAdminOrEditor,
+		create: isAdminOrStaff,
+		delete: isAdminOrStaff,
 		read: isPublic,
-		update: isAdminOrEditor,
+		update: isAdminOrStaff,
 	},
 	fields: [
 		{ name: "headline", type: "text", label: "Headline", required: true },

@@ -1,6 +1,6 @@
 import type { CollectionConfig } from "payload";
 
-import { isAdminOrEditor, isPublic } from "@/payload/access/access-control";
+import { isAdminOrStaff, isPublic } from "@/payload/access/access-control";
 
 const Categories: CollectionConfig = {
 	slug: "categories",
@@ -11,10 +11,10 @@ const Categories: CollectionConfig = {
 		useAsTitle: "title",
 	},
 	access: {
-		create: isAdminOrEditor,
-		delete: isAdminOrEditor,
+		create: isAdminOrStaff,
+		delete: isAdminOrStaff,
 		read: isPublic,
-		update: isAdminOrEditor,
+		update: isAdminOrStaff,
 	},
 	fields: [
 		{ name: "title", type: "text", label: "Title", required: true },

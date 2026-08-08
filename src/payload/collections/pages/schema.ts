@@ -2,8 +2,8 @@ import { features } from "process";
 import type { CollectionConfig } from "payload";
 
 import {
-	isAdminOrEditor,
-	isAdminOrEditorOrPublished,
+	isAdminOrStaff,
+	isAdminOrStaffOrPublished,
 } from "@/payload/access/access-control";
 import { CallToAction } from "@/payload/blocks/call-to-action/schema";
 import { ContentEditor } from "@/payload/blocks/content-editor/schema";
@@ -56,10 +56,10 @@ const Pages: CollectionConfig<"pages"> = {
 		useAsTitle: "title",
 	},
 	access: {
-		create: isAdminOrEditor,
-		delete: isAdminOrEditor,
-		read: isAdminOrEditorOrPublished,
-		update: isAdminOrEditor,
+		create: isAdminOrStaff,
+		delete: isAdminOrStaff,
+		read: isAdminOrStaffOrPublished,
+		update: isAdminOrStaff,
 	},
 	defaultPopulate: { title: true, slug: true },
 	fields: [
