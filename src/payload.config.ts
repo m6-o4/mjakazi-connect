@@ -64,7 +64,7 @@ export default buildConfig({
 		access: {
 			run: ({ req }: { req: PayloadRequest }): boolean => {
 				// staff may trigger the queue from the admin panel
-				if (req.user?.role === "admin" || req.user?.role === "editor") return true;
+				if (req.user?.role === "admin" || req.user?.role === "staff") return true;
 
 				const secret = cronSecret;
 				if (!secret) return false;
