@@ -1,10 +1,11 @@
-import { Container } from "@/components/container";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Hero } from "@/payload-types";
 import { ArrowRight, CheckCircle, ChevronRight, Lock } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+
+import { Container } from "@/components/container";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Hero } from "@/payload-types";
 
 // maps cms variant values to tailwind background utility classes
 const bgMap: Record<string, string> = {

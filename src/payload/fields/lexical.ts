@@ -1,3 +1,5 @@
+import type { TextFieldSingleValidation } from "payload";
+
 import {
 	BoldFeature,
 	ItalicFeature,
@@ -7,7 +9,6 @@ import {
 	UnderlineFeature,
 	type LinkFields,
 } from "@payloadcms/richtext-lexical";
-import type { TextFieldSingleValidation } from "payload";
 
 const lexical = lexicalEditor({
 	features: [

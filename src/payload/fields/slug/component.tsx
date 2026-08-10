@@ -1,6 +1,10 @@
 "use client";
 
+import { TextFieldClientProps } from "payload";
+import { MouseEvent, useCallback } from "react";
+
 import { formatSlug } from "@/payload/fields/slug/format-slug";
+
 import {
 	Button,
 	FieldLabel,
@@ -9,8 +13,6 @@ import {
 	useForm,
 	useFormFields,
 } from "@payloadcms/ui";
-import { TextFieldClientProps } from "payload";
-import { MouseEvent, useCallback } from "react";
 
 import "@/payload/fields/slug/index.scss";
 

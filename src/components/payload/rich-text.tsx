@@ -1,3 +1,5 @@
+import { HTMLAttributes } from "react";
+
 import { cn } from "@/lib/utils";
 import type {
 	BannerBlock as BannerBlockProps,
@@ -6,6 +8,7 @@ import type {
 import { BannerBlock } from "@/payload/blocks/banner/component";
 import { CodeBlock, CodeBlockProps } from "@/payload/blocks/code/component";
 import { MediaBlock } from "@/payload/blocks/media/component";
+
 import {
 	DefaultNodeTypes,
 	SerializedBlockNode,
@@ -17,7 +20,6 @@ import {
 	JSXConvertersFunction,
 	LinkJSXConverter,
 } from "@payloadcms/richtext-lexical/react";
-import { HTMLAttributes } from "react";
 
 // defines the custom structure of block nodes expected within the lexical data.
 type NodeTypes =

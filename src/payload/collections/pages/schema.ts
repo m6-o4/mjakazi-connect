@@ -1,6 +1,9 @@
+import { features } from "process";
+import type { CollectionConfig } from "payload";
+
 import {
-	isAdminOrEditor,
-	isAdminOrEditorOrPublished,
+	isAdminOrStaff,
+	isAdminOrStaffOrPublished,
 } from "@/payload/access/access-control";
 import { CallToAction } from "@/payload/blocks/call-to-action/schema";
 import { ContentEditor } from "@/payload/blocks/content-editor/schema";
@@ -18,6 +21,7 @@ import {
 import { slugField } from "@/payload/fields/slug";
 import { populatePublishedAt } from "@/payload/hooks/populate-published-at";
 import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
+
 import {
 	MetaDescriptionField,
 	MetaImageField,
@@ -25,8 +29,6 @@ import {
 	OverviewField,
 	PreviewField,
 } from "@payloadcms/plugin-seo/fields";
-import type { CollectionConfig } from "payload";
-import { features } from "process";
 
 const Pages: CollectionConfig<"pages"> = {
 	slug: "pages",
@@ -54,10 +56,10 @@ const Pages: CollectionConfig<"pages"> = {
 		useAsTitle: "title",
 	},
 	access: {
-		create: isAdminOrEditor,
-		delete: isAdminOrEditor,
-		read: isAdminOrEditorOrPublished,
-		update: isAdminOrEditor,
+		create: isAdminOrStaff,
+		delete: isAdminOrStaff,
+		read: isAdminOrStaffOrPublished,
+		update: isAdminOrStaff,
 	},
 	defaultPopulate: { title: true, slug: true },
 	fields: [

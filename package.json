@@ -1,6 +1,6 @@
 {
 	"name": "mjakazi-connect",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Mjakazi Connect SaaS web application.",
 	"license": "MIT",
 	"type": "module",
@@ -12,6 +12,7 @@
 		"lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
 		"payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
 		"start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+		"format": "prettier --write .",
 		"postbuild": "next-sitemap",
 		"release": "semantic-release"
 	},
@@ -33,6 +34,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"cross-env": "^10.1.0",
+		"date-fns": "^4.4.0",
 		"dotenv": "17.4.2",
 		"graphql": "^17.0.2",
 		"lucide-react": "^1.28.0",
@@ -45,10 +47,12 @@
 		"prism-react-renderer": "^2.4.1",
 		"react": "19.2.8",
 		"react-dom": "19.2.8",
+		"react-hook-form": "^7.85.0",
 		"shadcn": "^4.16.0",
 		"sharp": "0.35.3",
 		"tailwind-merge": "^3.6.0",
-		"tailwindcss": "^4.3.3"
+		"tailwindcss": "^4.3.3",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
@@ -56,6 +60,7 @@
 		"@semantic-release/commit-analyzer": "^13.0.1",
 		"@semantic-release/git": "^11.0.1",
 		"@semantic-release/github": "^12.0.9",
+		"@semantic-release/npm": "^13.1.5",
 		"@semantic-release/release-notes-generator": "^14.1.1",
 		"@tailwindcss/typography": "^0.5.20",
 		"@types/node": "26.1.2",

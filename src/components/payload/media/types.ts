@@ -1,6 +1,7 @@
-import type { Media as MediaType } from "@/payload-types";
 import type { StaticImageData } from "next/image";
 import type { ElementType, Ref } from "react";
+
+import type { Media as MediaType } from "@/payload-types";
 
 // defines the props for a versatile media component.
 // it supports rendering images from payload cms, static imports,

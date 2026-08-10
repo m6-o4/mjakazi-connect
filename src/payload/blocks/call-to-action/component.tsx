@@ -1,6 +1,7 @@
-import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { CallToAction } from "@/payload-types";
 
 // renders a high-impact call to action section with two primary navigation paths

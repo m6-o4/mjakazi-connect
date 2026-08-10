@@ -335,11 +335,26 @@ export interface Category {
 export interface User {
   id: string;
   clerkId?: string | null;
+  /**
+   * Set once at creation and cannot be changed afterwards.
+   */
   email: string;
+  /**
+   * Initial password. The user can reset it themselves from the sign-in page.
+   */
   password?: string | null;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'editor' | 'user';
+  /**
+   * Admin and Staff reach the admin panel. Mwajiri and Mjakazi never do.
+   */
+  role: 'admin' | 'staff' | 'mwajiri' | 'mjakazi';
+  /**
+   * Suspension and reinstatement are performed from the console, not here.
+   */
+  accountState: 'active' | 'suspended' | 'deleted';
+  suspendedAt?: string | null;
+  suspensionReason?: string | null;
   name?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1202,6 +1217,9 @@ export interface UsersSelect<T extends boolean = true> {
   firstName?: T;
   lastName?: T;
   role?: T;
+  accountState?: T;
+  suspendedAt?: T;
+  suspensionReason?: T;
   name?: T;
   updatedAt?: T;
   createdAt?: T;

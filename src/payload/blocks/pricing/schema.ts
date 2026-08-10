@@ -1,5 +1,6 @@
-import { link } from "@/payload/fields/link";
 import type { Block } from "payload";
+
+import { link } from "@/payload/fields/link";
 
 const Pricing: Block = {
 	slug: "pricing",

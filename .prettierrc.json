@@ -1,18 +1,6 @@
 {
 	"plugins": ["@ianvs/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"],
-	"importOrder": [
-		"^[^@.]",
-		"",
-		"^@core/(.*)$",
-		"",
-		"^@server/(.*)$",
-		"",
-		"^@ui/(.*)$",
-		"",
-		"^@[^/]+/(.*)$",
-		"",
-		"^[./]"
-	],
+	"importOrder": ["^[^@.]", "", "^@/(.*)$", "", "^@[^/]+/(.*)$", "", "^[./]"],
 	"importOrderTypeScriptVersion": "6.0.3",
 	"importOrderCaseSensitive": false,
 	"arrowParens": "always",

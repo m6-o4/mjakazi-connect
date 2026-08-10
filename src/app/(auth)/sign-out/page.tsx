@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { useClerk } from "@clerk/nextjs";
 
 // sign-out has to happen client-side so clerk can clear its own cookies. a

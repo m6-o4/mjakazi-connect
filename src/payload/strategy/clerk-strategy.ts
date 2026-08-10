@@ -1,5 +1,64 @@
-import { AuthStrategy } from "payload";
+import { AuthStrategy, Payload, ValidationError } from "payload";
+
+import type { User } from "@/payload-types";
+
 import { createClerkClient } from "@clerk/backend";
+
+type Role = NonNullable<User["role"]>;
+
+// provisions the payload record for a clerk user, tolerating the race where a
+// concurrent request (or the user.created webhook) creates the same record
+// between the caller's lookup and this create. clerkId is unique, so the
+// loser of that race sees it as a ValidationError rather than a real failure —
+// re-fetch and return the winner's record instead of failing this login
+const createOrFindUser = async (
+	payload: Payload,
+	params: { clerkId: string; email: string; firstName: string; lastName: string; role: Role },
+) => {
+	try {
+		return await payload.create({
+			collection: "users",
+			data: {
+				clerkId: params.clerkId,
+				email: params.email,
+				firstName: params.firstName,
+				lastName: params.lastName,
+				role: params.role,
+				accountState: "active",
+			},
+		});
+	} catch (error) {
+		const isDuplicateClerkId =
+			error instanceof ValidationError &&
+			error.data?.errors?.some((fieldError) => fieldError.path === "clerkId");
+
+		if (!isDuplicateClerkId) {
+			throw error;
+		}
+
+		const racedUsers = await payload.find({
+			collection: "users",
+			where: { clerkId: { equals: params.clerkId } },
+			limit: 1,
+		});
+
+		const racedUser = racedUsers.docs[0];
+
+		if (!racedUser) {
+			throw error;
+		}
+
+		return racedUser;
+	}
+};
+
+// the complete set of roles. there is no neutral or default role in this
+// project, so an unrecognised value is treated as no role at all rather than
+// being coerced into one
+const VALID_ROLES: readonly Role[] = ["admin", "staff", "mwajiri", "mjakazi"];
+
+const isValidRole = (value: unknown): value is Role =>
+	typeof value === "string" && VALID_ROLES.includes(value as Role);
 
 const clerkClient = createClerkClient({
 	secretKey: process.env.CLERK_SECRET_KEY,
@@ -54,7 +113,20 @@ const clerkStrategy: AuthStrategy = {
 			// user on payload's blank login page (disableLocalStrategy leaves
 			// no fallback UI).
 			const clerkUser = await clerkClient.users.getUser(clerkUserId);
-			const role = (clerkUser.publicMetadata?.role as string) || "user";
+			const role = clerkUser.publicMetadata?.role;
+
+			// no role means the user signed up but has not passed through
+			// /post-auth yet, or the promotion failed. do NOT invent one: there is
+			// no neutral role here, and defaulting would silently misfile them and
+			// then lock that choice in, since role is admin-only after creation.
+			// returning null sends them back through /post-auth, which re-prompts
+			if (!isValidRole(role)) {
+				payload.logger.warn(
+					`Clerk Strategy: user ${clerkUserId} has no valid role in publicMetadata, provisioning skipped.`,
+				);
+
+				return { user: null };
+			}
 
 			const email = clerkUser.emailAddresses.find(
 				(e) => e.id === clerkUser.primaryEmailAddressId,
@@ -68,15 +140,12 @@ const clerkStrategy: AuthStrategy = {
 				return { user: null };
 			}
 
-			const createdUser = await payload.create({
-				collection: "users",
-				data: {
-					clerkId: clerkUserId,
-					email,
-					firstName: clerkUser.firstName || "",
-					lastName: clerkUser.lastName || "",
-					role: role as "admin" | "editor" | "user",
-				},
+			const createdUser = await createOrFindUser(payload, {
+				clerkId: clerkUserId,
+				email,
+				firstName: clerkUser.firstName || "",
+				lastName: clerkUser.lastName || "",
+				role,
 			});
 
 			return {

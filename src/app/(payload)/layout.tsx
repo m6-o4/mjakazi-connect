@@ -1,14 +1,17 @@
 /* THIS FILE WAS GENERATED AUTOMATICALLY BY PAYLOAD. */
 /* DO NOT MODIFY IT BECAUSE IT COULD BE REWRITTEN AT ANY TIME. */
 /* MODIFIED: added Clerk auth.protect() and role guard — see git history before regenerating. */
-import config from "@/payload-config";
-import { getCurrentUser } from "@/components/admin/get-current-user";
-import { handleServerFunctions, RootLayout } from "@payloadcms/next/layouts";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { ReactNode } from "react";
-import { importMap } from "@/payload-root/admin/importMap.js";
 import type { ServerFunctionClient } from "payload";
+import { ReactNode } from "react";
+
+import { getCurrentUser } from "@/components/admin/get-current-user";
+import config from "@/payload-config";
+import { importMap } from "@/payload-root/admin/importMap.js";
+
+import { auth } from "@clerk/nextjs/server";
+import { handleServerFunctions, RootLayout } from "@payloadcms/next/layouts";
+
 import "@payloadcms/next/css";
 import "@/payload-root/custom.scss";
 
@@ -27,7 +30,7 @@ const Layout = async ({ children }: Args) => {
 	// button cannot clear a clerk session
 	const user = await getCurrentUser();
 
-	if (user?.role !== "admin" && user?.role !== "editor") {
+	if (user?.role !== "admin" && user?.role !== "staff") {
 		redirect("/sign-out");
 	}
 

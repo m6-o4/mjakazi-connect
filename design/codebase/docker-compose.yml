@@ -1,0 +1,21 @@
+services:
+  mjakazi-connect-prod:
+    image: ghcr.io/m6-o4/mjakazi-connect-prod:latest
+    container_name: mjakazi-connect-prod
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    env_file:
+      - stack.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mjakazi-connect-prod.rule=Host(`mjakaziconnect.co.ke`) ||
+        Host(`www.mjakaziconnect.co.ke`)"
+      - "traefik.http.routers.mjakazi-connect-prod.entrypoints=websecure"
+      - "traefik.http.routers.mjakazi-connect-prod.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mjakazi-connect-prod.loadbalancer.server.port=3000"
+
+networks:
+  traefik-network:
+    external: true
+    name: traefik-network

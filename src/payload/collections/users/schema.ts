@@ -1,8 +1,10 @@
+import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "payload";
+
 import {
 	isAdmin,
 	isAdminField,
-	isAdminOrEditor,
 	isAdminOrSelf,
+	isAdminOrStaff,
 } from "@/payload/access/access-control";
 import {
 	createClerkUser,
@@ -10,11 +12,13 @@ import {
 	syncClerkUser,
 } from "@/payload/hooks/clerk-sync";
 import { clerkStrategy } from "@/payload/strategy/clerk-strategy";
-import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "payload";
 
-// combines first and last names into a single searchable string
-const populateFullName: FieldHook = async ({ data }) => {
-	return `${data?.firstName} ${data?.lastName}`;
+// combines first and last names into a single searchable string. falls back to
+// the stored document because partial updates carry only the changed fields
+const populateFullName: FieldHook = ({ data, originalDoc }) => {
+	const firstName = data?.firstName ?? originalDoc?.firstName ?? "";
+	const lastName = data?.lastName ?? originalDoc?.lastName ?? "";
+	return `${firstName} ${lastName}`.trim();
 };
 
 // password is stripped before persistence, so the stored value is always empty.
@@ -35,7 +39,7 @@ const Users: CollectionConfig = {
 	slug: "users",
 	labels: { singular: "User", plural: "Users" },
 	admin: {
-		defaultColumns: ["name", "email", "role", "createdAt", "updatedAt"],
+		defaultColumns: ["name", "email", "role", "accountState", "createdAt"],
 		group: "Globals",
 		useAsTitle: "name",
 	},
@@ -44,7 +48,7 @@ const Users: CollectionConfig = {
 		strategies: [clerkStrategy],
 	},
 	access: {
-		admin: isAdminOrEditor,
+		admin: isAdminOrStaff,
 		create: isAdmin,
 		delete: isAdmin,
 		read: isAdminOrSelf,
@@ -68,6 +72,9 @@ const Users: CollectionConfig = {
 			// clerk cannot change a primary email through updateUser, so this is
 			// set once at creation and locked thereafter
 			access: { update: () => false },
+			admin: {
+				description: "Set once at creation and cannot be changed afterwards.",
+			},
 			required: true,
 		},
 		{
@@ -75,7 +82,11 @@ const Users: CollectionConfig = {
 			type: "text",
 			// never persisted: the beforeChange hook reads it, passes it to clerk,
 			// and strips it from data before the record is written
-			admin: { condition: (data) => !data?.id },
+			admin: {
+				condition: (data) => !data?.id,
+				description:
+					"Initial password. The user can reset it themselves from the sign-in page.",
+			},
 			validate: validatePassword,
 		},
 		{
@@ -102,15 +113,69 @@ const Users: CollectionConfig = {
 			type: "select",
 			label: "Role",
 			// field-level lock: collection update access allows a user to edit their
-			// own record, so without this any user could promote themselves
+			// own record, so without this any user could promote themselves.
+			//
+			// deliberately has NO defaultValue. there is no neutral role in this
+			// project, so a default would silently misfile anyone whose role failed
+			// to resolve. the panel forces an explicit choice, and /post-auth
+			// re-prompts rather than guessing
 			access: { create: isAdminField, update: isAdminField },
-			defaultValue: "user",
+			admin: {
+				description:
+					"Admin and Staff reach the admin panel. Mwajiri and Mjakazi never do.",
+			},
+			index: true,
 			options: [
 				{ label: "Admin", value: "admin" },
-				{ label: "Editor", value: "editor" },
-				{ label: "User", value: "user" },
+				{ label: "Staff", value: "staff" },
+				{ label: "Mwajiri", value: "mwajiri" },
+				{ label: "Mjakazi", value: "mjakazi" },
 			],
 			required: true,
+		},
+		{
+			name: "accountState",
+			type: "select",
+			label: "Account State",
+			// admin-only at field level. staff may suspend, but they do it through
+			// the moderation service with overrideAccess after their own role check,
+			// which keeps reinstatement and deletion out of their reach entirely
+			access: { create: isAdminField, update: isAdminField },
+			admin: {
+				description:
+					"Suspension and reinstatement are performed from the console, not here.",
+				position: "sidebar",
+			},
+			defaultValue: "active",
+			index: true,
+			options: [
+				{ label: "Active", value: "active" },
+				{ label: "Suspended", value: "suspended" },
+				{ label: "Deleted", value: "deleted" },
+			],
+			required: true,
+		},
+		{
+			name: "suspendedAt",
+			type: "date",
+			label: "Suspended At",
+			access: { create: isAdminField, update: isAdminField },
+			admin: {
+				condition: (data) => data?.accountState === "suspended",
+				position: "sidebar",
+				readOnly: true,
+			},
+		},
+		{
+			name: "suspensionReason",
+			type: "textarea",
+			label: "Suspension Reason",
+			access: { create: isAdminField, update: isAdminField },
+			admin: {
+				condition: (data) => data?.accountState === "suspended",
+				position: "sidebar",
+				readOnly: true,
+			},
 		},
 		{
 			// derived field for admin display and searchability

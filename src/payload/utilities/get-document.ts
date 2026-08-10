@@ -1,7 +1,8 @@
-import type { Config } from "@/payload-types";
-import config from "@/payload-config";
 import { unstable_cache } from "next/cache";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
+import type { Config } from "@/payload-types";
 
 // represents all available collection slugs defined in payload config
 type Collection = keyof Config["collections"];

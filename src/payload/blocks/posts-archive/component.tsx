@@ -1,12 +1,13 @@
-import { Container } from "@/components/container";
-import { cn } from "@/lib/utils";
-import type { Post, PostsArchive } from "@/payload-types";
-import { formatDate } from "@/payload/utilities/format-date";
-import config from "@/payload-config";
 import { ArrowRight, FileCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getPayload } from "payload";
+
+import { Container } from "@/components/container";
+import { cn } from "@/lib/utils";
+import config from "@/payload-config";
+import type { Post, PostsArchive } from "@/payload-types";
+import { formatDate } from "@/payload/utilities/format-date";
 
 type PostsArchiveBlockProps = PostsArchive & { id?: string };
 

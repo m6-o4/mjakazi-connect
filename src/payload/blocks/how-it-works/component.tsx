@@ -1,8 +1,9 @@
+import { Tally1, Tally2, Tally3 } from "lucide-react";
+import { ElementType } from "react";
+
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { HowItWorks } from "@/payload-types";
-import { Tally1, Tally2, Tally3 } from "lucide-react";
-import { ElementType } from "react";
 
 const bgMap: Record<string, string> = {
 	background: "bg-background",

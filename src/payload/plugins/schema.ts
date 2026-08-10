@@ -1,11 +1,13 @@
+import { Plugin } from "payload";
+
 import { Page, Post } from "@/payload-types";
-import { s3Storage } from "@payloadcms/storage-s3";
+import { revalidateRedirects } from "@/payload/hooks/revalidate-redirects";
+import { getServerSideURL } from "@/payload/utilities/get-url";
+
 import { redirectsPlugin } from "@payloadcms/plugin-redirects";
 import { seoPlugin } from "@payloadcms/plugin-seo";
-import { getServerSideURL } from "@/payload/utilities/get-url";
 import { GenerateTitle, GenerateURL } from "@payloadcms/plugin-seo/types";
-import { revalidateRedirects } from "@/payload/hooks/revalidate-redirects";
-import { Plugin } from "payload";
+import { s3Storage } from "@payloadcms/storage-s3";
 
 // retrieve values from the environment variables.
 const bucket = process.env.S3_BUCKET!;

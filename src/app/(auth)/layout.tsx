@@ -1,9 +1,11 @@
-import { ReactNode } from "react";
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { cn } from "@/lib/utils";
-import { jakartaSans } from "@/lib/fonts";
+import { ReactNode } from "react";
+
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { jakartaSans } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
+
+import { ClerkProvider } from "@clerk/nextjs";
 
 // load foundational styles for the application auth
 import "@/globals.css";

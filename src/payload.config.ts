@@ -1,14 +1,16 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import { buildConfig, PayloadRequest } from "payload";
+import sharp from "sharp";
+
 import { globals } from "@/payload/blocks/globals";
 import { collections } from "@/payload/collections";
 import { Users } from "@/payload/collections/users/schema";
-import { mongooseAdapter } from "@payloadcms/db-mongodb";
 import { lexical } from "@/payload/fields/lexical";
 import { resend } from "@/payload/fields/resend";
 import { plugins } from "@/payload/plugins/schema";
-import { buildConfig, PayloadRequest } from "payload";
-import sharp from "sharp";
+
+import { mongooseAdapter } from "@payloadcms/db-mongodb";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);

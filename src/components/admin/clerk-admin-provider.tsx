@@ -1,7 +1,8 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode } from "react";
+
+import { ClerkProvider } from "@clerk/nextjs";
 
 // wraps the payload admin panel so clerk hooks (useClerk in the sign-out
 // button) have context. authentication itself is enforced server-side by

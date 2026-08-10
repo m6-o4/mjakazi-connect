@@ -1,7 +1,8 @@
+import { Quote, Star } from "lucide-react";
+
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { Testimonials } from "@/payload-types";
-import { Quote, Star } from "lucide-react";
 
 const bgMap: Record<string, string> = {
 	background: "bg-background",
@@ -40,7 +41,7 @@ const TestimonialsBlock = ({
 										key={i}
 										className={`size-5 ${
 											i < (testimony.rating ?? 0)
-												? "fill-current text-chart-5"
+												? "text-chart-5 fill-current"
 												: "text-muted-foreground/30"
 										}`}
 									/>

@@ -1,0 +1,21 @@
+## Directory Structure
+
+- public – Static assets
+- src/actions – Server actions
+- src/app – App Router routes
+- src/app/(auth) – Clerk authentication
+- src/app/(main) – Application logic
+- src/app/(payload) – Payload admin and API
+- src/app/(sitemaps) – Sitemap routes
+- src/app/(web) – Public-facing website
+- src/components – Reusable UI components
+- src/lib – Shared utilities and helpers
+- src/payload – Payload CMS configuration
+- src/payload/access – Access control logic
+- src/payload/blocks – Layout blocks
+- src/payload/collections – Collection definitions
+- src/payload/fields – Reusable field configs
+- src/payload/hooks – Lifecycle hooks
+- src/payload/plugins – Plugin configuration
+- src/payload/utilities – Payload helpers
+- src/styles – Tailwind and global styles

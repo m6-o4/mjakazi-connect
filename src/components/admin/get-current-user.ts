@@ -1,5 +1,6 @@
 import { headers as nextHeaders } from "next/headers";
 import { getPayload } from "payload";
+
 import config from "@/payload-config";
 
 // resolves the payload user by running the configured auth strategies against

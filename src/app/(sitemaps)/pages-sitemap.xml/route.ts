@@ -1,7 +1,8 @@
-import config from "@/payload-config";
 import { getServerSideSitemap } from "next-sitemap";
 import { unstable_cache } from "next/cache";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
 
 // cache the sitemap generation logic to prevent repeated database queries.
 // the cache is busted by the 'pages-sitemap' tag, which is called from the payload hooks.

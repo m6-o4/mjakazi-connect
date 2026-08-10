@@ -3,8 +3,10 @@ import type {
 	CollectionAfterDeleteHook,
 	CollectionBeforeChangeHook,
 } from "payload";
-import { createClerkClient } from "@clerk/backend";
+
 import type { User } from "@/payload-types";
+
+import { createClerkClient } from "@clerk/backend";
 
 const clerkClient = createClerkClient({
 	publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

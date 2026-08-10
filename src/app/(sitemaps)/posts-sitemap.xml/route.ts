@@ -1,7 +1,8 @@
-import config from "@/payload-config";
 import { getServerSideSitemap } from "next-sitemap";
 import { unstable_cache } from "next/cache";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
 
 // cache the function responsible for retrieving post slugs and last modified dates.
 // this uses the next.js cache to reduce database load and ensures the sitemap

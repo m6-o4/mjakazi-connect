@@ -1,8 +1,9 @@
+import { Check } from "lucide-react";
+
 import { Container } from "@/components/container";
 import { CMSLink } from "@/components/payload/link";
 import { cn } from "@/lib/utils";
 import { Pricing } from "@/payload-types";
-import { Check } from "lucide-react";
 
 const bgMap: Record<string, string> = {
 	background: "bg-background",
@@ -19,10 +20,7 @@ const PricingBlock = ({
 	const plans = pricing?.pricingPlans || [];
 
 	return (
-		<section
-			id="pricing"
-			className={cn("border-border border-t py-24", backgroundClass)}
-		>
+		<section id="pricing" className={cn("border-border border-t py-24", backgroundClass)}>
 			<Container className="px-4 sm:px-6 lg:px-8">
 				<div className="mx-auto mb-16 text-center">
 					<h2 className="text-heading mb-4 text-3xl font-semibold md:text-4xl">

@@ -1,6 +1,8 @@
+import type { CollectionConfig } from "payload";
+
 import {
-	isAdminOrEditor,
-	isAdminOrEditorOrPublished,
+	isAdminOrStaff,
+	isAdminOrStaffOrPublished,
 } from "@/payload/access/access-control";
 import { Banner } from "@/payload/blocks/banner/schema";
 import { Code } from "@/payload/blocks/code/schema";
@@ -12,6 +14,7 @@ import {
 } from "@/payload/collections/posts/hooks/revalidate-post";
 import { slugField } from "@/payload/fields/slug";
 import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
+
 import {
 	MetaDescriptionField,
 	MetaImageField,
@@ -27,7 +30,6 @@ import {
 	InlineToolbarFeature,
 	lexicalEditor,
 } from "@payloadcms/richtext-lexical";
-import type { CollectionConfig } from "payload";
 
 const Posts: CollectionConfig<"posts"> = {
 	slug: "posts",
@@ -55,10 +57,10 @@ const Posts: CollectionConfig<"posts"> = {
 		useAsTitle: "title",
 	},
 	access: {
-		create: isAdminOrEditor,
-		delete: isAdminOrEditor,
-		read: isAdminOrEditorOrPublished,
-		update: isAdminOrEditor,
+		create: isAdminOrStaff,
+		delete: isAdminOrStaff,
+		read: isAdminOrStaffOrPublished,
+		update: isAdminOrStaff,
 	},
 	fields: [
 		{ name: "title", type: "text", required: true },
