@@ -1,3 +1,23 @@
+# [2.0.0](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.1...v2.0.0) (2026-08-10)
+
+
+### Bug Fixes
+
+* **auth:** align payload layout role check with RBAC ([fc2ed16](https://github.com/m6-o4/mjakazi-connect/commit/fc2ed16f062c4082a9a6605c6c3ea547e0527580))
+* **clerk:** guard user provisioning against role and race conditions ([91bcaa0](https://github.com/m6-o4/mjakazi-connect/commit/91bcaa0ab0fab962f4d66c7c8d1c9f112c0a4bae))
+
+
+### Features
+
+* **access:** redefine RBAC with staff and saas roles ([b30fb14](https://github.com/m6-o4/mjakazi-connect/commit/b30fb14c6892720d25485458745d6b6562aa545b))
+* **jobs:** add new jobs module ([2cb941e](https://github.com/m6-o4/mjakazi-connect/commit/2cb941e0d424a684438fad9e047746b92a3a81e4))
+
+
+### BREAKING CHANGES
+
+* **access:** editor and user roles are removed; any existing
+users with those roles must be migrated to the new role set.
+
 ## [1.1.1](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.0...v1.1.1) (2026-08-07)
 
 ### Bug Fixes
