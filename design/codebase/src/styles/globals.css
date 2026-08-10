@@ -1,0 +1,239 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+/* restrict tailwind 4 scanning exclusively to frontend directories */
+@source "../src/app";
+@source "../src/components";
+@source "../src/lib";
+@source "../src/payload/blocks";
+
+/* defines a custom variant for dark mode based on the .dark class */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	/* core brand identity colors for light mode */
+	--brand-primary: #004d99; /* deep blue */
+	--brand-primary-light: #1976d2; /* mid blue */
+	--brand-accent: #00c48c; /* velocity green */
+	--brand-accent-hover: #00a37a; /* dark green */
+
+	/* neutral surface and text colors for high legibility */
+	--text-default: #1c2a3a; /* graphite */
+	--bg-subtle: #f5f7fa; /* cloud grey */
+	--bg-white: #ffffff; /* pure white */
+	--bg-dark: #1c2a3a; /* graphite */
+	--border-subtle: #e0e0e0; /* subtle stroke */
+
+	/* standardized shadcn-compatible design tokens */
+	--background: #ffffff;
+	--foreground: #1c2a3a;
+	--card: #f5f7fa;
+	--card-foreground: #1c2a3a;
+	--popover: #ffffff;
+	--popover-foreground: #1c2a3a;
+	--primary: #004d99;
+	--primary-foreground: #ffffff;
+	--secondary: #f5f7fa;
+	--secondary-foreground: #1c2a3a;
+	--muted: #f5f7fa;
+	--muted-foreground: #6b7a8d; /* slate for secondary text */
+	--accent: #00c48c;
+	--accent-foreground: #ffffff;
+	--destructive: #d32f2f;
+	--destructive-foreground: #ffffff;
+	--border: #e0e0e0;
+	--input: #e0e0e0;
+	--ring: #1976d2;
+	--radius: 0.75rem; /* base rounding of 12px */
+
+	/* color palette for data visualizations */
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+
+	/* specific interface tokens for the application sidebar */
+	--sidebar: #f5f7fa;
+	--sidebar-foreground: #1c2a3a;
+	--sidebar-primary: #004d99;
+	--sidebar-primary-foreground: #ffffff;
+	--sidebar-accent: #e8f0fe;
+	--sidebar-accent-foreground: #1c2a3a;
+	--sidebar-border: #e0e0e0;
+	--sidebar-ring: #1976d2;
+}
+
+.dark {
+	/* adjusted brand colors for better contrast on dark backgrounds */
+	--brand-primary: #5b9bd5;
+	--brand-primary-light: #74aee3;
+	--brand-accent: #00e6a5;
+	--brand-accent-hover: #00c48c;
+
+	/* inverted neutral palette for dark mode surfaces */
+	--text-default: #e8edf2;
+	--bg-subtle: #1e2c3d;
+	--bg-white: #121e2b;
+	--bg-dark: #0d1520;
+	--border-subtle: #2d3f52;
+
+	/* semantic tokens mapped to dark-compatible values */
+	--background: #0f1a26;
+	--foreground: #e8edf2;
+	--card: #1a2636;
+	--card-foreground: #e8edf2;
+	--popover: #1a2636;
+	--popover-foreground: #e8edf2;
+	--primary: #5b9bd5;
+	--primary-foreground: #0f1a26;
+	--secondary: #1e2c3d;
+	--secondary-foreground: #e8edf2;
+	--muted: #1e2c3d;
+	--muted-foreground: #7f97b0;
+	--accent: #00e6a5;
+	--accent-foreground: #0f1a26;
+	--destructive: #ef5350;
+	--destructive-foreground: #0f1a26;
+	--border: #2d3f52;
+	--input: #2d3f52;
+	--ring: #5b9bd5;
+
+	/* visualization colors optimized for dark mode */
+	--chart-1: oklch(0.488 0.243 264.376);
+	--chart-2: oklch(0.696 0.17 162.48);
+	--chart-3: oklch(0.769 0.188 70.08);
+	--chart-4: oklch(0.627 0.265 303.9);
+	--chart-5: oklch(0.645 0.246 16.439);
+
+	/* sidebar interface tokens for dark mode */
+	--sidebar: #1a2636;
+	--sidebar-foreground: #e8edf2;
+	--sidebar-primary: #5b9bd5;
+	--sidebar-primary-foreground: #0f1a26;
+	--sidebar-accent: #1e2c3d;
+	--sidebar-accent-foreground: #e8edf2;
+	--sidebar-border: #2d3f52;
+	--sidebar-ring: #5b9bd5;
+}
+
+@theme inline {
+	/* primary typography sets for interface and editorial content */
+	--font-sans:
+		"Plus Jakarta Sans", "Plus Jakarta Sans Fallback", system-ui, -apple-system,
+		sans-serif;
+	--font-display:
+		"Space Grotesk", "Space Grotesk Fallback", system-ui, -apple-system, sans-serif;
+
+	/* mapping of css variables to tailwind color tokens */
+	--color-brand-primary: var(--brand-primary);
+	--color-brand-primary-light: var(--brand-primary-light);
+	--color-brand-accent: var(--brand-accent);
+	--color-brand-accent-hover: var(--brand-accent-hover);
+	--color-text-default: var(--text-default);
+	--color-bg-subtle: var(--bg-subtle);
+	--color-bg-white: var(--bg-white);
+	--color-bg-dark: var(--bg-dark);
+	--color-border-subtle: var(--border-subtle);
+
+	/* mapping of css variables to semantic utility classes */
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+
+	/* derived border radius scales based on the base design token */
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	/* tailwind mapping for sidebar interface colors */
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+	/* ensures all elements use defined border and focus ring colors by default */
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	/* sets the default page background and text color according to the theme */
+	body {
+		@apply bg-background text-foreground;
+	}
+
+	/* consistent styling for heading elements using the display font and brand colors */
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		@apply font-display text-text-default;
+	}
+
+	h1 {
+		@apply text-4xl leading-tight font-extrabold md:text-5xl lg:text-6xl;
+	}
+
+	h2 {
+		@apply text-3xl leading-tight font-bold md:text-4xl lg:text-5xl;
+	}
+
+	h3 {
+		@apply text-xl leading-snug font-semibold md:text-2xl;
+	}
+
+	p {
+		@apply leading-relaxed;
+	}
+
+	a {
+		@apply text-brand-primary-light hover:text-brand-primary font-medium transition-colors;
+	}
+}
+
+/* custom utility classes tailored for organization-specific layout requirements */
+@layer utilities {
+	.section-spacing {
+		@apply py-16 md:py-24;
+	}
+
+	.hide-scrollbar {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+
+	.hide-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+}

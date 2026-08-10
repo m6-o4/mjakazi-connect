@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mjakazi Connect — Super Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #fbfaf7;
+    --foreground: #1f2a24;
+    --heading: #2f5a48;
+    --card: #ffffff;
+    --primary: #7bae9a;
+    --primary-foreground: #1f2a24;
+    --secondary: #d88b6b;
+    --muted: #fbd0c9;
+    --muted-foreground: #5b5a52;
+    --accent: #e45f2b;
+    --accent-foreground: #ffffff;
+    --border: #e7e2d8;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #1f2a24;
+    --sidebar-primary: #7bae9a;
+    --sidebar-primary-foreground: #1f2a24;
+    --sidebar-accent: #fbd0c9;
+    --sidebar-accent-foreground: #5b5a52;
+    --sidebar-border: #e7e2d8;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; background: var(--background); color: var(--foreground); }
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar { width: 260px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; padding: 20px 16px; }
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; }
+  .sidebar-brand img { height: 26px; }
+  .sidebar-brand .role { font-size: 12px; color: var(--muted-foreground); margin-top: 1px; }
+  .sidebar-brand .titles { display: flex; flex-direction: column; }
+  .sidebar-brand .titles .name { font-size: 14px; font-weight: 700; }
+
+  .nav-group { margin-bottom: 18px; }
+  .nav-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground); padding: 0 10px; margin-bottom: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-md); font-size: 14px; font-weight: 500; color: var(--foreground); margin-bottom: 2px; }
+  .nav-item svg { flex-shrink: 0; }
+  .nav-item.active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); font-weight: 600; }
+  .nav-item:not(.active) { color: var(--muted-foreground); }
+
+  .sidebar-footer { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px; border-top: 1px solid var(--sidebar-border); }
+  .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--sidebar-primary); color: var(--sidebar-primary-foreground); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .sidebar-footer .who .name { font-size: 13px; font-weight: 600; }
+  .sidebar-footer .who .role { font-size: 11px; color: var(--muted-foreground); }
+
+  .main { flex: 1; min-width: 0; }
+  .topbar { height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .topbar h1 { font-size: 16px; font-weight: 700; color: var(--foreground); margin: 0; }
+  .topbar .toggle { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); border-radius: var(--radius-md); }
+
+  .content { padding: 28px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .metric-card { background: var(--neutral-fill, #f4f1ea); background: #f4f1ea; border-radius: 12px; padding: 20px; }
+  .metric-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted-foreground); margin-bottom: 14px; }
+  .metric-value { font-size: 26px; font-weight: 700; color: var(--foreground); margin-bottom: 8px; }
+  .metric-value.big { font-size: 22px; font-weight: 700; }
+  .metric-sub { font-size: 12px; color: var(--muted-foreground); }
+
+  .revenue-card { grid-column: span 1; }
+  .revenue-divider { border-top: 1px solid var(--border); margin: 14px 0; padding-top: 12px; }
+  .revenue-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted-foreground); margin-bottom: 6px; }
+  .revenue-row span:last-child { color: var(--foreground); font-weight: 600; }
+  .this-month { background: #ffffff; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .this-month .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-foreground); margin-bottom: 4px; }
+  .this-month .value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .this-month .breakdown { font-size: 12px; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="../branding/main_logo.svg" alt="Mjakazi Connect">
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Moderation</div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+        Pending verifications
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+        Accounts
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>
+        Audit logs
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">System</div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6M13 14c3.9 0 7 2.7 7 6"/></svg>
+        Staff management
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
+        Settings
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar">MO</div>
+      <div class="who">
+        <div class="name">M6O4</div>
+        <div class="role">Super admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+      </div>
+      <h1>Super admin dashboard</h1>
+    </div>
+
+    <div class="content">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            Pending verifications
+          </div>
+          <div class="metric-value">0</div>
+          <div class="metric-sub">Wajakazi awaiting review and approval.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87M4.6 9a1.7 1.7 0 00-.34-1.87"/></svg>
+            Settings
+          </div>
+          <div class="metric-value big">Platform</div>
+          <div class="metric-sub">Manage registration fees and subscription tiers.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6M13 14c3.9 0 7 2.7 7 6"/></svg>
+            Total accounts
+          </div>
+          <div class="metric-value">7</div>
+          <div class="metric-sub">All registered accounts across all roles. 3 staff.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Verified wajakazi
+          </div>
+          <div class="metric-value">3</div>
+          <div class="metric-sub">Workers verified and available for hire.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>
+            Active subscriptions
+          </div>
+          <div class="metric-value">1</div>
+          <div class="metric-sub">Waajiri with a currently active subscription.</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+            Registered waajiri
+          </div>
+          <div class="metric-value">1</div>
+          <div class="metric-sub">Employer accounts on the platform.</div>
+        </div>
+
+        <div class="metric-card revenue-card">
+          <div class="metric-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+            Platform revenue
+          </div>
+          <div class="metric-value">KSh 4</div>
+          <div class="metric-sub">Total confirmed revenue since launch</div>
+          <div class="revenue-divider">
+            <div class="revenue-row"><span>Registrations</span><span>KSh 3</span></div>
+            <div class="revenue-row"><span>Subscriptions</span><span>KSh 1</span></div>
+          </div>
+          <div class="this-month">
+            <div class="label">This month</div>
+            <div class="value">KSh 0</div>
+            <div class="breakdown">Registrations: KSh 0 &nbsp; Subscriptions: KSh 0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

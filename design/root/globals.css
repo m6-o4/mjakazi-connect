@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+	--font-heading: var(--font-sans);
+	--font-sans: var(--font-sans);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--color-heading: var(--heading);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+	--font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+	/* Base surfaces — warm off-white instead of stock gray */
+	--background: #fbfaf7;
+	--foreground: #1f2a24;
+	--heading: #2f5a48; /* deep sage — headings only, distinct from body text and the orange accent */
+	--card: #ffffff;
+	--card-foreground: #1f2a24;
+	--popover: #ffffff;
+	--popover-foreground: #1f2a24;
+
+	/* Brand palette — from brand_guideline.pdf */
+	--primary: #7bae9a; /* sage green */
+	--primary-foreground: #1f2a24; /* white fails contrast on sage (2.5:1) */
+	--secondary: #d88b6b; /* terracotta */
+	--secondary-foreground: #1f2a24; /* white fails contrast on terracotta (2.7:1) */
+	--muted: #fbd0c9; /* blush */
+	--muted-foreground: #423f37; /* warm charcoal, also used as general de-emphasized text */
+	--accent: #e45f2b; /* burnt orange */
+	--accent-foreground: #ffffff; /* passes at 3.5:1 — semibold/14px+ only, see ui-rules.md */
+
+	/* Semantic — kept separate from brand orange so errors stay unambiguous */
+	--destructive: oklch(0.577 0.245 27.325);
+	--success: #4c9a6a; /* leaf green — distinct from sage --primary, reserved for success states */
+	--success-foreground: #1f2a24; /* white only clears at 3.42:1 — dark text always, no exception */
+	--warning: #d9a441; /* golden amber — distinct from --accent orange and --secondary terracotta */
+	--warning-foreground: #1f2a24; /* white fails outright (2.25:1) — dark text always */
+
+	/* Neutrals — warm-tinted instead of stock cold gray */
+	--border: #e7e2d8;
+	--input: #e7e2d8;
+	--ring: #7bae9a; /* sage, matches primary */
+
+	/* Chart palette — the full five-color brand set, in guideline order */
+	--chart-1: #7bae9a; /* sage */
+	--chart-2: #d88b6b; /* terracotta */
+	--chart-3: #fbd0c9; /* blush */
+	--chart-4: #e45f2b; /* orange */
+	--chart-5: #ffd639; /* yellow */
+
+	--radius: 0.625rem;
+
+	/* Sidebar — reuses the roles above rather than restating literals */
+	--sidebar: var(--card);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--muted-foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
+}
+
+.dark {
+	--background: #171c19;
+	--foreground: #f5f2ec;
+	--heading: #8fcbb3; /* light sage — headings only, mirrors the light-mode role */
+	--card: #1d231f;
+	--card-foreground: #f5f2ec;
+	--popover: #1d231f;
+	--popover-foreground: #f5f2ec;
+
+	--primary: #7bae9a;
+	--primary-foreground: #1f2a24; /* same rule as light mode — sage never carries white text */
+	--secondary: #d88b6b;
+	--secondary-foreground: #1f2a24;
+	--muted: #2c332d; /* blush is too light to double as a dark surface — swapped for a dark neutral */
+	--muted-foreground: #c7cbc2;
+	--accent: #e45f2b;
+	--accent-foreground: #ffffff;
+
+	--destructive: oklch(0.704 0.191 22.216);
+	--success: #7ecb98;
+	--success-foreground: #1f2a24;
+	--warning: #e8be6e;
+	--warning-foreground: #1f2a24;
+
+	--border: #2c332d;
+	--input: #2c332d;
+	--ring: #7bae9a;
+
+	--chart-1: #7bae9a;
+	--chart-2: #d88b6b;
+	--chart-3: #fbd0c9;
+	--chart-4: #e45f2b;
+	--chart-5: #ffd639;
+
+	--sidebar: var(--card);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--muted);
+	--sidebar-accent-foreground: var(--muted-foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+
+	html {
+		@apply font-sans;
+	}
+}
