@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.0...v2.0.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **jobs:** correct role for queue access ([1aee0fb](https://github.com/m6-o4/mjakazi-connect/commit/1aee0fb451db0c2a05bf0f709e4c49c51f755444))
+
 # [2.0.0](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.1...v2.0.0) (2026-08-10)
 
 
