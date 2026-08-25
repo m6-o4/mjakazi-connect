@@ -1,6 +1,7 @@
 import { Quote, Star } from "lucide-react";
 
 import { Container } from "@/components/container";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Testimonials } from "@/payload-types";
 
@@ -29,39 +30,42 @@ const TestimonialsBlock = ({
 
 				<div className="grid gap-8 md:grid-cols-3">
 					{testimonies?.map((testimony) => (
-						<div
+						<Card
 							key={testimony.id}
-							className="bg-card hover:bg-primary/5 relative rounded-2xl p-8 transition-colors duration-300"
+							className="relative gap-0 rounded-2xl p-8 transition-colors duration-300 hover:bg-primary/5"
 						>
 							<Quote className="text-primary/20 absolute top-6 right-6 size-10" />
 
-							<div className="mb-6 flex space-x-1">
-								{[...Array(5)].map((_, i) => (
-									<Star
-										key={i}
-										className={`size-5 ${
-											i < (testimony.rating ?? 0)
-												? "text-chart-5 fill-current"
-												: "text-muted-foreground/30"
-										}`}
-									/>
-								))}
-							</div>
-
-							<p className="text-muted-foreground relative z-10 mb-8 text-lg leading-relaxed">
-								{testimony.testimony}
-							</p>
-
-							<div className="mt-auto flex items-center">
-								<div className="ml-1">
-									<h4 className="text-heading font-semibold">{testimony.name}</h4>
-									<p className="text-muted-foreground text-sm">
-										{testimony.occupation}
-										{testimony.location ? ` • ${testimony.location}` : ""}
-									</p>
+							<CardContent className="flex flex-1 flex-col p-0">
+								<div className="mb-6 flex gap-1">
+									{[...Array(5)].map((_, i) => (
+										<Star
+											key={i}
+											className={cn(
+												"size-5",
+												i < (testimony.rating ?? 0)
+													? "text-chart-5 fill-current"
+													: "text-muted-foreground/30",
+											)}
+										/>
+									))}
 								</div>
-							</div>
-						</div>
+
+								<p className="text-muted-foreground relative z-10 mb-8 text-lg leading-relaxed">
+									{testimony.testimony}
+								</p>
+
+								<div className="mt-auto flex items-center">
+									<div className="ml-1">
+										<h4 className="text-heading font-semibold">{testimony.name}</h4>
+										<p className="text-muted-foreground text-sm">
+											{testimony.occupation}
+											{testimony.location ? ` • ${testimony.location}` : ""}
+										</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 					))}
 				</div>
 			</Container>
