@@ -96,6 +96,9 @@
 
 	--radius: 0.625rem;
 
+	/* layout — page max-width, backs max-w-(--container), see ui-rules.md */
+	--container: 1280px;
+
 	/* Sidebar — reuses the roles above rather than restating literals */
 	--sidebar: var(--card);
 	--sidebar-foreground: var(--foreground);
