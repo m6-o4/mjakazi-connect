@@ -73,6 +73,7 @@ export interface Config {
     categories: Category;
     callstoaction: Callstoaction;
     users: User;
+    'audit-logs': AuditLog;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -88,6 +89,7 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     callstoaction: CallstoactionSelect<false> | CallstoactionSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -604,6 +606,44 @@ export interface Testimonials {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs".
+ */
+export interface AuditLog {
+  id: string;
+  action:
+    | 'account_created'
+    | 'account_updated'
+    | 'account_deleted'
+    | 'verification_submitted'
+    | 'verification_approved'
+    | 'verification_rejected'
+    | 'payment_initiated'
+    | 'payment_confirmed'
+    | 'payment_failed'
+    | 'payment_expired'
+    | 'eoi_sent';
+  actor?: (string | null) | User;
+  actorLabel?: string | null;
+  target?: (string | null) | User;
+  targetLabel?: string | null;
+  /**
+   * Structured context for the event — rejection reasons, amounts, etc.
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  source: 'user' | 'system';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -767,6 +807,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: string | User;
+      } | null)
+    | ({
+        relationTo: 'audit-logs';
+        value: string | AuditLog;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1221,6 +1265,21 @@ export interface UsersSelect<T extends boolean = true> {
   suspendedAt?: T;
   suspensionReason?: T;
   name?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs_select".
+ */
+export interface AuditLogsSelect<T extends boolean = true> {
+  action?: T;
+  actor?: T;
+  actorLabel?: T;
+  target?: T;
+  targetLabel?: T;
+  metadata?: T;
+  source?: T;
   updatedAt?: T;
   createdAt?: T;
 }

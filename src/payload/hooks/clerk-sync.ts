@@ -41,7 +41,7 @@ const createClerkUser: CollectionBeforeChangeHook<User> = async ({
 			firstName: data.firstName || undefined,
 			lastName: data.lastName || undefined,
 			password,
-			publicMetadata: { role: data.role ?? "user" },
+			publicMetadata: { role: data.role },
 		});
 
 		data.clerkId = clerkUser.id;
@@ -79,7 +79,7 @@ const syncClerkUser: CollectionAfterChangeHook<User> = async ({
 		await clerkClient.users.updateUser(doc.clerkId, {
 			firstName: doc.firstName || undefined,
 			lastName: doc.lastName || undefined,
-			publicMetadata: { role: doc.role ?? "user" },
+			publicMetadata: { role: doc.role },
 		});
 	} catch (error) {
 		req.payload.logger.error(`Clerk user update failed: ${error}.`);
