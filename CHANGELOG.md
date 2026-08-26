@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.1...v2.1.0) (2026-08-26)
+
+
+### Features
+
+* **audit:** add audit log collection and writeAuditLog utility ([3abeeb3](https://github.com/m6-o4/mjakazi-connect/commit/3abeeb3bae951b61b25219599852ca459f05f435))
+
 ## [2.0.1](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.0...v2.0.1) (2026-08-10)
 
 
