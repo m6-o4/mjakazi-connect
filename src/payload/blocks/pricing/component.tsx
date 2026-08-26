@@ -38,10 +38,10 @@ const PricingBlock = ({
 							<Card
 								key={plan.id || index}
 								className={cn(
-									"relative gap-0 overflow-visible rounded-2xl p-8 transition-all duration-300",
+									"relative gap-0 overflow-visible p-8 transition-all duration-300",
 									isPopular
 										? "ring-primary ring-2 shadow-xl md:-translate-y-4"
-										: "ring-border hover:ring-primary/30 hover:shadow-lg",
+										: "hover:ring-primary/30 hover:shadow-lg",
 								)}
 							>
 								{isPopular && (
@@ -53,7 +53,7 @@ const PricingBlock = ({
 								)}
 
 								<CardHeader className="mb-6 gap-2 p-0">
-									<CardTitle className="text-heading text-lg font-semibold">
+									<CardTitle className="text-lg">
 										{plan.planName}
 									</CardTitle>
 									<CardDescription>{plan.planDescription}</CardDescription>

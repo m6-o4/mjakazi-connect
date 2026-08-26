@@ -32,7 +32,7 @@ const TestimonialsBlock = ({
 					{testimonies?.map((testimony) => (
 						<Card
 							key={testimony.id}
-							className="relative gap-0 rounded-2xl p-8 transition-colors duration-300 hover:bg-primary/5"
+							className="relative gap-0 p-8 transition-all duration-300 hover:ring-primary/30"
 						>
 							<Quote className="text-primary/20 absolute top-6 right-6 size-10" />
 
