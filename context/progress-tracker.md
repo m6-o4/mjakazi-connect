@@ -73,3 +73,19 @@ every feature is finished.
   post-sign-up currently ends in a 404 by design. The existing `sign-in` page has
   no `appearance` styling; sign-up does, so the two are visually inconsistent —
   match sign-in as a follow-up.
+
+### 2026-08-28 — Phase 1.2: Post-auth promotion and dispatch
+- **What was built**: `(auth)/post-auth/route.ts` — the single server-side path
+  that turns declared intent into an authorized role. Reads `publicMetadata.role`
+  and `unsafeMetadata.role`; uses an existing valid role as-is (never overwrites);
+  otherwise promotes `unsafeMetadata.role` only when it is in the typed
+  `mjakazi | mwajiri` allowlist, nulls `unsafeMetadata`, then resolves the Payload
+  user with retry and redirects by role.
+- **Files touched**: `src/app/(auth)/post-auth/route.ts`
+- **Notes**: Uses `updateUserMetadata()` (the `updateUser()` metadata path is
+  deprecated in `@clerk/backend` 3.16). Promotion allowlist is `mjakazi | mwajiri`
+  only, so `?role=admin` cannot self-escalate. Redirect targets are
+  `/dashboard/{role}`, which don't exist until 1.4 — metadata promotion is
+  verifiable now, end-to-end dashboard landing after 1.4. `VALID_ROLES` is
+  duplicated across the webhook, strategy and here — consolidate into a shared
+  helper at some point.
