@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Container } from "@/components/container";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Registration } from "@/payload-types";
 
@@ -20,10 +21,10 @@ const RegistrationBlock = ({
 	const backgroundClass = bgMap[backgroundVariant] ?? "bg-background";
 
 	return (
-		<section className={cn("border-border border-t py-5", backgroundClass)}>
+		<section className={cn("border-border border-t py-20", backgroundClass)}>
 			<Container className="px-4 sm:px-6 lg:px-8">
 				<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-					<div className="group border-border bg-card hover:border-primary/20 flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-xl">
+					<Card className="group hover:ring-primary/30 gap-0 p-0 shadow-sm transition-all duration-300 hover:shadow-xl">
 						<div className="w-full">
 							{mjakaziCard.image && typeof mjakaziCard.image === "object" && (
 								<Image
@@ -36,9 +37,11 @@ const RegistrationBlock = ({
 								/>
 							)}
 						</div>
-						<div className="p-6">
-							<h3 className="text-heading text-xl font-semibold">{mjakaziCard.title}</h3>
-							<p className="text-muted-foreground mt-2">{mjakaziCard.description}</p>
+						<CardContent className="p-6">
+							<CardTitle className="text-xl">{mjakaziCard.title}</CardTitle>
+							<CardDescription className="mt-2">
+								{mjakaziCard.description}
+							</CardDescription>
 							<div className="mt-6">
 								<Button
 									render={
@@ -50,10 +53,10 @@ const RegistrationBlock = ({
 									className="bg-primary hover:bg-primary/80 text-primary-foreground h-auto w-full rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
 								/>
 							</div>
-						</div>
-					</div>
+						</CardContent>
+					</Card>
 
-					<div className="group border-border bg-card hover:border-primary/20 flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-xl">
+					<Card className="group hover:ring-primary/30 gap-0 p-0 shadow-sm transition-all duration-300 hover:shadow-xl">
 						<div className="w-full">
 							{mwajiriCard.image && typeof mwajiriCard.image === "object" && (
 								<Image
@@ -66,9 +69,11 @@ const RegistrationBlock = ({
 								/>
 							)}
 						</div>
-						<div className="p-6">
-							<h3 className="text-heading text-xl font-semibold">{mwajiriCard.title}</h3>
-							<p className="text-muted-foreground mt-2">{mwajiriCard.description}</p>
+						<CardContent className="p-6">
+							<CardTitle className="text-xl">{mwajiriCard.title}</CardTitle>
+							<CardDescription className="mt-2">
+								{mwajiriCard.description}
+							</CardDescription>
 							<div className="mt-6">
 								<Button
 									render={
@@ -80,8 +85,8 @@ const RegistrationBlock = ({
 									className="bg-primary hover:bg-primary/80 text-primary-foreground h-auto w-full rounded-lg px-6 py-3 font-medium shadow-lg transition-all duration-200 sm:w-auto"
 								/>
 							</div>
-						</div>
-					</div>
+						</CardContent>
+					</Card>
 				</div>
 			</Container>
 		</section>
