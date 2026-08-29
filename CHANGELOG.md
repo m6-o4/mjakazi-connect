@@ -1,11 +1,13 @@
 # [2.2.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.1.0...v2.2.0) (2026-08-29)
 
-
 ### Features
 
-* **auth:** implement sign-up flow and branded auth layout ([539b732](https://github.com/m6-o4/mjakazi-connect/commit/539b7326fca9d80200f051031e5663dd1b381043))
-* **roles:** add domain profiles and role-based dashboards ([88cb079](https://github.com/m6-o4/mjakazi-connect/commit/88cb079042f5d69465e8d7928d0751cea16a10ca))
-* **roles:** add post-auth role promotion and dispatch ([b0faa32](https://github.com/m6-o4/mjakazi-connect/commit/b0faa329820702b1abb5707c7636e8ba07dcd44e))
+- **auth:** implement sign-up flow and branded auth layout
+  ([539b732](https://github.com/m6-o4/mjakazi-connect/commit/539b7326fca9d80200f051031e5663dd1b381043))
+- **roles:** add domain profiles and role-based dashboards
+  ([88cb079](https://github.com/m6-o4/mjakazi-connect/commit/88cb079042f5d69465e8d7928d0751cea16a10ca))
+- **roles:** add post-auth role promotion and dispatch
+  ([b0faa32](https://github.com/m6-o4/mjakazi-connect/commit/b0faa329820702b1abb5707c7636e8ba07dcd44e))
 
 # [2.1.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.1...v2.1.0) (2026-08-26)
 
