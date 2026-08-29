@@ -162,7 +162,7 @@ return contact fields.
 | `/posts` | Blog index. |
 | `/posts/[slug]` | Blog post. |
 | `/[slug]` | CMS-driven pages: terms of service, privacy policy, and any future page. |
-| `/registration` | Role chooser. Two buttons, nothing else. |
+| `/registration` | Role chooser. Two cards ("Join as Mwajiri" / "Join as Mjakazi"), managed in the CMS via the `registration` block. |
 
 ### Auth
 
@@ -243,7 +243,8 @@ No sidebar on marketing. No marketing header on SaaS.
 
 ### Registration
 
-A stranger reaches `/registration` and picks a side. Two buttons, hard-coded:
+A stranger reaches `/registration` and picks a side. The page is managed in the
+CMS through the `registration` block, which renders two cards:
 
 - "Join as Mwajiri" → `/sign-up?role=mwajiri`
 - "Join as Mjakazi" → `/sign-up?role=mjakazi`

@@ -74,6 +74,8 @@ export interface Config {
     callstoaction: Callstoaction;
     users: User;
     'audit-logs': AuditLog;
+    'wajakazi-profiles': WajakaziProfile;
+    'waajiri-profiles': WaajiriProfile;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -90,6 +92,8 @@ export interface Config {
     callstoaction: CallstoactionSelect<false> | CallstoactionSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
+    'wajakazi-profiles': WajakaziProfilesSelect<false> | WajakaziProfilesSelect<true>;
+    'waajiri-profiles': WaajiriProfilesSelect<false> | WaajiriProfilesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -644,6 +648,48 @@ export interface AuditLog {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "wajakazi-profiles".
+ */
+export interface WajakaziProfile {
+  id: string;
+  user: string | User;
+  displayName: string;
+  /**
+   * Managed by staff through the verification flow — a mjakazi never sets this directly.
+   */
+  verificationState:
+    | 'draft'
+    | 'pending_payment'
+    | 'pending_review'
+    | 'verified'
+    | 'rejected'
+    | 'verification_expired'
+    | 'blacklisted'
+    | 'deactivated';
+  availabilityStatus: 'available' | 'hired' | 'on_break';
+  profileComplete?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waajiri-profiles".
+ */
+export interface WaajiriProfile {
+  id: string;
+  user: string | User;
+  phone?: string | null;
+  location?: string | null;
+  /**
+   * Managed by staff through the moderation flow.
+   */
+  blacklistState: 'active' | 'blacklisted';
+  blacklistedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -811,6 +857,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'audit-logs';
         value: string | AuditLog;
+      } | null)
+    | ({
+        relationTo: 'wajakazi-profiles';
+        value: string | WajakaziProfile;
+      } | null)
+    | ({
+        relationTo: 'waajiri-profiles';
+        value: string | WaajiriProfile;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1280,6 +1334,32 @@ export interface AuditLogsSelect<T extends boolean = true> {
   targetLabel?: T;
   metadata?: T;
   source?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "wajakazi-profiles_select".
+ */
+export interface WajakaziProfilesSelect<T extends boolean = true> {
+  user?: T;
+  displayName?: T;
+  verificationState?: T;
+  availabilityStatus?: T;
+  profileComplete?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waajiri-profiles_select".
+ */
+export interface WaajiriProfilesSelect<T extends boolean = true> {
+  user?: T;
+  phone?: T;
+  location?: T;
+  blacklistState?: T;
+  blacklistedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

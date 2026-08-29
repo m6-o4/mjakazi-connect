@@ -6,6 +6,7 @@ import type { ServerFunctionClient } from "payload";
 import { ReactNode } from "react";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { DASHBOARD_BY_ROLE } from "@/lib/roles";
 import config from "@/payload-config";
 import { importMap } from "@/payload-root/admin/importMap.js";
 
@@ -26,12 +27,16 @@ const Layout = async ({ children }: Args) => {
 	await auth.protect();
 
 	// clerk confirms a session, this confirms the payload role. non-staff go to
-	// the public site rather than payload's unauthorized screen, whose log out
+	// their own dashboard rather than payload's unauthorized screen, whose log out
 	// button cannot clear a clerk session
 	const user = await getCurrentUser();
 
-	if (user?.role !== "admin" && user?.role !== "staff") {
-		redirect("/sign-out");
+	if (!user) {
+		redirect("/sign-in");
+	}
+
+	if (user.role !== "admin" && user.role !== "staff") {
+		redirect(DASHBOARD_BY_ROLE[user.role]);
 	}
 
 	return (

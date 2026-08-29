@@ -1,36 +1,37 @@
 # [2.1.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.1...v2.1.0) (2026-08-26)
 
-
 ### Features
 
-* **audit:** add audit log collection and writeAuditLog utility ([3abeeb3](https://github.com/m6-o4/mjakazi-connect/commit/3abeeb3bae951b61b25219599852ca459f05f435))
+- **audit:** add audit log collection and writeAuditLog utility
+  ([3abeeb3](https://github.com/m6-o4/mjakazi-connect/commit/3abeeb3bae951b61b25219599852ca459f05f435))
 
 ## [2.0.1](https://github.com/m6-o4/mjakazi-connect/compare/v2.0.0...v2.0.1) (2026-08-10)
 
-
 ### Bug Fixes
 
-* **jobs:** correct role for queue access ([1aee0fb](https://github.com/m6-o4/mjakazi-connect/commit/1aee0fb451db0c2a05bf0f709e4c49c51f755444))
+- **jobs:** correct role for queue access
+  ([1aee0fb](https://github.com/m6-o4/mjakazi-connect/commit/1aee0fb451db0c2a05bf0f709e4c49c51f755444))
 
 # [2.0.0](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.1...v2.0.0) (2026-08-10)
 
-
 ### Bug Fixes
 
-* **auth:** align payload layout role check with RBAC ([fc2ed16](https://github.com/m6-o4/mjakazi-connect/commit/fc2ed16f062c4082a9a6605c6c3ea547e0527580))
-* **clerk:** guard user provisioning against role and race conditions ([91bcaa0](https://github.com/m6-o4/mjakazi-connect/commit/91bcaa0ab0fab962f4d66c7c8d1c9f112c0a4bae))
-
+- **auth:** align payload layout role check with RBAC
+  ([fc2ed16](https://github.com/m6-o4/mjakazi-connect/commit/fc2ed16f062c4082a9a6605c6c3ea547e0527580))
+- **clerk:** guard user provisioning against role and race conditions
+  ([91bcaa0](https://github.com/m6-o4/mjakazi-connect/commit/91bcaa0ab0fab962f4d66c7c8d1c9f112c0a4bae))
 
 ### Features
 
-* **access:** redefine RBAC with staff and saas roles ([b30fb14](https://github.com/m6-o4/mjakazi-connect/commit/b30fb14c6892720d25485458745d6b6562aa545b))
-* **jobs:** add new jobs module ([2cb941e](https://github.com/m6-o4/mjakazi-connect/commit/2cb941e0d424a684438fad9e047746b92a3a81e4))
-
+- **access:** redefine RBAC with staff and saas roles
+  ([b30fb14](https://github.com/m6-o4/mjakazi-connect/commit/b30fb14c6892720d25485458745d6b6562aa545b))
+- **jobs:** add new jobs module
+  ([2cb941e](https://github.com/m6-o4/mjakazi-connect/commit/2cb941e0d424a684438fad9e047746b92a3a81e4))
 
 ### BREAKING CHANGES
 
-* **access:** editor and user roles are removed; any existing
-users with those roles must be migrated to the new role set.
+- **access:** editor and user roles are removed; any existing users with those roles must
+  be migrated to the new role set.
 
 ## [1.1.1](https://github.com/m6-o4/mjakazi-connect/compare/v1.1.0...v1.1.1) (2026-08-07)
 
