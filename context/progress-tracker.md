@@ -56,9 +56,8 @@ every feature is finished.
   mapping.
 
 ### 2026-08-26 — Phase 0.5: PostHog (skipped)
-- **Notes**: Deferred due to operational constraints. Return to it before the
-  Phase 12.2 PostHog sweep, or earlier if analytics must precede the first
-  feature release.
+- **Notes**: Deferred due to operational constraints. Completed 2026-08-29 (see
+  entry below).
 
 ### 2026-08-28 — Phase 1.1: Sign-up with role intent
 - **What was built**: Clerk sign-up page reading `?role=`, validating against
@@ -126,3 +125,26 @@ every feature is finished.
   guard, and payload layout). Sign-out uses `useClerk().signOut({ redirectUrl:
   "/" })` (client-side). Dashboard content is a placeholder — real per-role pages
   land in later phases.
+
+### 2026-08-29 — Phase 0.5: PostHog (completed)
+- **What was built**: Installed PostHog via the official wizard and confirmed
+  working. Client-side `posthog-js` initialized in `instrumentation-client.ts`
+  (root); identify/reset wired into the theme provider and sign-out; a
+  `registration_started` capture in the registration block. `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`
+  and `NEXT_PUBLIC_POSTHOG_HOST` documented in `.env.example` and set in `.env`.
+- **Files touched**: `instrumentation-client.ts`, `package.json`,
+  `src/components/providers/theme-provider.tsx`,
+  `src/app/(auth)/sign-out/page.tsx`,
+  `src/components/dashboard/sign-out-button.tsx`,
+  `src/payload/blocks/registration/component.tsx`, `.env.example`,
+  `pnpm-workspace.yaml`
+- **Notes**: Client-side only — no `posthog-node` server SDK yet. Fixed a `pnpm
+  build` failure: `pnpm-workspace.yaml` had `core-js: set this to true or false`
+  (a literal placeholder) under `allowBuilds`, which pnpm treats as unapproved and
+  blocks `core-js`'s postinstall; changed to `core-js: true`. Package audit: Inngest
+  is not installed or referenced in `src/` (Payload's own jobs queue is the
+  pipeline); Clerk webhooks use `@clerk/nextjs/webhooks` `verifyWebhook`, not raw
+  `svix` (svix never installed). Unused deps flagged for cleanup: `dotenv`,
+  `@aws-sdk/client-s3` (transitive via `@payloadcms/storage-s3`), `jsdom`; plus
+  `date-fns`, `react-hook-form`, `@hookform/resolvers`, `zod` (installed ahead of
+  Phase 2.1).
