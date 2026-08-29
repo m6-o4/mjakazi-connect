@@ -31,6 +31,7 @@ feature task.
 | Identity | `@clerk/nextjs` / `@clerk/backend` | 7.6.3 / 3.15.0 | Auth, sessions, credentials |
 | Styling | Tailwind CSS | 4.3.3 | With Shadcn/UI |
 | UI primitives | `@base-ui/react` | 1.7.x | Shadcn 4 sits on Base UI, **not Radix** |
+| Date picker | `react-day-picker` | 10.x | Powers the shadcn `Calendar` component |
 | Icons | lucide-react | 1.28.x | The only icon set |
 | Animation | motion | 12.43.x | Sparingly — see `ui-rules.md` |
 | Background jobs | **Payload job queue** | built in | `jobs.autoRun`, cron `* * * * *`, limit 10 |
@@ -434,6 +435,14 @@ Carries no subscription data.
 **`staff-profiles`** — created only when staff need attributes beyond `users`.
 Not built until a requirement demands it.
 
+### Profile photos
+
+**`profile-photos`** — a mjakazi's profile photo. `create` by the owner, `read`
+public (the directory renders the binary), `update`/`delete` by owner + staff +
+admin. Separate from `media` so user uploads never mix with the marketing
+library and can be purged cleanly on account erasure. `wajakazi-profiles.photo`
+points here.
+
 ### Documents
 
 **`vault-documents`** — encrypted identity documents. Never `media`.
@@ -596,10 +605,12 @@ National IDs and Certificates of Good Conduct are sensitive personal data.
 - **Storage.** `@payloadcms/storage-s3`, one bucket, `forcePathStyle: true` for
   MinIO. Development points at local MinIO, production at Cloudflare R2, via the
   same `S3_*` variables with a different endpoint.
-- **Two collections, two policies.** `media` is public and CDN-served.
-  `vault-documents` is registered with `signedDownloads` enabled so every fetch
-  goes through a short-lived signed URL rather than a public object path. They
-  share a bucket; they do not share a policy.
+- **Three upload collections, three policies.** `media` is public and CDN-served
+  for marketing. `profile-photos` is public but owner-managed — its binary is
+  public because the directory renders it, while visibility is governed by the
+  profile's own access. `vault-documents` is registered with `signedDownloads`
+  enabled so every fetch goes through a short-lived signed URL rather than a
+  public object path. They share a bucket; they do not share a policy.
 - **Delivery.** Documents are streamed through an authenticated route handler that
   checks role before issuing a short-lived signed URL. A document URL is never
   rendered into HTML, never placed in an RSC payload, and never logged.

@@ -34,7 +34,7 @@ const generateURL: GenerateURL<Post | Page> = ({ doc }) => {
 // redirects, storage and cloud hosting
 const plugins: Plugin[] = [
 	s3Storage({
-		collections: { media: true },
+		collections: { media: true, "profile-photos": true },
 		bucket: bucket,
 		config: {
 			credentials: {

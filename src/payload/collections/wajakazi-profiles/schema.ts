@@ -1,6 +1,16 @@
 import type { CollectionConfig } from "payload";
 
 import {
+	COUNTRY_OPTIONS,
+	EDUCATION_LEVEL_OPTIONS,
+	JOB_OPTIONS,
+	LANGUAGE_OPTIONS,
+	LOCATION_OPTIONS,
+	MARITAL_STATUS_OPTIONS,
+	RELIGION_OPTIONS,
+	WORK_PREFERENCE_OPTIONS,
+} from "@/lib/profile-constants";
+import {
 	isAdmin,
 	isAdminOrOwner,
 	isAdminOrStaffField,
@@ -41,6 +51,114 @@ const WajakaziProfiles: CollectionConfig = {
 			type: "text",
 			label: "Display Name",
 			required: true,
+		},
+		// --- identity ---
+		{
+			name: "legalFirstName",
+			type: "text",
+			label: "Legal First Name",
+		},
+		{
+			name: "legalLastName",
+			type: "text",
+			label: "Legal Last Name",
+		},
+		{
+			name: "dateOfBirth",
+			type: "date",
+			label: "Date of Birth",
+		},
+		{
+			name: "nationality",
+			type: "select",
+			label: "Nationality",
+			options: COUNTRY_OPTIONS.map((c) => ({ label: c.label, value: c.value })),
+		},
+		{
+			name: "maritalStatus",
+			type: "select",
+			label: "Marital Status",
+			options: MARITAL_STATUS_OPTIONS.map((m) => ({ label: m.label, value: m.value })),
+		},
+		{
+			name: "religion",
+			type: "select",
+			label: "Religion",
+			options: RELIGION_OPTIONS.map((r) => ({ label: r.label, value: r.value })),
+		},
+		{
+			name: "phone",
+			type: "text",
+			label: "Mobile Phone Number",
+		},
+		{
+			name: "photo",
+			type: "upload",
+			relationTo: "profile-photos",
+			label: "Profile Photo",
+		},
+		// --- professional ---
+		{
+			name: "jobsSkills",
+			type: "select",
+			label: "Jobs / Skills",
+			hasMany: true,
+			index: true,
+			options: JOB_OPTIONS.map((j) => ({ label: j.label, value: j.value })),
+		},
+		{
+			name: "about",
+			type: "textarea",
+			label: "About Me",
+		},
+		{
+			name: "yearsExperience",
+			type: "number",
+			label: "Years of Experience",
+			min: 0,
+		},
+		{
+			name: "educationLevel",
+			type: "select",
+			label: "Education Level",
+			options: EDUCATION_LEVEL_OPTIONS.map((e) => ({ label: e.label, value: e.value })),
+		},
+		{
+			name: "languages",
+			type: "select",
+			label: "Languages Spoken",
+			hasMany: true,
+			options: LANGUAGE_OPTIONS.map((l) => ({ label: l.label, value: l.value })),
+		},
+		{
+			name: "workPreference",
+			type: "select",
+			label: "Work Preference",
+			options: WORK_PREFERENCE_OPTIONS.map((w) => ({ label: w.label, value: w.value })),
+		},
+		{
+			name: "availableFrom",
+			type: "date",
+			label: "Available From",
+		},
+		{
+			name: "salaryMin",
+			type: "number",
+			label: "Minimum Expected Salary (KSh)",
+			min: 0,
+		},
+		{
+			name: "salaryMax",
+			type: "number",
+			label: "Maximum Expected Salary (KSh)",
+			min: 0,
+		},
+		{
+			name: "location",
+			type: "select",
+			label: "Location",
+			index: true,
+			options: LOCATION_OPTIONS.map((l) => ({ label: l.label, value: l.value })),
 		},
 		{
 			name: "verificationState",

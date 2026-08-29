@@ -34,14 +34,63 @@ registry never drifts from the actual codebase.
 
 ### `Sidebar`
 - **Location**: `src/components/dashboard/sidebar.tsx`
-- **Purpose**: Role-scoped dashboard navigation rail
+- **Purpose**: Role-scoped dashboard navigation rail (desktop only — `hidden md:flex`)
 - **Props**: `{ role: Role }`
-- **Visual pattern**: `bg-card` + `border-border` right border, `text-heading` wordmark, `bg-primary/10 text-primary` active nav link
+- **Visual pattern**: `bg-card` + `border-border` right border, `text-heading` wordmark, `bg-primary/10 text-primary` active nav link; reads `getNavItems` from `lib/dashboard-nav.ts`
 - **Used in**: `(saas)/dashboard/layout.tsx`
+
+### `MobileNav`
+- **Location**: `src/components/dashboard/mobile-nav.tsx`
+- **Purpose**: Hamburger-triggered left `Sheet` holding the same nav as the sidebar, for `< md`
+- **Props**: `{ role: Role }`
+- **Visual pattern**: `Button` variant `ghost` size `icon` trigger (`md:hidden`), `SheetContent side="left"`, active link `bg-primary/10 text-primary`
+- **Used in**: `Topbar`
 
 ### `Topbar`
 - **Location**: `src/components/dashboard/topbar.tsx`
 - **Purpose**: Dashboard header with the signed-in user's chip and sign-out
 - **Props**: `{ user: User }`
-- **Visual pattern**: `border-border` bottom border, `text-foreground`/`text-muted-foreground` name + email, hosts `SignOutButton`
+- **Visual pattern**: `border-border` bottom border, `text-foreground`/`text-muted-foreground` name + email, hosts `MobileNav` (left) and `SignOutButton`; email hidden below `sm`
 - **Used in**: `(saas)/dashboard/layout.tsx`
+
+### `ProfileCompletenessCard`
+- **Location**: `src/components/dashboard/mjakazi/profile-completeness-card/index.tsx`
+- **Purpose**: Progress bar + checklist of the 11 required profile fields; each incomplete item links to the profile form
+- **Props**: `{ items: { label: string; complete: boolean; href: string }[] }`
+- **Visual pattern**: shadcn `Card`; `bg-muted` track + `bg-primary` fill; `CheckCircle2`/`Circle` icons from lucide in `text-accent`/`text-muted-foreground`
+- **Used in**: `(saas)/dashboard/mjakazi/page.tsx`
+
+### `ProfileForm`
+- **Location**: `src/components/dashboard/mjakazi/profile-form/index.tsx`
+- **Purpose**: The mjakazi profile form (identity + professional + work sections) with react-hook-form + zod
+- **Props**: `{ initialValues: ProfileFormValues; photo: { id: string; url: string | null } | null; initialProfileComplete: boolean }`
+- **Visual pattern**: sectioned shadcn `Card`s; `grid gap-4 md:grid-cols-2` field layout; fires `profile_completed` PostHog event on the first false→true completeness transition
+- **Used in**: `(saas)/dashboard/mjakazi/profile/page.tsx`
+
+### `FormSelect`
+- **Location**: `src/components/dashboard/mjakazi/profile-form/form-select.tsx`
+- **Purpose**: Bridges a single-select shadcn `Select` (Base UI) to react-hook-form
+- **Props**: `{ name; label; options: readonly { label; value: string }[]; placeholder? }`
+- **Visual pattern**: `Label` + `Select`/`SelectTrigger`/`SelectContent`; `text-destructive` error line
+- **Used in**: `ProfileForm`
+
+### `OptionChips`
+- **Location**: `src/components/dashboard/mjakazi/profile-form/option-chips.tsx`
+- **Purpose**: Tap-to-toggle chip multi-select for `jobsSkills` and `languages`
+- **Props**: `{ name; label; options: readonly { label; value: string }[] }`
+- **Visual pattern**: pill `button`s; selected = `border-primary bg-primary text-primary-foreground`, unselected = `border-border text-foreground hover:bg-muted`
+- **Used in**: `ProfileForm`
+
+### `PhotoField`
+- **Location**: `src/components/dashboard/mjakazi/profile-form/photo-field.tsx`
+- **Purpose**: Uploads the profile photo independently (persists immediately with preview) via `POST /api/actions/profile/photo`
+- **Props**: `{ photoUrl: string | null; onUploaded: (photo, profileComplete) => void }`
+- **Visual pattern**: `size-20` preview; `Button` variant `outline`; `text-muted-foreground` helper line
+- **Used in**: `ProfileForm`
+
+### `FormDatePicker`
+- **Location**: `src/components/dashboard/mjakazi/profile-form/form-date-picker.tsx`
+- **Purpose**: shadcn `Calendar` + `Popover` date picker bridged to react-hook-form; stores a `YYYY-MM-DD` string
+- **Props**: `{ name: "dateOfBirth" | "availableFrom"; label: string; placeholder? }`
+- **Visual pattern**: `PopoverTrigger` styled with `buttonVariants({ variant: "outline" })`; `Calendar` `mode="single"`; `Clear` ghost button when set
+- **Used in**: `ProfileForm`

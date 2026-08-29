@@ -76,6 +76,7 @@ export interface Config {
     'audit-logs': AuditLog;
     'wajakazi-profiles': WajakaziProfile;
     'waajiri-profiles': WaajiriProfile;
+    'profile-photos': ProfilePhoto;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -94,6 +95,7 @@ export interface Config {
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'wajakazi-profiles': WajakaziProfilesSelect<false> | WajakaziProfilesSelect<true>;
     'waajiri-profiles': WaajiriProfilesSelect<false> | WaajiriProfilesSelect<true>;
+    'profile-photos': ProfilePhotosSelect<false> | ProfilePhotosSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -654,6 +656,114 @@ export interface WajakaziProfile {
   id: string;
   user: string | User;
   displayName: string;
+  legalFirstName?: string | null;
+  legalLastName?: string | null;
+  dateOfBirth?: string | null;
+  nationality?:
+    | (
+        | 'kenya'
+        | 'uganda'
+        | 'tanzania'
+        | 'rwanda'
+        | 'burundi'
+        | 'drc'
+        | 'ethiopia'
+        | 'somalia'
+        | 'south_sudan'
+        | 'sudan'
+        | 'eritrea'
+        | 'djibouti'
+        | 'other'
+      )
+    | null;
+  maritalStatus?: ('single' | 'married' | 'divorced' | 'widowed' | 'prefer_not_to_say') | null;
+  religion?: ('christian' | 'muslim' | 'hindu' | 'other' | 'prefer_not_to_say') | null;
+  phone?: string | null;
+  photo?: (string | null) | ProfilePhoto;
+  jobsSkills?:
+    | (
+        | 'nanny'
+        | 'housekeeping'
+        | 'chef'
+        | 'driver'
+        | 'gardener'
+        | 'caregiver'
+        | 'laundry'
+        | 'security'
+        | 'personal_assistant'
+        | 'tutor'
+      )[]
+    | null;
+  about?: string | null;
+  yearsExperience?: number | null;
+  educationLevel?: ('primary' | 'secondary' | 'certificate' | 'diploma' | 'degree' | 'postgraduate') | null;
+  languages?:
+    | (
+        | 'english'
+        | 'kiswahili'
+        | 'kikuyu'
+        | 'luo'
+        | 'kamba'
+        | 'luhya'
+        | 'kalenjin'
+        | 'meru'
+        | 'kisii'
+        | 'mijikenda'
+        | 'luganda'
+        | 'kinyarwanda'
+        | 'kirundi'
+        | 'lingala'
+        | 'french'
+        | 'arabic'
+        | 'other'
+      )[]
+    | null;
+  workPreference?: ('live_in' | 'live_out' | 'either') | null;
+  availableFrom?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  location?:
+    | (
+        | 'nairobi'
+        | 'mombasa'
+        | 'kisumu'
+        | 'nakuru'
+        | 'eldoret'
+        | 'thika'
+        | 'malindi'
+        | 'kitale'
+        | 'garissa'
+        | 'kakamega'
+        | 'nyeri'
+        | 'meru'
+        | 'machakos'
+        | 'kericho'
+        | 'embu'
+        | 'kilifi'
+        | 'lamu'
+        | 'naivasha'
+        | 'nanyuki'
+        | 'isiolo'
+        | 'wajir'
+        | 'mandera'
+        | 'marsabit'
+        | 'lodwar'
+        | 'bungoma'
+        | 'busia'
+        | 'homa_bay'
+        | 'migori'
+        | 'kisii'
+        | 'nyamira'
+        | 'bomet'
+        | 'narok'
+        | 'kajiado'
+        | 'muranga'
+        | 'kiambu'
+        | 'ruiru'
+        | 'limuru'
+        | 'other'
+      )
+    | null;
   /**
    * Managed by staff through the verification flow — a mjakazi never sets this directly.
    */
@@ -670,6 +780,44 @@ export interface WajakaziProfile {
   profileComplete?: boolean | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "profile-photos".
+ */
+export interface ProfilePhoto {
+  id: string;
+  user: string | User;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -865,6 +1013,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'waajiri-profiles';
         value: string | WaajiriProfile;
+      } | null)
+    | ({
+        relationTo: 'profile-photos';
+        value: string | ProfilePhoto;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1344,6 +1496,24 @@ export interface AuditLogsSelect<T extends boolean = true> {
 export interface WajakaziProfilesSelect<T extends boolean = true> {
   user?: T;
   displayName?: T;
+  legalFirstName?: T;
+  legalLastName?: T;
+  dateOfBirth?: T;
+  nationality?: T;
+  maritalStatus?: T;
+  religion?: T;
+  phone?: T;
+  photo?: T;
+  jobsSkills?: T;
+  about?: T;
+  yearsExperience?: T;
+  educationLevel?: T;
+  languages?: T;
+  workPreference?: T;
+  availableFrom?: T;
+  salaryMin?: T;
+  salaryMax?: T;
+  location?: T;
   verificationState?: T;
   availabilityStatus?: T;
   profileComplete?: T;
@@ -1362,6 +1532,49 @@ export interface WaajiriProfilesSelect<T extends boolean = true> {
   blacklistedAt?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "profile-photos_select".
+ */
+export interface ProfilePhotosSelect<T extends boolean = true> {
+  user?: T;
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

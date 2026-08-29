@@ -148,3 +148,44 @@ every feature is finished.
   `@aws-sdk/client-s3` (transitive via `@payloadcms/storage-s3`), `jsdom`; plus
   `date-fns`, `react-hook-form`, `@hookform/resolvers`, `zod` (installed ahead of
   Phase 2.1).
+
+### 2026-08-29 — Phase 2.1: Profile form
+- **What was built**: The full mjakazi profile form at `/dashboard/mjakazi/profile`
+  (identity + professional + work sections) with react-hook-form + zod, plus the
+  mjakazi dashboard home showing a completeness card (progress + checklist). A
+  separate photo upload (route handler, 5MB) persists the photo immediately.
+  `profileComplete` is recomputed on every save from the 11 required fields.
+- **Files touched**: `src/lib/profile-constants.ts` (new), `src/lib/phone.ts`
+  (new), `src/lib/profile-schema.ts` (new), `src/services/profile.service.ts`
+  (new), `src/app/actions/profile.ts` (new),
+  `src/app/(payload)/api/actions/profile/photo/route.ts` (new),
+  `src/app/(saas)/dashboard/mjakazi/{layout,page}.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/profile/page.tsx` (new),
+  `src/components/dashboard/mjakazi/profile-form/*` (new),
+  `src/components/dashboard/mjakazi/profile-completeness-card/index.tsx` (new),
+  `src/payload/collections/profile-photos/schema.ts` (new),
+  `src/payload/collections/wajakazi-profiles/schema.ts` (extended),
+  `src/components/dashboard/sidebar.tsx` (Profile nav item)
+- **Notes**: Field names follow `architecture.md` (`jobsSkills`, `about`,
+  `yearsExperience`, `phone`, etc. — the v1 `bio`/`jobs`/`experience`/`phoneNumber`
+  are renamed). Completeness rule = v1's 11 fields with `phone` included, single
+  source of truth in `PROFILE_REQUIRED_FIELDS`. Profile photo is a new
+  `profile-photos` upload collection (public binary, owner-managed), NOT the
+  marketing `media` collection and NOT the (Phase 2.2) `vault-documents`. Photo
+  upload is a route handler, not a Server Action, because Server Actions cap the
+  request body at 1MB. `profileComplete` is field-locked to staff/admin, so the
+  service writes it via a trusted `overrideAccess: true` write while user-editable
+  fields go through `overrideAccess: false` + `req`. `profile_completed` PostHog
+  event fires client-side on the first false→true completeness transition. Phone
+  numbers are normalized to `254…` in `lib/phone.ts`. Date fields use a shadcn
+  `Calendar`/`Popover` picker (`react-day-picker`, added via the CLI) for
+  consistency. Made the dashboard shell mobile-responsive: the sidebar is now a
+  desktop-only rail (`hidden md:flex`) and the same nav lives in a hamburger
+  `Sheet` (`MobileNav`) in the topbar below `md`; nav items are shared via
+  `src/lib/dashboard-nav.ts`. `about` is capped at 200 words (shared
+  `ABOUT_MAX_WORDS`/`countWords` in `lib/profile-schema.ts` + a live counter in
+  the form). Buttons use `cursor-pointer` (Tailwind v4 resets `<button>` to
+  `cursor: default`). Follow-ups: `getCurrentUser` wrapped in React `cache()` so
+  the shell layout + role layout + page authenticate once per request; and
+  `eslint.config.mjs` now ignores `**/.next/` + `design/` so `pnpm lint` stops
+  scanning the v1 reference codebase's build output.
