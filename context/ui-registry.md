@@ -25,4 +25,23 @@ registry never drifts from the actual codebase.
 
 ## Components
 
-_(No components registered yet.)_
+### `SignOutButton`
+- **Location**: `src/components/dashboard/sign-out-button.tsx`
+- **Purpose**: Graceful client-side sign-out for the authenticated dashboard
+- **Props**: None
+- **Visual pattern**: shadcn `Button` variant `ghost`; calls `useClerk().signOut({ redirectUrl: "/" })`
+- **Used in**: `Topbar`
+
+### `Sidebar`
+- **Location**: `src/components/dashboard/sidebar.tsx`
+- **Purpose**: Role-scoped dashboard navigation rail
+- **Props**: `{ role: Role }`
+- **Visual pattern**: `bg-card` + `border-border` right border, `text-heading` wordmark, `bg-primary/10 text-primary` active nav link
+- **Used in**: `(saas)/dashboard/layout.tsx`
+
+### `Topbar`
+- **Location**: `src/components/dashboard/topbar.tsx`
+- **Purpose**: Dashboard header with the signed-in user's chip and sign-out
+- **Props**: `{ user: User }`
+- **Visual pattern**: `border-border` bottom border, `text-foreground`/`text-muted-foreground` name + email, hosts `SignOutButton`
+- **Used in**: `(saas)/dashboard/layout.tsx`

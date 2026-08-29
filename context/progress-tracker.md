@@ -70,9 +70,14 @@ every feature is finished.
   `src/payload/blocks/registration/component.tsx` (converted to shadcn `Card`)
 - **Notes**: `/registration` is CMS-managed (per `project-overview.md`), not
   hardcoded. Sign-up redirects to `/post-auth`, which does not exist until 1.2 —
-  post-sign-up currently ends in a 404 by design. The existing `sign-in` page has
-  no `appearance` styling; sign-up does, so the two are visually inconsistent —
-  match sign-in as a follow-up.
+  post-sign-up currently ends in a 404 by design. Google OAuth was unreliable
+  (Clerk's OAuth flow kept looping and, when it did progress, fell back to a
+  pre-filled create-account dialog), so the social button is now hidden on both
+  sign-up and sign-in — email/password with Clerk's email verification is the
+  sign-up path. To fully cut off OAuth, disable the Google social connection in
+  the Clerk Dashboard. Sign-in now has the same `appearance` as sign-up and no
+  `forceRedirectUrl` (it honors `redirect_url`, so an admin signing in returns to
+  `/admin`).
 
 ### 2026-08-28 — Phase 1.2: Post-auth promotion and dispatch
 - **What was built**: `(auth)/post-auth/route.ts` — the single server-side path
@@ -89,3 +94,35 @@ every feature is finished.
   verifiable now, end-to-end dashboard landing after 1.4. `VALID_ROLES` is
   duplicated across the webhook, strategy and here — consolidate into a shared
   helper at some point.
+
+### 2026-08-28 — Phase 1.3: Domain profiles
+- **What was built**: `wajakazi-profiles` and `waajiri-profiles` collections
+  (1:1 via a unique `user` relationship), and `services/identity.service.ts` with
+  idempotent `ensureProfile()` called from `/post-auth` on every sign-in. Creates
+  the right profile kind for the role, and never a duplicate.
+- **Files touched**: `src/payload/collections/wajakazi-profiles/schema.ts`,
+  `src/payload/collections/waajiri-profiles/schema.ts`,
+  `src/services/identity.service.ts`, `src/payload/collections/index.ts`,
+  `src/app/(auth)/post-auth/route.ts`
+- **Notes**: Only the identity/state core was built (user, displayName,
+  verificationState, availabilityStatus, profileComplete for wajakazi; user,
+  phone, location, blacklistState, blacklistedAt for waajiri). The full
+  professional profile fields land in 2.1. `ensureProfile` runs on every sign-in,
+  so a profile missed during sign-up (webhook lag) self-heals on the next visit.
+  Requires `pnpm build` (regenerates `payload-types.ts`).
+
+### 2026-08-29 — Phase 1.4: Route guards and dashboard shells
+- **What was built**: `(saas)/dashboard` shell (sidebar + topbar + user chip +
+  graceful sign-out), a dynamic `[role]` dashboard route with a role guard, and
+  `/dashboard` redirecting to the caller's role. `(payload)/layout.tsx` now sends
+  non-staff to their own dashboard (session intact) instead of `/sign-out`.
+- **Files touched**: `src/app/(saas)/dashboard/layout.tsx`,
+  `src/app/(saas)/dashboard/page.tsx`, `src/app/(saas)/dashboard/[role]/page.tsx`,
+  `src/components/dashboard/{sidebar,topbar,sign-out-button}.tsx`,
+  `src/lib/roles.ts`, `src/app/(payload)/layout.tsx`,
+  `src/app/(auth)/post-auth/route.ts`
+- **Notes**: Extracted `VALID_ROLES` / `REGISTRATION_ROLES` / `DASHBOARD_BY_ROLE`
+  / role type guards into `src/lib/roles.ts` (shared by post-auth, dashboard
+  guard, and payload layout). Sign-out uses `useClerk().signOut({ redirectUrl:
+  "/" })` (client-side). Dashboard content is a placeholder — real per-role pages
+  land in later phases.

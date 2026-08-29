@@ -4,33 +4,12 @@ import { getPayload } from "payload";
 
 import type { User } from "@/payload-types";
 
+import { DASHBOARD_BY_ROLE, isRegistrationRole, isValidRole, type Role } from "@/lib/roles";
 import configPromise from "@/payload-config";
+import { ensureProfile } from "@/services/identity.service";
 
 import { createClerkClient } from "@clerk/backend";
 import { auth } from "@clerk/nextjs/server";
-
-type Role = NonNullable<User["role"]>;
-
-// the complete set of roles. there is no neutral or default role in this project
-const VALID_ROLES: readonly Role[] = ["admin", "staff", "mwajiri", "mjakazi"];
-
-// the only roles a self-registering user may acquire. this is the single
-// allowlist that turns declared intent into an authorized role — nothing a
-// browser sends can ever produce admin or staff
-const REGISTRATION_ROLES: readonly Role[] = ["mjakazi", "mwajiri"];
-
-const isValidRole = (value: unknown): value is Role =>
-	typeof value === "string" && VALID_ROLES.includes(value as Role);
-
-const isRegistrationRole = (value: unknown): value is Role =>
-	typeof value === "string" && REGISTRATION_ROLES.includes(value as Role);
-
-const DASHBOARD_BY_ROLE: Record<Role, string> = {
-	admin: "/dashboard/admin",
-	staff: "/dashboard/staff",
-	mwajiri: "/dashboard/mwajiri",
-	mjakazi: "/dashboard/mjakazi",
-};
 
 const clerkClient = createClerkClient({
 	publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
@@ -103,7 +82,11 @@ const GET = async () => {
 	// not landed yet, the auth strategy provisions it on the next request
 	try {
 		const payload = await getPayload({ config: configPromise });
-		await findUserWithRetry(payload, userId);
+		const resolvedUser = await findUserWithRetry(payload, userId);
+
+		if (resolvedUser) {
+			await ensureProfile(payload, resolvedUser);
+		}
 	} catch (error) {
 		console.error("[post-auth] failed to resolve Payload user:", error);
 	}
