@@ -1,6 +1,6 @@
 # Memory — Phase 1 (Auth Flow): Sign-up, Post-auth, Profiles, Dashboards
 
-Last updated: 2026-08-29 04:40
+Last updated: 2026-08-29 10:50
 
 ## What was built
 
@@ -23,6 +23,8 @@ Last updated: 2026-08-29 04:40
   - `src/app/(saas)/dashboard/layout.tsx` shell + `dashboard/[role]/page.tsx` role guard + `/dashboard` redirect.
   - `src/components/dashboard/{sidebar,topbar,sign-out-button}.tsx`.
   - `src/app/(payload)/layout.tsx` amended: non-staff → their own dashboard (session intact), not `/sign-out`.
+
+- **Consolidation** — `VALID_ROLES`/`isValidRole` now live only in `src/lib/roles.ts`; `clerk-strategy.ts` and the Clerk webhook route import from it instead of redefining their own copies. PostHog installed (`posthog-js` dependency added).
 
 ## Decisions made
 
@@ -52,5 +54,4 @@ Last updated: 2026-08-29 04:40
 
 ## Open questions
 
-- Consolidate `VALID_ROLES` from the Clerk webhook + auth strategy into `src/lib/roles.ts` (currently still duplicated there).
-- Phase 0.5 (PostHog) still deferred.
+- None outstanding. PostHog dependency is installed but not yet wired into the app (analytics init/capture still to be built in a later phase).
