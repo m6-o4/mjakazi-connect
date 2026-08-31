@@ -3,8 +3,9 @@ import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "pay
 import {
 	isAdmin,
 	isAdminField,
-	isAdminOrSelf,
+	isAdminOrStaffOrSelfAccountEdit,
 	isAdminOrStaff,
+	isAdminOrStaffOrSelf,
 } from "@/payload/access/access-control";
 import {
 	createClerkUser,
@@ -51,16 +52,19 @@ const Users: CollectionConfig = {
 		admin: isAdminOrStaff,
 		create: isAdmin,
 		delete: isAdmin,
-		read: isAdminOrSelf,
-		update: isAdminOrSelf,
+		// staff see the full list (name + email) for the accounts screens, and may
+		// update SaaS accounts (name) but never back-office accounts
+		read: isAdminOrStaffOrSelf,
+		update: isAdminOrStaffOrSelfAccountEdit,
 	},
 	fields: [
 		{
 			name: "clerkId",
 			type: "text",
 			label: "Clerk ID",
-			// populated by the beforeChange hook or by clerk itself; never editable
-			access: { update: () => false },
+			// populated by the beforeChange hook or by clerk itself; never editable,
+			// and only readable by admin — staff get name/email, not clerk internals
+			access: { read: isAdminField, update: () => false },
 			admin: { hidden: true },
 			index: true,
 			unique: true,
@@ -81,7 +85,9 @@ const Users: CollectionConfig = {
 			name: "password",
 			type: "text",
 			// never persisted: the beforeChange hook reads it, passes it to clerk,
-			// and strips it from data before the record is written
+			// and strips it from data before the record is written. write-once —
+			// nobody edits a password through the users collection after creation
+			access: { update: () => false },
 			admin: {
 				condition: (data) => !data?.id,
 				description:

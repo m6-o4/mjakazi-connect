@@ -218,3 +218,46 @@ every feature is finished.
   step. The `pending_review` lock on edits is deferred to Phase 3.2/4.4.
   `documents_uploaded` PostHog event fires when both slots fill. `pnpm build`
   passes (only the known-harmless `sharp` EPERM symlink warnings on Windows).
+  **Manual verification (2026-08-31)**: both documents uploaded ✓; view link
+  401 signed-out / 404 other-Mjakazi ✓; staff/admin document view deferred to
+  Phase 3.3 (review queue).
+
+### 2026-08-31 — Staff + account management (basics, pulled forward)
+- **What was built**: Admin staff management at `/dashboard/admin/staff` — create,
+  list, rename and delete staff, with Payload retained as the silent fallback.
+  Wajakazi/Waajiri account management at `/dashboard/accounts/{wajakazi,waajiri}`
+  — list + rename (admin + staff), admin-only delete with full cascade (documents
+  → profile → photo → user → Clerk).
+- **Access change**: `users.read` relaxed to `isAdminOrStaffOrSelf` so staff see
+  name/email/role/state; `users.update` is the new `isAdminOrStaffOrSelfAccountEdit`
+  (staff edit SaaS accounts only); `clerkId` and `password` are now admin-only.
+  Invariant #18 and the access-control docs updated to match.
+- **Files touched**: `access-control.ts`, `users/schema.ts`, `staff.service.ts`
+  (new), `accounts.service.ts` (new), `app/actions/staff.ts` (new),
+  `app/actions/accounts.ts` (new), `dashboard/admin/staff/page.tsx` (new),
+  `dashboard/accounts/{wajakazi,waajiri}/page.tsx` (new),
+  `components/dashboard/admin/{create-staff-form,staff-table,edit-name-form}` and
+  `components/dashboard/accounts/accounts-table` (new), `dashboard-nav.ts`,
+  `architecture.md`, `library-docs.md`.
+- **Notes**: Moderation (suspend/reinstate/blacklist) deliberately deferred —
+  account state transitions land in Phase 10.1. "Edit" means rename
+  (first/last name); email is locked after creation. Staff manage SaaS accounts
+  but never back-office accounts. `pnpm build` passes.
+
+### 2026-08-31 — Audit log viewer + fixes
+- **What was built**: Read-only audit log viewer at `/dashboard/audit-logs`
+  (admin + staff) — filter by action/source, pagination, actor → target display,
+  flattened metadata, mobile-responsive card-list. Replaces the v1 `<Table>` with
+  the `divide-y` row pattern used by the accounts lists.
+- **Fixes**: `clerk-sync.ts` now sends `legalAcceptedAt: new Date()` (staff
+  creation was failing with a 422). Waajiri delete confirmation wording corrected
+  (no "documents" clause). `/post-auth` stays a route handler returning the
+  redirect target, and a new `/authenticating` wait page ("Signing you in…" /
+  "Creating your account…") fetches it client-side before navigating;
+  sign-in/sign-up now `forceRedirectUrl` to `/authenticating?action=…` (a first
+  attempt used a Suspense + `redirect()` page and hung, so it was reverted).
+  Renamed `isAdminOrSelfOrStaffAccountEdit` → `isAdminOrStaffOrSelfAccountEdit`.
+- **Files touched**: `components/dashboard/audit-logs/audit-log-table.tsx` (new),
+  `(saas)/dashboard/audit-logs/page.tsx` (new), `components/auth/{authenticating,post-auth-resolver}.tsx`
+  (new), `(auth)/post-auth/page.tsx` (new), `dashboard-nav.ts`, `clerk-sync.ts`,
+  `accounts-table.tsx`, the accounts pages, sign-in/up pages.

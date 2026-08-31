@@ -108,3 +108,45 @@ registry never drifts from the actual codebase.
 - **Props**: `{ documents: { label: string; uploaded: boolean }[] }`
 - **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `buttonVariants`-styled "Upload documents" link only while a document is missing; payment/review states to slot in here in later phases
 - **Used in**: `(saas)/dashboard/mjakazi/page.tsx`
+
+### `CreateStaffForm`
+- **Location**: `src/components/dashboard/admin/staff/create-staff-form.tsx`
+- **Purpose**: Creates a staff account (first/last name + email); the temporary password is generated server-side
+- **Props**: none
+- **Visual pattern**: shadcn `Card`; two-column name grid + email `Input`; `text-success` confirmation line; calls `createStaffAction` then `router.refresh()`
+- **Used in**: `(saas)/dashboard/admin/staff/page.tsx`
+
+### `StaffTable`
+- **Location**: `src/components/dashboard/admin/staff/staff-table.tsx`
+- **Purpose**: Lists back-office accounts with inline rename and guarded delete; the signed-in admin's own row shows no actions
+- **Props**: `{ staff: StaffRecord[]; currentUserId: string }`
+- **Visual pattern**: `divide-y` list rows (stack on mobile, spread on desktop); initials avatar in `bg-primary/10 text-primary`; `Badge` role + "You"; inline `EditNameForm`; `AlertDialog`-guarded delete
+- **Used in**: `(saas)/dashboard/admin/staff/page.tsx`
+
+### `AccountsTable`
+- **Location**: `src/components/dashboard/accounts/accounts-table.tsx`
+- **Purpose**: Shared list for wajakazi/waajiri accounts — rename (staff + admin) and delete (admin only)
+- **Props**: `{ accounts: AccountRow[]; canDelete: boolean }`
+- **Visual pattern**: same list-row pattern as `StaffTable`; status `Badge` with a page-mapped variant; delete button only rendered when `canDelete`
+- **Used in**: `(saas)/dashboard/accounts/{wajakazi,waajiri}/page.tsx`
+
+### `EditNameForm`
+- **Location**: `src/components/dashboard/admin/edit-name-form.tsx`
+- **Purpose**: Small inline first/last-name editor shared by `StaffTable` and `AccountsTable`
+- **Props**: `{ initialFirstName: string; initialLastName: string; onSave: (first, last) => Promise<string | null>; onCancel: () => void }`
+- **Visual pattern**: two `Input`s + Save/Cancel `Button`s; inline `text-destructive` error
+- **Used in**: `StaffTable`, `AccountsTable`
+
+### `AuditLogTable`
+- **Location**: `src/components/dashboard/audit-logs/audit-log-table.tsx`
+- **Purpose**: Read-only audit trail viewer — filter by action/source, paginate, show actor → target + flattened metadata
+- **Props**: `{ logs: AuditLog[]; totalDocs; totalPages; currentPage; currentAction; currentSource; hasNextPage; hasPrevPage }`
+- **Visual pattern**: two `Select` filters + entry count; `divide-y` list rows (stack on mobile) with action `Badge`, timestamp, "actor → target", flattened `key: value · …` metadata line, source `Badge`; `ShieldQuestion` empty state; Previous/Next `Button` pagination
+- **Used in**: `(saas)/dashboard/audit-logs/page.tsx`
+
+### `AuthenticatingClient`
+- **Location**: `src/components/auth/authenticating-client.tsx`
+- **Purpose**: Wait screen shown after sign-in/up — renders immediately, then fetches `/post-auth` for the redirect target and navigates
+- **Props**: `{ message: string }`
+- **Visual pattern**: centered `Loader2` spinner + one-line message + muted "This will only take a moment." subtitle
+- **Used in**: `(auth)/authenticating/page.tsx`

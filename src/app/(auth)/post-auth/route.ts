@@ -1,11 +1,14 @@
-import { redirect } from "next/navigation";
-import type { Payload } from "payload";
-import { getPayload } from "payload";
+import { NextResponse } from "next/server";
+import { getPayload, type Payload } from "payload";
 
-import type { User } from "@/payload-types";
-
-import { DASHBOARD_BY_ROLE, isRegistrationRole, isValidRole, type Role } from "@/lib/roles";
+import {
+	DASHBOARD_BY_ROLE,
+	isRegistrationRole,
+	isValidRole,
+	type Role,
+} from "@/lib/roles";
 import configPromise from "@/payload-config";
+import type { User } from "@/payload-types";
 import { ensureProfile } from "@/services/identity.service";
 
 import { createClerkClient } from "@clerk/backend";
@@ -39,16 +42,19 @@ const findUserWithRetry = async (
 	return null;
 };
 
+// resolves the role, promotes the declared intent and ensures the domain profile,
+// then returns the redirect target. the client wait screen fetches this and
+// navigates, so the spinner stays up for the whole operation
 const GET = async () => {
 	const { userId } = await auth();
-	if (!userId) redirect("/sign-in");
+	if (!userId) return NextResponse.json({ redirect: "/sign-in" });
 
 	let clerkUser;
 	try {
 		clerkUser = await clerkClient.users.getUser(userId);
 	} catch (error) {
 		console.error("[post-auth] failed to load Clerk user:", error);
-		redirect("/registration");
+		return NextResponse.json({ redirect: "/registration" });
 	}
 
 	const existingRole = clerkUser.publicMetadata?.role;
@@ -69,13 +75,13 @@ const GET = async () => {
 			});
 		} catch (error) {
 			console.error("[post-auth] failed to promote role:", error);
-			redirect("/registration");
+			return NextResponse.json({ redirect: "/registration" });
 		}
 
 		role = intendedRole;
 	} else {
 		// no resolvable role — re-prompt. never guess, never dead-end
-		redirect("/registration");
+		return NextResponse.json({ redirect: "/registration" });
 	}
 
 	// resolve the payload record, tolerating webhook lag. best-effort: if it has
@@ -91,7 +97,7 @@ const GET = async () => {
 		console.error("[post-auth] failed to resolve Payload user:", error);
 	}
 
-	redirect(DASHBOARD_BY_ROLE[role]);
+	return NextResponse.json({ redirect: DASHBOARD_BY_ROLE[role] });
 };
 
 export { GET };

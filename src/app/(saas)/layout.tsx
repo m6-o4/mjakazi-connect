@@ -12,10 +12,17 @@ import { auth } from "@clerk/nextjs/server";
 import "@/globals.css";
 
 const metadata: Metadata = {
-	description: "Application dashboard.",
+	title: {
+		template: "%s | Mjakazi Connect",
+		default: "Mjakazi Connect",
+	},
+	// the dashboard must never be indexed
 	robots: { follow: false, index: false },
-	title: "App",
-	icons: "/favicon.svg",
+	icons: {
+		icon: "/favicon.svg",
+		shortcut: "/favicon.svg",
+		apple: "/favicon.svg",
+	},
 };
 
 // root layout for the saas application. auth.protect() gates the whole group,
