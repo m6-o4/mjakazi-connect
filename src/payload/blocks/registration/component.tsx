@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 import { Container } from "@/components/container";
 import { Button } from "@/components/ui/button";
@@ -19,6 +22,10 @@ const RegistrationBlock = ({
 	mwajiriCard,
 }: Registration) => {
 	const backgroundClass = bgMap[backgroundVariant] ?? "bg-background";
+
+	const captureRegistrationStart = (role: "mjakazi" | "mwajiri") => {
+		posthog.capture("registration_started", { role });
+	};
 
 	return (
 		<section className={cn("border-border border-t py-20", backgroundClass)}>
@@ -45,7 +52,10 @@ const RegistrationBlock = ({
 							<div className="mt-6">
 								<Button
 									render={
-										<Link href={mjakaziCard.buttonLink || "#"}>
+										<Link
+											href={mjakaziCard.buttonLink || "#"}
+											onClick={() => captureRegistrationStart("mjakazi")}
+										>
 											{mjakaziCard.buttonText}
 										</Link>
 									}
@@ -77,7 +87,10 @@ const RegistrationBlock = ({
 							<div className="mt-6">
 								<Button
 									render={
-										<Link href={mwajiriCard.buttonLink || "#"}>
+										<Link
+											href={mwajiriCard.buttonLink || "#"}
+											onClick={() => captureRegistrationStart("mwajiri")}
+										>
 											{mwajiriCard.buttonText}
 										</Link>
 									}

@@ -41,6 +41,9 @@ const createClerkUser: CollectionBeforeChangeHook<User> = async ({
 			firstName: data.firstName || undefined,
 			lastName: data.lastName || undefined,
 			password,
+			// required by clerk when legal consent is enabled — an admin creating
+			// the account accepts the terms on the new user's behalf
+			legalAcceptedAt: new Date(),
 			publicMetadata: { role: data.role },
 		});
 

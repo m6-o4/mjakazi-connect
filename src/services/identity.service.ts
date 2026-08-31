@@ -14,8 +14,10 @@ const isDuplicateUserError = (error: unknown): boolean =>
 // idempotent — ensures the 1:1 domain profile for a user exists, creating it
 // only when one is not already present. safe to call on every sign-in
 const ensureProfile = async (payload: Payload, user: User): Promise<Result<void>> => {
-	const displayName =
-		[user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.email;
+	// displayName is public (directory + marketing), so the default is the first
+	// name only — never the full name or email, which the owner should reveal
+	// deliberately rather than by default
+	const displayName = user.firstName?.trim() || "Mjakazi";
 
 	try {
 		if (user.role === "mjakazi") {

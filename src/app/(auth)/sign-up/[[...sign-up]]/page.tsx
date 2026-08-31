@@ -1,8 +1,9 @@
 "use client";
 
-import { SignUp } from "@clerk/nextjs";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+
+import { SignUp } from "@clerk/nextjs";
 
 const SignUpPage = () => {
 	const router = useRouter();
@@ -31,7 +32,7 @@ const SignUpPage = () => {
 
 	return (
 		<SignUp
-			forceRedirectUrl="/post-auth"
+			forceRedirectUrl="/authenticating?action=sign-up"
 			unsafeMetadata={isValidRole ? { role } : undefined}
 			appearance={{
 				elements: {

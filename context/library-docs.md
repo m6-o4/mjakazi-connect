@@ -97,11 +97,11 @@ Redirect non-staff from the `(payload)` layout instead of letting them reach it.
 Collection-level `update` does not distinguish fields. The moment a user can edit
 their own record, `role` needs its own `access.update`. Same for `accountState`.
 
-### Staff must not get blanket read on `users`
+### Staff read users, edit SaaS accounts, never read `clerkId`
 
-Granting `isAdminOrSelf` a `true` branch for staff hands them every user record.
-They need admin-panel entry, not visibility into every employer's account. Staff
-read what they need from the domain collections.
+`users.read` is `isAdminOrStaffOrSelf` so staff see name + email on the accounts
+screens. `users.update` is `isAdminOrStaffOrSelfAccountEdit` — staff edit only
+mjakazi / mwajiri, never back-office accounts. `clerkId` stays admin-read-only.
 
 ### Local API calls bypass access control
 

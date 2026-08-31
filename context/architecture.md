@@ -31,6 +31,7 @@ feature task.
 | Identity | `@clerk/nextjs` / `@clerk/backend` | 7.6.3 / 3.15.0 | Auth, sessions, credentials |
 | Styling | Tailwind CSS | 4.3.3 | With Shadcn/UI |
 | UI primitives | `@base-ui/react` | 1.7.x | Shadcn 4 sits on Base UI, **not Radix** |
+| Date picker | `react-day-picker` | 10.x | Powers the shadcn `Calendar` component |
 | Icons | lucide-react | 1.28.x | The only icon set |
 | Animation | motion | 12.43.x | Sparingly — see `ui-rules.md` |
 | Background jobs | **Payload job queue** | built in | `jobs.autoRun`, cron `* * * * *`, limit 10 |
@@ -434,6 +435,14 @@ Carries no subscription data.
 **`staff-profiles`** — created only when staff need attributes beyond `users`.
 Not built until a requirement demands it.
 
+### Profile photos
+
+**`profile-photos`** — a mjakazi's profile photo. `create` by the owner, `read`
+public (the directory renders the binary), `update`/`delete` by owner + staff +
+admin. Separate from `media` so user uploads never mix with the marketing
+library and can be purged cleanly on account erasure. `wajakazi-profiles.photo`
+points here.
+
 ### Documents
 
 **`vault-documents`** — encrypted identity documents. Never `media`.
@@ -548,7 +557,8 @@ The helpers, once `payload-types` is generated so `req.user` is properly typed:
 | `isAdminOrStaff` | `admin` or `staff` — the admin-panel gate |
 | `isAdminOrStaffField` | field-level variant |
 | `isMjakazi`, `isMwajiri` | the two SaaS roles |
-| `isAdminOrSelf` | `admin` sees all; everyone else is scoped to their own record |
+| `isAdminOrStaffOrSelf` | `admin` and `staff` read all; everyone else reads only their own record |
+| `isAdminOrStaffOrSelfAccountEdit` | `admin` updates anyone; `staff` updates SaaS accounts only; everyone else updates only their own record |
 | `isAdminOrOwner(field)` | factory; staff bypass, everyone else scoped by the named relation |
 | `isAdminOrStaffOrPublished` | staff see drafts, everyone else sees published only |
 | `isDirectoryVisibleOrOwner` | staff see all; an owner sees their own; everyone else sees only verified **and** available |
@@ -559,10 +569,11 @@ here every Mwajiri and Mjakazi is signed in, so using it on `pages` or `posts`
 would leak unpublished marketing content to the entire customer base. Use
 `isAdminOrStaffOrPublished`.
 
-**`users` stays on `isAdminOrSelf`.** Staff do not get blanket read on user
-records. Everything staff need lives on the domain collections, where they have
-explicit access. A staff member can verify a Mjakazi without being able to
-enumerate every employer's email address.
+**`users.read` is `isAdminOrStaffOrSelf`; `users.update` is `isAdminOrStaffOrSelfAccountEdit`.**
+Staff may read the full user list (name + email for the accounts screens) and
+may update SaaS accounts (mjakazi / mwajiri name), but never back-office
+accounts. `clerkId` stays admin-read-only, so staff get identity and contact
+fields without clerk internals.
 
 ### The contact vault
 
@@ -596,10 +607,12 @@ National IDs and Certificates of Good Conduct are sensitive personal data.
 - **Storage.** `@payloadcms/storage-s3`, one bucket, `forcePathStyle: true` for
   MinIO. Development points at local MinIO, production at Cloudflare R2, via the
   same `S3_*` variables with a different endpoint.
-- **Two collections, two policies.** `media` is public and CDN-served.
-  `vault-documents` is registered with `signedDownloads` enabled so every fetch
-  goes through a short-lived signed URL rather than a public object path. They
-  share a bucket; they do not share a policy.
+- **Three upload collections, three policies.** `media` is public and CDN-served
+  for marketing. `profile-photos` is public but owner-managed — its binary is
+  public because the directory renders it, while visibility is governed by the
+  profile's own access. `vault-documents` is registered with `signedDownloads`
+  enabled so every fetch goes through a short-lived signed URL rather than a
+  public object path. They share a bucket; they do not share a policy.
 - **Delivery.** Documents are streamed through an authenticated route handler that
   checks role before issuing a short-lived signed URL. A document URL is never
   rendered into HTML, never placed in an RSC payload, and never logged.
@@ -754,7 +767,9 @@ stop and ask.
 17. A profile is publicly visible only when `verificationState = verified` **and**
     `availabilityStatus = available` **and** not blacklisted **and** not
     deactivated.
-18. `users` is never granted blanket read to `staff`.
+18. `users` read grants `staff` name, email, role and state. `staff` may update
+    SaaS accounts (mjakazi / mwajiri) but never back-office accounts, and never
+    reads `clerkId`.
 
 ### Documents
 19. A vault document URL is never rendered, cached, logged, or included in an

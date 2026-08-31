@@ -34,7 +34,13 @@ const generateURL: GenerateURL<Post | Page> = ({ doc }) => {
 // redirects, storage and cloud hosting
 const plugins: Plugin[] = [
 	s3Storage({
-		collections: { media: true },
+		collections: {
+			media: true,
+			"profile-photos": true,
+			// signedDownloads means the vault binary has no public object path —
+			// every fetch goes through a short-lived signed url, never a CDN url
+			"vault-documents": { signedDownloads: true },
+		},
 		bucket: bucket,
 		config: {
 			credentials: {

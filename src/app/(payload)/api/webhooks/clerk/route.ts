@@ -1,21 +1,11 @@
 import { NextRequest } from "next/server";
 import { getPayload } from "payload";
 
-import type { User } from "@/payload-types";
-
+import { isValidRole } from "@/lib/roles";
 import configPromise from "@/payload-config";
 import { clerkWebhookContext } from "@/payload/utilities/request-context";
 
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
-
-type Role = NonNullable<User["role"]>;
-
-// the complete set of roles. there is no neutral or default role in this
-// project, so an unrecognised value is treated as no role at all
-const VALID_ROLES: readonly Role[] = ["admin", "staff", "mwajiri", "mjakazi"];
-
-const isValidRole = (value: unknown): value is Role =>
-	typeof value === "string" && VALID_ROLES.includes(value as Role);
 
 // SEQUENCING NOTE
 //

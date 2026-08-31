@@ -75,14 +75,22 @@ const isMwajiri: BooleanAccess = ({ req: { user } }) => {
 // ownership gates
 // ---------------------------------------------------------------------------
 
-// users collection gate: only admins see the full list, everyone else including
-// staff is scoped to their own record. staff retain admin-panel entry via
-// isAdminOrStaff, they simply have no business reading other people's accounts.
-// staff read what they need from the domain collections instead, which is what
-// lets a reviewer verify a mjakazi without enumerating every employer's email
-const isAdminOrSelf: Access = ({ req: { user } }) => {
+// users read gate: admin and staff see the full list (staff need name + email
+// for the accounts screens); everyone else is scoped to their own record
+const isAdminOrStaffOrSelf: Access = ({ req: { user } }) => {
+	if (!user) return false;
+	if (hasRole(user, "admin", "staff")) return true;
+	return { id: { equals: user.id } };
+};
+
+// users update gate: admin may update anyone; staff may update SaaS accounts
+// (mjakazi / mwajiri) but never back-office accounts; everyone else only
+// themselves. the return type is widened to boolean | Where so the two distinct
+// query shapes don't collapse into an incompatible union
+const isAdminOrStaffOrSelfAccountEdit: Access = ({ req: { user } }): boolean | Where => {
 	if (!user) return false;
 	if (hasRole(user, "admin")) return true;
+	if (hasRole(user, "staff")) return { role: { in: ["mjakazi", "mwajiri"] } };
 	return { id: { equals: user.id } };
 };
 
@@ -144,10 +152,11 @@ export {
 	isAdmin,
 	isAdminField,
 	isAdminOrOwner,
-	isAdminOrSelf,
+	isAdminOrStaffOrSelfAccountEdit,
 	isAdminOrStaff,
 	isAdminOrStaffField,
 	isAdminOrStaffOrPublished,
+	isAdminOrStaffOrSelf,
 	isAuthenticated,
 	isDirectoryVisibleOrOwner,
 	isMjakazi,

@@ -1,10 +1,8 @@
 import { AuthStrategy, Payload, ValidationError } from "payload";
 
-import type { User } from "@/payload-types";
+import { isValidRole, type Role } from "@/lib/roles";
 
 import { createClerkClient } from "@clerk/backend";
-
-type Role = NonNullable<User["role"]>;
 
 // provisions the payload record for a clerk user, tolerating the race where a
 // concurrent request (or the user.created webhook) creates the same record
@@ -51,14 +49,6 @@ const createOrFindUser = async (
 		return racedUser;
 	}
 };
-
-// the complete set of roles. there is no neutral or default role in this
-// project, so an unrecognised value is treated as no role at all rather than
-// being coerced into one
-const VALID_ROLES: readonly Role[] = ["admin", "staff", "mwajiri", "mjakazi"];
-
-const isValidRole = (value: unknown): value is Role =>
-	typeof value === "string" && VALID_ROLES.includes(value as Role);
 
 const clerkClient = createClerkClient({
 	secretKey: process.env.CLERK_SECRET_KEY,
