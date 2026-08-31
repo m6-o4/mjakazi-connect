@@ -1,5 +1,6 @@
-import config from "@/payload-config";
 import { getPayload } from "payload";
+
+import config from "@/payload-config";
 
 type AuditAction =
 	| "account_created"
@@ -12,7 +13,10 @@ type AuditAction =
 	| "payment_confirmed"
 	| "payment_failed"
 	| "payment_expired"
-	| "eoi_sent";
+	| "eoi_sent"
+	| "document_uploaded"
+	| "document_deleted"
+	| "document_viewed";
 
 type AuditSource = "user" | "system";
 

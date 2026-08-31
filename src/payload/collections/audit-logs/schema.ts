@@ -1,5 +1,6 @@
-import { isAdminOrStaff, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrStaff, isRestricted } from "@/payload/access/access-control";
 
 // immutable audit trail for all significant platform events.
 // entries are written programmatically via writeAuditLog — never by users directly.
@@ -44,6 +45,10 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Payment Expired", value: "payment_expired" },
 				// expression of interest lifecycle
 				{ label: "Expression of Interest Sent", value: "eoi_sent" },
+				// document vault
+				{ label: "Document Uploaded", value: "document_uploaded" },
+				{ label: "Document Deleted", value: "document_deleted" },
+				{ label: "Document Viewed", value: "document_viewed" },
 			],
 		},
 		{

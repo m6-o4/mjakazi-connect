@@ -7,7 +7,10 @@ import { Label } from "@/components/ui/label";
 
 type PhotoFieldProps = {
 	photoUrl: string | null;
-	onUploaded: (photo: { id: string; url: string | null }, profileComplete: boolean) => void;
+	onUploaded: (
+		photo: { id: string; url: string | null },
+		profileComplete: boolean,
+	) => void;
 };
 
 // uploads the profile photo independently of the rest of the form, so it can
@@ -52,7 +55,15 @@ const PhotoField = ({ photoUrl, onUploaded }: PhotoFieldProps) => {
 
 	return (
 		<div className="flex flex-col gap-2">
-			<Label>Profile photo</Label>
+			<Label>
+				<span>
+					Profile photo
+					<span className="text-destructive" aria-hidden="true">
+						{" "}
+						*
+					</span>
+				</span>
+			</Label>
 			<div className="flex items-center gap-4">
 				{preview ? (
 					// eslint-disable-next-line @next/next/no-img-element -- the preview may be a blob URL, which next/image cannot optimize

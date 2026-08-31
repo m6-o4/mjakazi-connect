@@ -94,3 +94,17 @@ registry never drifts from the actual codebase.
 - **Props**: `{ name: "dateOfBirth" | "availableFrom"; label: string; placeholder? }`
 - **Visual pattern**: `PopoverTrigger` styled with `buttonVariants({ variant: "outline" })`; `Calendar` `mode="single"`; `Clear` ghost button when set
 - **Used in**: `ProfileForm`
+
+### `DocumentVault`
+- **Location**: `src/components/dashboard/mjakazi/document-vault/index.tsx`
+- **Purpose**: The two document slots (National ID + Certificate of Good Conduct) — upload, replace, view and remove, each remove guarded by a confirmation
+- **Props**: `{ documents: { id: string; documentType: string; filename: string | null }[] }`
+- **Visual pattern**: two shadcn `Card`s in a `grid gap-4 md:grid-cols-2`; `Badge` "Uploaded" + truncated filename; `Button` outline/ghost actions with a `buttonVariants`-styled "View" link; empty state with a `FileText`/`ShieldCheck` lucide icon; remove guarded by shadcn `AlertDialog`; fires `documents_uploaded` PostHog event when both slots fill
+- **Used in**: `(saas)/dashboard/mjakazi/documents/page.tsx`
+
+### `VerificationStatusCard`
+- **Location**: `src/components/dashboard/mjakazi/verification-status-card/index.tsx`
+- **Purpose**: The post-profile step of the verification journey on the dashboard Overview — shows which documents are missing, and "ready for verification" once both are uploaded
+- **Props**: `{ documents: { label: string; uploaded: boolean }[] }`
+- **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `buttonVariants`-styled "Upload documents" link only while a document is missing; payment/review states to slot in here in later phases
+- **Used in**: `(saas)/dashboard/mjakazi/page.tsx`

@@ -11,6 +11,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 	mjakazi: [
 		{ href: "/dashboard/mjakazi", label: "Overview" },
 		{ href: "/dashboard/mjakazi/profile", label: "Profile" },
+		{ href: "/dashboard/mjakazi/documents", label: "Documents" },
 	],
 };
 

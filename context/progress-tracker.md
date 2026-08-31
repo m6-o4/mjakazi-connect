@@ -189,3 +189,32 @@ every feature is finished.
   the shell layout + role layout + page authenticate once per request; and
   `eslint.config.mjs` now ignores `**/.next/` + `design/` so `pnpm lint` stops
   scanning the v1 reference codebase's build output.
+
+### 2026-08-30 — Phase 2.2: Document vault
+- **What was built**: `vault-documents` upload collection (sealed create/update/delete,
+  `read` = owner + staff + admin scoped by `uploadedBy`), registered in S3 with
+  `signedDownloads: true` (private ACL, no public object path). Upload, replace,
+  view and delete flow at `/dashboard/mjakazi/documents`. Documents are delivered
+  only through `GET /api/actions/vault/{id}`, which authorizes (role + ownership)
+  and writes a `document_viewed` audit entry before redirecting to a 60s signed
+  URL. Added `document_uploaded` / `document_deleted` / `document_viewed` audit
+  actions.
+- **Files touched**: `src/lib/vault.ts` (new), `src/lib/s3.ts` (new),
+  `src/payload/collections/vault-documents/schema.ts` (new),
+  `src/services/vault.service.ts` (new),
+  `src/app/(payload)/api/actions/vault/route.ts` (new),
+  `src/app/(payload)/api/actions/vault/[id]/route.ts` (new),
+  `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` (new),
+  `src/components/dashboard/mjakazi/document-vault/index.tsx` (new),
+  `src/payload/collections/index.ts`, `src/payload/plugins/schema.ts`,
+  `src/lib/audit.ts`, `src/payload/collections/audit-logs/schema.ts`,
+  `src/lib/dashboard-nav.ts`, `src/app/(saas)/dashboard/mjakazi/page.tsx`
+- **Notes**: One file per document type (`national_id`,
+  `certificate_of_good_conduct`); re-upload replaces (create-then-delete). 5MB
+  cap, PDF/JPEG/PNG/WebP only. Delivery is redirect-to-signed-URL (the v1-proven
+  pattern) rather than proxy-streaming. `@aws-sdk/s3-request-presigner` added as
+  a direct dependency (was already transitive via `@payloadcms/storage-s3`).
+  Documents do not feed `profileComplete` — they are the separate verification
+  step. The `pending_review` lock on edits is deferred to Phase 3.2/4.4.
+  `documents_uploaded` PostHog event fires when both slots fill. `pnpm build`
+  passes (only the known-harmless `sharp` EPERM symlink warnings on Windows).

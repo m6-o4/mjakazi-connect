@@ -1,9 +1,8 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import posthog from "posthog-js";
 
 import { updateProfileAction } from "@/app/actions/profile";
 import { FormDatePicker } from "@/components/dashboard/mjakazi/profile-form/form-date-picker";
@@ -11,7 +10,13 @@ import { FormSelect } from "@/components/dashboard/mjakazi/profile-form/form-sel
 import { OptionChips } from "@/components/dashboard/mjakazi/profile-form/option-chips";
 import { PhotoField } from "@/components/dashboard/mjakazi/profile-form/photo-field";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,8 +30,15 @@ import {
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 } from "@/lib/profile-constants";
-import { ABOUT_MAX_WORDS, countWords, profileFormSchema, type ProfileFormValues } from "@/lib/profile-schema";
+import {
+	ABOUT_MAX_WORDS,
+	countWords,
+	profileFormSchema,
+	type ProfileFormValues,
+} from "@/lib/profile-schema";
 import { cn } from "@/lib/utils";
+
+import { zodResolver } from "@hookform/resolvers/zod";
 
 type ProfileFormProps = {
 	initialValues: ProfileFormValues;
@@ -34,7 +46,11 @@ type ProfileFormProps = {
 	initialProfileComplete: boolean;
 };
 
-const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFormProps) => {
+const ProfileForm = ({
+	initialValues,
+	photo,
+	initialProfileComplete,
+}: ProfileFormProps) => {
 	const [submitting, setSubmitting] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 	const [saved, setSaved] = useState(false);
@@ -90,39 +106,62 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 
 	return (
 		<FormProvider {...methods}>
-			<form
-				onSubmit={handleSubmit(onSubmit)}
-				className="flex flex-col gap-6"
-				noValidate
-			>
+			<form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
+				<p className="text-muted-foreground text-xs">
+					Fields marked with <span className="text-destructive">*</span> are required.
+				</p>
 				<Card>
 					<CardHeader>
 						<CardTitle>Identity</CardTitle>
-						<CardDescription>
-							Your name and photo are shown to employers.
-						</CardDescription>
+						<CardDescription>Your name and photo are shown to employers.</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
 						<PhotoField photoUrl={photo?.url ?? null} onUploaded={onPhotoUploaded} />
 
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor="displayName">Display name</Label>
+								<Label htmlFor="displayName">
+									<span>
+										Display name
+										<span className="text-destructive" aria-hidden="true">
+											{" "}
+											*
+										</span>
+									</span>
+								</Label>
 								<Input id="displayName" {...register("displayName")} />
+								<p className="text-muted-foreground text-xs">
+									Employers see this name on the website. If you do not change it, only
+									your first name is shown, a clear name helps you get noticed.
+								</p>
 								{errors.displayName && (
-									<p className="text-destructive text-xs">
-										{errors.displayName.message}
-									</p>
+									<p className="text-destructive text-xs">{errors.displayName.message}</p>
 								)}
 							</div>
 
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor="legalFirstName">Legal first name</Label>
+								<Label htmlFor="legalFirstName">
+									<span>
+										Legal first name
+										<span className="text-destructive" aria-hidden="true">
+											{" "}
+											*
+										</span>
+									</span>
+								</Label>
 								<Input id="legalFirstName" {...register("legalFirstName")} />
 							</div>
 
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor="legalLastName">Legal last name</Label>
+								<Label htmlFor="legalLastName">
+									<span>
+										Legal last name
+										<span className="text-destructive" aria-hidden="true">
+											{" "}
+											*
+										</span>
+									</span>
+								</Label>
 								<Input id="legalLastName" {...register("legalLastName")} />
 							</div>
 
@@ -132,6 +171,7 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 								name="nationality"
 								label="Nationality"
 								options={COUNTRY_OPTIONS}
+								required
 							/>
 
 							<FormSelect
@@ -143,7 +183,15 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 							<FormSelect name="religion" label="Religion" options={RELIGION_OPTIONS} />
 
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor="phone">Mobile phone number</Label>
+								<Label htmlFor="phone">
+									<span>
+										Mobile phone number
+										<span className="text-destructive" aria-hidden="true">
+											{" "}
+											*
+										</span>
+									</span>
+								</Label>
 								<Input
 									id="phone"
 									type="tel"
@@ -166,10 +214,23 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
-						<OptionChips name="jobsSkills" label="Jobs / skills" options={JOB_OPTIONS} />
+						<OptionChips
+							name="jobsSkills"
+							label="Jobs / skills"
+							options={JOB_OPTIONS}
+							required
+						/>
 
 						<div className="flex flex-col gap-1.5">
-							<Label htmlFor="about">About me</Label>
+							<Label htmlFor="about">
+								<span>
+									About me
+									<span className="text-destructive" aria-hidden="true">
+										{" "}
+										*
+									</span>
+								</span>
+							</Label>
 							<Textarea
 								id="about"
 								placeholder="Describe your experience and what you are good at."
@@ -197,7 +258,15 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor="yearsExperience">Years of experience</Label>
+								<Label htmlFor="yearsExperience">
+									<span>
+										Years of experience
+										<span className="text-destructive" aria-hidden="true">
+											{" "}
+											*
+										</span>
+									</span>
+								</Label>
 								<Input
 									id="yearsExperience"
 									type="number"
@@ -220,7 +289,12 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 							/>
 						</div>
 
-						<OptionChips name="languages" label="Languages spoken" options={LANGUAGE_OPTIONS} />
+						<OptionChips
+							name="languages"
+							label="Languages spoken"
+							options={LANGUAGE_OPTIONS}
+							required
+						/>
 					</CardContent>
 				</Card>
 
@@ -235,6 +309,7 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 								name="workPreference"
 								label="Work preference"
 								options={WORK_PREFERENCE_OPTIONS}
+								required
 							/>
 
 							<FormDatePicker name="availableFrom" label="Available from" />
@@ -269,7 +344,12 @@ const ProfileForm = ({ initialValues, photo, initialProfileComplete }: ProfileFo
 								)}
 							</div>
 
-							<FormSelect name="location" label="Location" options={LOCATION_OPTIONS} />
+							<FormSelect
+								name="location"
+								label="Location"
+								options={LOCATION_OPTIONS}
+								required
+							/>
 						</div>
 					</CardContent>
 				</Card>

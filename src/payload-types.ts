@@ -77,6 +77,7 @@ export interface Config {
     'wajakazi-profiles': WajakaziProfile;
     'waajiri-profiles': WaajiriProfile;
     'profile-photos': ProfilePhoto;
+    'vault-documents': VaultDocument;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -96,6 +97,7 @@ export interface Config {
     'wajakazi-profiles': WajakaziProfilesSelect<false> | WajakaziProfilesSelect<true>;
     'waajiri-profiles': WaajiriProfilesSelect<false> | WaajiriProfilesSelect<true>;
     'profile-photos': ProfilePhotosSelect<false> | ProfilePhotosSelect<true>;
+    'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -627,7 +629,10 @@ export interface AuditLog {
     | 'payment_confirmed'
     | 'payment_failed'
     | 'payment_expired'
-    | 'eoi_sent';
+    | 'eoi_sent'
+    | 'document_uploaded'
+    | 'document_deleted'
+    | 'document_viewed';
   actor?: (string | null) | User;
   actorLabel?: string | null;
   target?: (string | null) | User;
@@ -838,6 +843,27 @@ export interface WaajiriProfile {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vault-documents".
+ */
+export interface VaultDocument {
+  id: string;
+  profile: string | WajakaziProfile;
+  uploadedBy: string | User;
+  documentType: 'national_id' | 'certificate_of_good_conduct';
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1017,6 +1043,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'profile-photos';
         value: string | ProfilePhoto;
+      } | null)
+    | ({
+        relationTo: 'vault-documents';
+        value: string | VaultDocument;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1575,6 +1605,26 @@ export interface ProfilePhotosSelect<T extends boolean = true> {
               filename?: T;
             };
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "vault-documents_select".
+ */
+export interface VaultDocumentsSelect<T extends boolean = true> {
+  profile?: T;
+  uploadedBy?: T;
+  documentType?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

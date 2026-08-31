@@ -13,21 +13,38 @@ import {
 import type { ProfileFormValues } from "@/lib/profile-schema";
 
 type FormSelectProps = {
-	name: "nationality" | "maritalStatus" | "religion" | "educationLevel" | "workPreference" | "location";
+	name:
+		| "nationality"
+		| "maritalStatus"
+		| "religion"
+		| "educationLevel"
+		| "workPreference"
+		| "location";
 	label: string;
 	options: readonly { label: string; value: string }[];
 	placeholder?: string;
+	required?: boolean;
 };
 
 // a single-select field bridged to react-hook-form. an empty value means "not
 // set" and is stored as null by the service
-const FormSelect = ({ name, label, options, placeholder }: FormSelectProps) => {
+const FormSelect = ({ name, label, options, placeholder, required }: FormSelectProps) => {
 	const { control, formState } = useFormContext<ProfileFormValues>();
 	const errorMessage = formState.errors[name]?.message;
 
 	return (
 		<div className="flex flex-col gap-1.5">
-			<Label>{label}</Label>
+			<Label>
+				<span>
+					{label}
+					{required && (
+						<span className="text-destructive" aria-hidden="true">
+							{" "}
+							*
+						</span>
+					)}
+				</span>
+			</Label>
 			<Controller
 				name={name}
 				control={control}
