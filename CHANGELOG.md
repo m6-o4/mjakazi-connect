@@ -1,3 +1,13 @@
+# [2.3.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.2.0...v2.3.0) (2026-08-31)
+
+
+### Features
+
+* **admin:** add staff and account management console with audit log viewer ([c219518](https://github.com/m6-o4/mjakazi-connect/commit/c21951833c35db8f463b4f3c52f2a06527a09b94))
+* **analytics:** add posthog client-side user analytics ([2293a39](https://github.com/m6-o4/mjakazi-connect/commit/2293a39244d8a889dce51a2980502ffce65d63b2))
+* **mjakazi:** add profile form with completeness tracking and photo upload ([5b275e8](https://github.com/m6-o4/mjakazi-connect/commit/5b275e884dfe5ca602424b1874849fb901eb5b30))
+* **vault:** add secure identity document vault with signed S3 delivery ([337b1f8](https://github.com/m6-o4/mjakazi-connect/commit/337b1f87c562ca09b54ce3562d5783174884b89b))
+
 # [2.2.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.1.0...v2.2.0) (2026-08-29)
 
 ### Features
