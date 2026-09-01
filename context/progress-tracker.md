@@ -295,3 +295,26 @@ every feature is finished.
   `pnpm lint` (0 errors) and `pnpm build` pass. Open: the `verified → pending_review`
   identity-change *trigger* (profile/document-edit detection) and the "fresh
   Certificate" renewal check land in later phases.
+
+### 2026-09-01 — Phase 3.2: Submit for verification
+- **What was built**: The verification page at `/dashboard/mjakazi/verification`,
+  state-aware across all eight verification states. The `draft` state renders a
+  readiness checklist (profile complete + both documents) with a submit button
+  wired to `submitForVerification` via a Server Action; every other state renders
+  correct status copy with no action buttons yet. The `pending_payment` state is
+  an honest "awaiting payment" card with no price or pay button (payment lands in
+  Phase 4.4, the fee in `platform-settings`). Added the "Verification" nav item
+  and linked the overview `VerificationStatusCard` "ready" state to the new page.
+- **Files touched**: `app/actions/verification.ts` (new),
+  `app/(saas)/dashboard/mjakazi/verification/page.tsx` (new),
+  `components/dashboard/mjakazi/verification/submit-verification.tsx` (new),
+  `components/dashboard/mjakazi/verification/verification-state.tsx` (new),
+  `lib/dashboard-nav.ts`, `components/dashboard/mjakazi/verification-status-card/index.tsx`,
+  `context/ui-registry.md`.
+- **Notes**: Submit is a Server Action (not a route handler) per the
+  "prefer a Server Action" rule. `verification_submitted` PostHog event fires
+  client-side on success; the `verification_submitted` audit entry is written
+  inside the service transition. Resubmit (`resubmitForVerification`) and renew
+  (`renewVerification`) are deliberately not wired — `rejected` and
+  `verification_expired` are unreachable until Phases 3.3 / 7.1. No schema change,
+  so no `generate:types` needed.

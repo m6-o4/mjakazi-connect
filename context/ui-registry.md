@@ -109,6 +109,20 @@ registry never drifts from the actual codebase.
 - **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `buttonVariants`-styled "Upload documents" link only while a document is missing; payment/review states to slot in here in later phases
 - **Used in**: `(saas)/dashboard/mjakazi/page.tsx`
 
+### `SubmitVerification`
+- **Location**: `src/components/dashboard/mjakazi/verification/submit-verification.tsx`
+- **Purpose**: The draft-state submit flow on the verification page — a readiness checklist (profile complete + both documents) with links to fix each gap, and the submit button
+- **Props**: `{ profileComplete: boolean; hasBothDocuments: boolean }`
+- **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `Button` disabled until ready; fires `verification_submitted` PostHog event on success then `router.refresh()`
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+
+### `VerificationStateCard`
+- **Location**: `src/components/dashboard/mjakazi/verification/verification-state.tsx`
+- **Purpose**: Status copy for every non-draft verification state (pending_payment, pending_review, verified, rejected, verification_expired, blacklisted, deactivated)
+- **Props**: `{ state: NonDraftState; verificationExpiry?: string | null; rejectionReason?: string | null }`
+- **Visual pattern**: shadcn `Card`; per-state lucide icon in `text-accent`; shows "Valid until" date (verified) or "Reason" (rejected); no action buttons yet
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+
 ### `CreateStaffForm`
 - **Location**: `src/components/dashboard/admin/staff/create-staff-form.tsx`
 - **Purpose**: Creates a staff account (first/last name + email); the temporary password is generated server-side

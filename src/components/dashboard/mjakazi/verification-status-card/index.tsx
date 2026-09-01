@@ -35,7 +35,7 @@ const VerificationStatusCard = ({ documents }: VerificationStatusCardProps) => {
 				</CardTitle>
 				<CardDescription>
 					{allUploaded
-						? "Your profile and documents are complete. You'll be able to submit them for verification soon."
+						? "Your profile and documents are complete. Submit them for review to get verified."
 						: "Your profile is complete. Add the two documents below so our team can verify you."}
 				</CardDescription>
 			</CardHeader>
@@ -72,7 +72,11 @@ const VerificationStatusCard = ({ documents }: VerificationStatusCardProps) => {
 					))}
 				</ul>
 
-				{!allUploaded && (
+				{allUploaded ? (
+					<Link href="/dashboard/mjakazi/verification" className={buttonVariants()}>
+						Submit for verification
+					</Link>
+				) : (
 					<Link href="/dashboard/mjakazi/documents" className={buttonVariants()}>
 						Upload documents
 					</Link>
