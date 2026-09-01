@@ -3,6 +3,7 @@ import { CallsToAction } from "@/payload/collections/calls-to-action/schema";
 import { Categories } from "@/payload/collections/categories/schema";
 import { Media } from "@/payload/collections/media/schema";
 import { Pages } from "@/payload/collections/pages/schema";
+import { Payments } from "@/payload/collections/payments/schema";
 import { Posts } from "@/payload/collections/posts/schema";
 import { ProfilePhotos } from "@/payload/collections/profile-photos/schema";
 import { Users } from "@/payload/collections/users/schema";
@@ -22,6 +23,7 @@ const collections = [
 	WaajiriProfiles,
 	ProfilePhotos,
 	VaultDocuments,
+	Payments,
 ];
 
 export { collections };

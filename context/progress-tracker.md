@@ -345,3 +345,32 @@ every feature is finished.
   guard requires `verified` (invariant #17), not merely `pending_review` exiting.
   `verification_approved` (`daysToVerify`) and `verification_rejected` (`attempt`)
   PostHog events fire client-side on success. Manual verification pending.
+
+### 2026-09-01 — Phase 4.1: Payments collection and M-Pesa client
+- **What was built**: The `payments` collection (sealed — `create`/`update`/`delete`
+  restricted, `read` = admin/staff/owner) with the full `architecture.md` field set
+  (`user`, `paymentType`, `status`, `amount`, `tier`, `phoneNumber`,
+  `mpesaReference` unique, `merchantRequestId`, `checkoutRequestId`,
+  `callbackPayload`, `initiatedAt`/`confirmedAt`/`failedAt`/`expiredAt`). A
+  server-only `lib/mpesa.ts` Daraja client (base-URL resolution by
+  `MPESA_ENVIRONMENT`, Africa/Nairobi timestamp, password generation, cached OAuth
+  token, STK push). A `services/payment.service.ts` `initiatePayment()` that mints
+  a unique reference, creates the `initiated` record, sends the push, and lands
+  the record at `stk_sent` (accepted) or `failed` (rejected) with audit entries.
+- **Files touched**: `src/payload/collections/payments/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/lib/mpesa.ts` (new),
+  `src/services/payment.service.ts` (new), `scripts/mpesa-initiate.ts` (new,
+  throwaway), `src/payload-types.ts` (regenerated).
+- **Notes**: `mpesaReference` is *our* minted 12-char unique reference (fits
+  Daraja's `AccountReference` 12-char cap), and `checkoutRequestId` is Daraja's
+  per-push id — the Phase 4.2 callback matching/idempotency key. Phone
+  normalization reuses `normalizeKenyanPhone` from `lib/phone.ts` (single source
+  of truth) rather than duplicating in `lib/mpesa.ts`. No server-side PostHog
+  events yet (no `posthog-node` SDK installed; `payment_initiated`/`payment_failed`
+  will fire client-side with the purchase UI in later phases). The initiate
+  *route* (`/api/actions/payments/initiate`) is deliberately deferred to 5.2;
+  4.1 has no HTTP caller. `pnpm lint` (0 errors, 1 pre-existing `pages/schema.ts`
+  warning) and `pnpm build` pass. **Manual verification pending**: run
+  `pnpm tsx scripts/mpesa-initiate.ts <email> <phone> <amount>` against the
+  sandbox and confirm the STK prompt reaches the handset and the `payments`
+  record is `stk_sent`; then delete the script.

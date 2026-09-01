@@ -78,6 +78,7 @@ export interface Config {
     'waajiri-profiles': WaajiriProfile;
     'profile-photos': ProfilePhoto;
     'vault-documents': VaultDocument;
+    payments: Payment;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -98,6 +99,7 @@ export interface Config {
     'waajiri-profiles': WaajiriProfilesSelect<false> | WaajiriProfilesSelect<true>;
     'profile-photos': ProfilePhotosSelect<false> | ProfilePhotosSelect<true>;
     'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
+    payments: PaymentsSelect<false> | PaymentsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -882,6 +884,40 @@ export interface VaultDocument {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments".
+ */
+export interface Payment {
+  id: string;
+  user: string | User;
+  paymentType: 'verification' | 'subscription';
+  status: 'initiated' | 'stk_sent' | 'callback_received' | 'confirmed' | 'failed' | 'expired' | 'cancelled';
+  amount: number;
+  tier?: ('1' | '2' | '3') | null;
+  phoneNumber?: string | null;
+  mpesaReference: string;
+  merchantRequestId?: string | null;
+  checkoutRequestId?: string | null;
+  /**
+   * The raw daraja callback body, stored whole for audit.
+   */
+  callbackPayload?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  initiatedAt?: string | null;
+  confirmedAt?: string | null;
+  failedAt?: string | null;
+  expiredAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1065,6 +1101,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'vault-documents';
         value: string | VaultDocument;
+      } | null)
+    | ({
+        relationTo: 'payments';
+        value: string | Payment;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1655,6 +1695,28 @@ export interface VaultDocumentsSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments_select".
+ */
+export interface PaymentsSelect<T extends boolean = true> {
+  user?: T;
+  paymentType?: T;
+  status?: T;
+  amount?: T;
+  tier?: T;
+  phoneNumber?: T;
+  mpesaReference?: T;
+  merchantRequestId?: T;
+  checkoutRequestId?: T;
+  callbackPayload?: T;
+  initiatedAt?: T;
+  confirmedAt?: T;
+  failedAt?: T;
+  expiredAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
