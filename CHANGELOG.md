@@ -1,3 +1,13 @@
+# [2.5.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.4.0...v2.5.0) (2026-09-01)
+
+
+### Features
+
+* auto-expire stale M-Pesa pushes and email verification decisions ([cbc24dc](https://github.com/m6-o4/mjakazi-connect/commit/cbc24dc65cf13da982e7166554a95c6bbef8abb0))
+* **mpesa:** handle M-Pesa STK callbacks and settle payments idempotently ([c9b86e4](https://github.com/m6-o4/mjakazi-connect/commit/c9b86e4a47ecc2c2a52f3f433eeda81e28ccf5ce))
+* **payments:** add payments collection and M-Pesa STK initiation ([ee25f46](https://github.com/m6-o4/mjakazi-connect/commit/ee25f466a05b5bcba85c05bd2ef176cab3931028))
+* **verification:** add paid verification flow with admin settings ([836c178](https://github.com/m6-o4/mjakazi-connect/commit/836c1780c4dc804a2724e6c7468653eccbd9653c))
+
 # [2.4.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.3.0...v2.4.0) (2026-09-01)
 
 ### Features
