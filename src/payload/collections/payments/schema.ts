@@ -72,14 +72,22 @@ const Payments: CollectionConfig = {
 			admin: { readOnly: true, position: "sidebar" },
 		},
 		{
-			name: "tier",
-			type: "select",
-			label: "Tier",
-			options: [
-				{ label: "Tier 1", value: "1" },
-				{ label: "Tier 2", value: "2" },
-				{ label: "Tier 3", value: "3" },
-			],
+			// snapshots from platform-settings at purchase, so the payment stays
+			// readable even if the tier is later renamed or removed. only present
+			// for subscription payments
+			name: "tierId",
+			type: "text",
+			label: "Tier ID",
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				condition: (data) => data?.paymentType === "subscription",
+			},
+		},
+		{
+			name: "tierName",
+			type: "text",
+			label: "Tier Name",
 			admin: {
 				readOnly: true,
 				position: "sidebar",

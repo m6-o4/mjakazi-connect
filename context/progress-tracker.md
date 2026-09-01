@@ -507,6 +507,42 @@ every feature is finished.
   10.3 "Done when" also requires the mwajiri pricing page to read the tiers at
   runtime, which is Phase 6.x and not built yet. The tiers are not yet consumed
   by any flow (subscription purchase is 5.2).
-  `pnpm lint` + `pnpm build` pass. **Manual verification pending**: as admin, edit
-  the fee and a tier in `/dashboard/admin/settings`, save, and confirm the values
-  persist (reload the page).
+   `pnpm lint` + `pnpm build` pass. **Manual verification pending**: as admin, edit
+   the fee and a tier in `/dashboard/admin/settings`, save, and confirm the values
+   persist (reload the page).
+
+### 2026-09-01 — Phase 5.1: Subscriptions collection and state machine
+- **What was built**: The `subscriptions` collection (sealed — `create`/`update`/
+  `delete` restricted, `read` = admin/staff/owner; 1:1 `user` relation) with the
+  six-state `subscriptionState` (`none | pending_payment | active | expired |
+  suspended | blacklisted`), `tierId`/`tierName` snapshots, `tierStartedAt`/
+  `tierExpiry`, `suspendedAt`/`suspensionReason`, and `lastPaymentId`. A new
+  `services/subscription.service.ts` with an explicit transition whitelist and six
+  functions: `ensureSubscription`, `beginPurchase`, `activateSubscriptionOnPayment`
+  (with stacking), `expireSubscription`, `suspendSubscription`,
+  `blacklistSubscription` — each guarded on actor + current state, compare-and-swap,
+  and audit-logged. `payments.tier` (`'1'|'2'|'3'`) replaced by `tierId` +
+  `tierName` string snapshots in the same pass. Tier reads exposed via
+  `getSubscriptionTiers` / `getTierById` in `settings.service.ts`.
+- **Files touched**: `src/payload/collections/subscriptions/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/subscription.service.ts` (new),
+  `src/payload/collections/payments/schema.ts`, `src/services/payment.service.ts`,
+  `src/services/settings.service.ts`, `src/services/identity.service.ts`,
+  `src/lib/audit.ts`, `src/payload/collections/audit-logs/schema.ts`,
+  `src/payload-types.ts` (regenerated).
+- **Notes**: Stacking appends the new tier's `durationDays` to the existing
+  `tierExpiry` (never `now()`); a fresh activation sets expiry from `now()`. The
+  tier duration is read live from `platform-settings` at activation time, so an
+  admin duration/price change applies with no deploy (invariant #12); only the
+  tier identity is snapshotted on the subscription/payment. `none → active` and
+  `expired → active` are defensive edges — a confirmed payment always grants
+  access even if `beginPurchase` was skipped. The subscription record is created
+  at mwajiri registration (`none`) via `ensureSubscription`, and
+  `getOrCreateSubscription` re-creates it defensively on purchase if missing.
+  `activateSubscriptionOnPayment` has no caller yet (wired in 5.2);
+  `expireSubscription` (5.3) and suspend/blacklist (10.1) likewise. New audit
+  actions: `subscription_purchase_started`, `subscription_activated`,
+  `subscription_expired`, `subscription_suspended`, `subscription_blacklisted`.
+  No PostHog events added. `pnpm lint` (0 errors, 2 pre-existing warnings) and
+  `pnpm build` pass. **Manual verification pending**: none user-facing — the
+  state machine is verified by the 5.2 purchase flow and 5.3 expiry job.

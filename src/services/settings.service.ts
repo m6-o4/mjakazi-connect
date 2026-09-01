@@ -1,10 +1,14 @@
 import type { Payload } from "payload";
 
-import type { User } from "@/payload-types";
+import type { PlatformSetting, User } from "@/payload-types";
 
 type Result<T = void> =
 	| { success: true; data: T }
 	| { success: false; error: string; code?: string };
+
+// the shape of a single tier as read from platform-settings, derived from the
+// generated global type rather than redeclared
+type SubscriptionTier = NonNullable<PlatformSetting["subscriptionTiers"]>[number];
 
 type TierInput = {
 	tierId: string;
@@ -110,4 +114,33 @@ const updateSubscriptionTiers = async (
 	}
 };
 
-export { getVerificationFee, updateSubscriptionTiers, updateVerificationFee };
+// reads the active subscription tiers from platform-settings. inactive tiers are
+// filtered out so a mwajiri never sees (or buys) a sunset tier
+const getSubscriptionTiers = async (payload: Payload): Promise<SubscriptionTier[]> => {
+	try {
+		const settings = await payload.findGlobal({ slug: "platform-settings" });
+		return (settings.subscriptionTiers ?? []).filter((tier) => tier.isActive !== false);
+	} catch (error) {
+		console.error("[services/settings] getSubscriptionTiers failed:", error);
+		return [];
+	}
+};
+
+// resolves a single active tier by its stable id. returns null when the tier is
+// absent or inactive so callers fail closed rather than charging a stale price
+const getTierById = async (
+	payload: Payload,
+	tierId: string,
+): Promise<SubscriptionTier | null> => {
+	const tiers = await getSubscriptionTiers(payload);
+	return tiers.find((tier) => tier.tierId === tierId) ?? null;
+};
+
+export {
+	getSubscriptionTiers,
+	getTierById,
+	getVerificationFee,
+	updateSubscriptionTiers,
+	updateVerificationFee,
+};
+export type { SubscriptionTier };

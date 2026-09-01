@@ -79,6 +79,7 @@ export interface Config {
     'profile-photos': ProfilePhoto;
     'vault-documents': VaultDocument;
     payments: Payment;
+    subscriptions: Subscription;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -100,6 +101,7 @@ export interface Config {
     'profile-photos': ProfilePhotosSelect<false> | ProfilePhotosSelect<true>;
     'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
+    subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -644,6 +646,11 @@ export interface AuditLog {
     | 'payment_failed'
     | 'payment_expired'
     | 'payment_activation_failed'
+    | 'subscription_purchase_started'
+    | 'subscription_activated'
+    | 'subscription_expired'
+    | 'subscription_suspended'
+    | 'subscription_blacklisted'
     | 'eoi_sent'
     | 'document_uploaded'
     | 'document_deleted'
@@ -899,7 +906,8 @@ export interface Payment {
   paymentType: 'verification' | 'subscription';
   status: 'initiated' | 'stk_sent' | 'callback_received' | 'confirmed' | 'failed' | 'expired' | 'cancelled';
   amount: number;
-  tier?: ('1' | '2' | '3') | null;
+  tierId?: string | null;
+  tierName?: string | null;
   phoneNumber?: string | null;
   mpesaReference: string;
   merchantRequestId?: string | null;
@@ -920,6 +928,24 @@ export interface Payment {
   confirmedAt?: string | null;
   failedAt?: string | null;
   expiredAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions".
+ */
+export interface Subscription {
+  id: string;
+  user: string | User;
+  subscriptionState: 'none' | 'pending_payment' | 'active' | 'expired' | 'suspended' | 'blacklisted';
+  tierId?: string | null;
+  tierName?: string | null;
+  tierStartedAt?: string | null;
+  tierExpiry?: string | null;
+  suspendedAt?: string | null;
+  suspensionReason?: string | null;
+  lastPaymentId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1121,6 +1147,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'payments';
         value: string | Payment;
+      } | null)
+    | ({
+        relationTo: 'subscriptions';
+        value: string | Subscription;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1721,7 +1751,8 @@ export interface PaymentsSelect<T extends boolean = true> {
   paymentType?: T;
   status?: T;
   amount?: T;
-  tier?: T;
+  tierId?: T;
+  tierName?: T;
   phoneNumber?: T;
   mpesaReference?: T;
   merchantRequestId?: T;
@@ -1731,6 +1762,23 @@ export interface PaymentsSelect<T extends boolean = true> {
   confirmedAt?: T;
   failedAt?: T;
   expiredAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions_select".
+ */
+export interface SubscriptionsSelect<T extends boolean = true> {
+  user?: T;
+  subscriptionState?: T;
+  tierId?: T;
+  tierName?: T;
+  tierStartedAt?: T;
+  tierExpiry?: T;
+  suspendedAt?: T;
+  suspensionReason?: T;
+  lastPaymentId?: T;
   updatedAt?: T;
   createdAt?: T;
 }

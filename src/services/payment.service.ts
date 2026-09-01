@@ -12,7 +12,6 @@ type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 type PaymentType = NonNullable<Payment["paymentType"]>;
-type Tier = NonNullable<Payment["tier"]>;
 
 const fail = (
 	error: string,
@@ -41,7 +40,9 @@ type PaymentInput = {
 	paymentType: PaymentType;
 	amount: number;
 	phoneNumber: string;
-	tier?: Tier;
+	// tier snapshots — required for subscription payments, null for verification
+	tierId?: string | null;
+	tierName?: string | null;
 };
 
 // creates a payment record and fires the stk push. the record starts at
@@ -66,7 +67,7 @@ const initiatePayment = async (
 		return fail("Invalid amount.", "invalid_amount");
 	}
 
-	if (input.paymentType === "subscription" && !input.tier) {
+	if (input.paymentType === "subscription" && !input.tierId) {
 		return fail("A tier is required for a subscription payment.", "tier_required");
 	}
 
@@ -87,7 +88,8 @@ const initiatePayment = async (
 				paymentType: input.paymentType,
 				status: "initiated",
 				amount: input.amount,
-				tier: input.paymentType === "subscription" ? (input.tier ?? null) : null,
+				tierId: input.paymentType === "subscription" ? (input.tierId ?? null) : null,
+				tierName: input.paymentType === "subscription" ? (input.tierName ?? null) : null,
 				phoneNumber,
 				mpesaReference,
 				initiatedAt,
@@ -106,7 +108,7 @@ const initiatePayment = async (
 		description:
 			input.paymentType === "verification"
 				? "Mjakazi verification fee"
-				: `Subscription — tier ${input.tier}`,
+				: `Subscription — ${input.tierName ?? input.tierId ?? "tier"}`,
 	});
 
 	if (!push.success) {
@@ -170,7 +172,8 @@ const initiatePayment = async (
 			mpesaReference,
 			amount: input.amount,
 			paymentType: input.paymentType,
-			tier: input.tier ?? null,
+			tierId: input.tierId ?? null,
+			tierName: input.tierName ?? null,
 		},
 	});
 
@@ -301,7 +304,8 @@ const settleCallback = async (
 			mpesaReference: payment.mpesaReference,
 			amount: payment.amount,
 			paymentType: payment.paymentType,
-			tier: payment.tier ?? null,
+			tierId: payment.tierId ?? null,
+			tierName: payment.tierName ?? null,
 			checkoutRequestId: payment.checkoutRequestId ?? null,
 			resultCode: detail.resultCode,
 			resultDesc: detail.resultDesc,
@@ -318,7 +322,7 @@ const settleCallback = async (
 		payment,
 		nextStatus === "confirmed" ? "payment_completed" : "payment_failed",
 		nextStatus === "confirmed"
-			? { paymentType: payment.paymentType, tierId: payment.tier ?? null }
+			? { paymentType: payment.paymentType, tierId: payment.tierId ?? null }
 			: {
 					paymentType: payment.paymentType,
 					reason: detail.reason ?? (detail.resultCode !== 0 ? "cancelled" : "failed"),

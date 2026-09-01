@@ -1,6 +1,7 @@
 import { ValidationError, type Payload } from "payload";
 
 import type { User } from "@/payload-types";
+import { ensureSubscription } from "@/services/subscription.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -62,6 +63,17 @@ const ensureProfile = async (payload: Payload, user: User): Promise<Result<void>
 				} catch (error) {
 					if (!isDuplicateUserError(error)) throw error;
 				}
+			}
+
+			// the 1:1 subscription record is created alongside the profile so the
+			// `none` state is real from day one. a failure here is non-fatal — the
+			// subscription service re-creates it defensively on first purchase
+			const subscription = await ensureSubscription(payload, user);
+			if (!subscription.success) {
+				console.error(
+					"[services/identity] ensureSubscription failed:",
+					subscription.error,
+				);
 			}
 		}
 
