@@ -123,6 +123,27 @@ registry never drifts from the actual codebase.
 - **Visual pattern**: shadcn `Card`; per-state lucide icon in `text-accent`; shows "Valid until" date (verified) or "Reason" (rejected); no action buttons yet
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
+### `VerificationQueue`
+- **Location**: `src/components/dashboard/staff/verifications/verification-queue.tsx`
+- **Purpose**: The `pending_review` list for the staff review queue — each row links to its review case
+- **Props**: `{ items: QueueItem[] }` (`id`, `displayName`, `legalName`, `submittedAt`, `attempts`)
+- **Visual pattern**: `bg-card` + `divide-y` rows matching the accounts list; `Badge` "prior rejections" when `attempts > 0`; `Clock` icon + "Submitted {date}" muted timestamp; `Inbox` empty state
+- **Used in**: `(saas)/dashboard/staff/verifications/page.tsx`
+
+### `DocumentViewer`
+- **Location**: `src/components/dashboard/staff/verifications/document-viewer.tsx`
+- **Purpose**: Renders a profile's two identity documents side by side via the audited vault route
+- **Props**: `{ documents: ReviewDocument[] }` (`id`, `documentType`, `filename`)
+- **Visual pattern**: two `Card`s in `grid gap-4 md:grid-cols-2`; each holds an `<iframe src="/api/actions/vault/{id}">` (auth + audit + signed-URL redirect) with an "Open in new tab" fallback link; `FileText` empty state per missing document
+- **Used in**: `(saas)/dashboard/staff/verifications/[id]/page.tsx`
+
+### `ReviewForm`
+- **Location**: `src/components/dashboard/staff/verifications/review-form.tsx`
+- **Purpose**: The staff approve/reject decision — approve is one click, reject requires a reason
+- **Props**: `{ profileId: string; verificationSubmittedAt: string | null; verificationAttempts: number | null }`
+- **Visual pattern**: shadcn `Card`; a `Label` + `Textarea` for an optional internal approve note (`verificationNotes`) and a second for the required rejection reason (`rejectionReason`, shown to the worker); `Button` (default) "Approve" + `Button variant="destructive"` "Reject"; fires `verification_approved` (`daysToVerify`) / `verification_rejected` (`attempt`) PostHog events, then redirects back to the queue
+- **Used in**: `(saas)/dashboard/staff/verifications/[id]/page.tsx`
+
 ### `CreateStaffForm`
 - **Location**: `src/components/dashboard/admin/staff/create-staff-form.tsx`
 - **Purpose**: Creates a staff account (first/last name + email); the temporary password is generated server-side

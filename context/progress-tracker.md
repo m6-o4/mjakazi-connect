@@ -318,3 +318,30 @@ every feature is finished.
   (`renewVerification`) are deliberately not wired — `rejected` and
   `verification_expired` are unreachable until Phases 3.3 / 7.1. No schema change,
   so no `generate:types` needed.
+
+### 2026-09-01 — Phase 3.3: Staff review queue
+- **What was built**: The verification review queue at
+  `/dashboard/staff/verifications` (admin + staff) — every `pending_review`
+  profile, oldest submission first — and a per-case review screen at
+  `/dashboard/staff/verifications/[id]` showing the legal name, date of birth,
+  nationality and phone next to the National ID and Certificate of Good Conduct
+  side by side. Approve and reject are wired to the existing
+  `approveVerification` / `rejectVerification` service functions (mandatory reject
+  reason, attempts increment, 12-month expiry on approve). Documents render
+  through the existing audited vault route, so every view still writes a
+  `document_viewed` entry.
+- **Files touched**: `services/verification.service.ts` (added
+  `listPendingReviews`), `app/actions/verification.ts` (added
+  `approveVerificationAction` / `rejectVerificationAction`),
+  `app/(saas)/dashboard/staff/verifications/page.tsx` (new),
+  `app/(saas)/dashboard/staff/verifications/[id]/page.tsx` (new),
+  `components/dashboard/staff/verifications/{verification-queue,document-viewer,review-form}.tsx`
+  (new), `lib/dashboard-nav.ts`, `context/ui-registry.md`.
+- **Notes**: No schema change, so no `generate:types`. The document viewer points
+  `<iframe>`s at `/api/actions/vault/{id}` rather than minting signed URLs
+  server-side, so role check and the audit entry stay in exactly one place. Approve
+  carries no notes field (the service's optional `notes` stays unwired — not in
+  the plan). Rejected profiles never become directory-visible because the directory
+  guard requires `verified` (invariant #17), not merely `pending_review` exiting.
+  `verification_approved` (`daysToVerify`) and `verification_rejected` (`attempt`)
+  PostHog events fire client-side on success. Manual verification pending.

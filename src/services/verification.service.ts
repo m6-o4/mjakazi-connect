@@ -566,15 +566,67 @@ const deactivateProfile = async (
 	});
 };
 
+type PendingReview = {
+	id: string;
+	displayName: string;
+	legalFirstName: string | null;
+	legalLastName: string | null;
+	verificationSubmittedAt: string | null;
+	verificationAttempts: number | null;
+};
+
+// the staff review queue — every profile in pending_review, oldest submission
+// first. a read, not a transition, so no audit entry is written here
+const listPendingReviews = async (
+	payload: Payload,
+	actor: User,
+): Promise<Result<PendingReview[]>> => {
+	if (!isStaff(actor)) return fail("Forbidden", "forbidden");
+
+	try {
+		const result = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { verificationState: { equals: "pending_review" } },
+			sort: "verificationSubmittedAt",
+			limit: 100,
+			select: {
+				displayName: true,
+				legalFirstName: true,
+				legalLastName: true,
+				verificationSubmittedAt: true,
+				verificationAttempts: true,
+			},
+			overrideAccess: false,
+			req: { user: actor },
+		});
+
+		const docs: PendingReview[] = result.docs.map((profile) => ({
+			id: profile.id,
+			displayName: profile.displayName,
+			legalFirstName: profile.legalFirstName ?? null,
+			legalLastName: profile.legalLastName ?? null,
+			verificationSubmittedAt: profile.verificationSubmittedAt ?? null,
+			verificationAttempts: profile.verificationAttempts ?? null,
+		}));
+
+		return { success: true, data: docs };
+	} catch (error) {
+		console.error("[services/verification] listPendingReviews failed:", error);
+		return { success: false, error: "Could not load the review queue." };
+	}
+};
+
 export {
 	advanceToReview,
 	approveVerification,
 	blacklistProfile,
 	deactivateProfile,
 	expireVerification,
+	listPendingReviews,
 	rejectVerification,
 	renewVerification,
 	resubmitForVerification,
 	revertToReview,
 	submitForVerification,
 };
+export type { PendingReview };
