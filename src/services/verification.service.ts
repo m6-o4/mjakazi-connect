@@ -7,7 +7,7 @@ import {
 	sendVerificationRejectedEmail,
 } from "@/lib/email";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
-import type { User, WajakaziProfile } from "@/payload-types";
+import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 
 type Result<T = void> =
@@ -118,6 +118,26 @@ const loadProfileById = async (
 			id: profileId,
 			depth: 0,
 		});
+	} catch {
+		return null;
+	}
+};
+
+// trusted system read resolving the profile for a given user id — used when the
+// caller has a payment but no session (the callback) and needs the profile to
+// transition. profiles are 1:1 with users, so this returns at most one record
+const loadProfileByUserId = async (
+	payload: Payload,
+	userId: string,
+): Promise<WajakaziProfile | null> => {
+	try {
+		const result = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { user: { equals: userId } },
+			limit: 1,
+			overrideAccess: true,
+		});
+		return result.docs[0] ?? null;
 	} catch {
 		return null;
 	}
@@ -431,11 +451,13 @@ const renewVerification = async (
 	});
 };
 
-// pending_payment → pending_review. the only caller will be the payment callback
-// in Phase 4.4 — no bypass, no mock, no caller in this phase
+// pending_payment → pending_review. the only caller is the payment path in
+// Phase 4.4 — no bypass, no mock. stores the payment reference and resets the
+// attempt count so a fresh cycle starts clean
 const advanceToReview = async (
 	payload: Payload,
 	profileId: string,
+	paymentId?: string,
 ): Promise<Result<WajakaziProfile>> => {
 	const profile = await loadProfileById(payload, profileId);
 	if (!profile) return fail("Profile not found.", "not_found");
@@ -447,11 +469,32 @@ const advanceToReview = async (
 		payload,
 		profile,
 		nextState: "pending_review",
-		data: { verificationAttempts: 0 },
+		data: {
+			verificationAttempts: 0,
+			lastVerificationPaymentId: paymentId ?? null,
+		},
 		action: "verification_advanced",
 		actor: null,
 		source: "system",
 	});
+};
+
+// the 4.4 wire-up: a confirmed verification payment moves the profile from
+// pending_payment to pending_review and records the payment reference. called
+// from the payment service after the callback confirms. the profile's current
+// state is the idempotency guard, so a repeated activation is refused rather
+// than double-applied
+const activateVerificationOnPayment = async (
+	payload: Payload,
+	payment: Payment,
+): Promise<Result<WajakaziProfile>> => {
+	const userId = toId(payment.user);
+	if (!userId) return fail("Payment has no payer.", "missing_user");
+
+	const profile = await loadProfileByUserId(payload, userId);
+	if (!profile) return fail("Profile not found.", "not_found");
+
+	return advanceToReview(payload, profile.id, payment.id);
 };
 
 // pending_review → verified. sets the 12-month expiry and records the reviewer
@@ -692,6 +735,7 @@ const listPendingReviews = async (
 };
 
 export {
+	activateVerificationOnPayment,
 	advanceToReview,
 	approveVerification,
 	blacklistProfile,

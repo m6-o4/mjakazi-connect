@@ -8,10 +8,11 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 	admin: [
 		{ href: "/dashboard/admin", label: "Overview" },
 		{ href: "/dashboard/staff/verifications", label: "Verifications" },
-		{ href: "/dashboard/admin/staff", label: "Staff" },
 		{ href: "/dashboard/accounts/wajakazi", label: "Wajakazi" },
 		{ href: "/dashboard/accounts/waajiri", label: "Waajiri" },
+		{ href: "/dashboard/admin/staff", label: "Staff" },
 		{ href: "/dashboard/audit-logs", label: "Audit Logs" },
+		{ href: "/dashboard/admin/settings", label: "Settings" },
 	],
 	staff: [
 		{ href: "/dashboard/staff", label: "Overview" },

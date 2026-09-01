@@ -432,6 +432,81 @@ every feature is finished.
   missed window self-corrects. `payment_expired` audit action already existed
   (4.1/4.2), so no schema change and no `generate:types`. The `status` query is
   on the indexed field; the window filter is applied in JS to keep the run cheap.
-  No domain transition — that is 4.4. `pnpm lint` (0 errors) and `pnpm build`
-  pass. **Manual verification pending**: initiate an STK push, ignore the prompt,
-  and confirm the record is `expired` after ~2 minutes.
+   No domain transition — that is 4.4. `pnpm lint` (0 errors) and `pnpm build`
+   pass. **Manual verification pending**: initiate an STK push, ignore the prompt,
+   and confirm the record is `expired` after ~2 minutes.
+
+### 2026-09-01 — Phase 4.4: Verification payment (initiate + wire to review)
+- **What was built**: The verification payment end to end. A minimal admin-only
+  `platform-settings` global (`verificationFee`, default 1500 — pulled forward
+  from 10.3) sourced via `getVerificationFee` in a new `settings.service.ts`.
+  The initiate as a Server Action (`initiateVerificationPaymentAction`) that
+  reads the fee and the profile phone and calls the existing `initiatePayment`
+  with `paymentType = verification`. The `pending_payment` pay UI
+  (`PayVerification`) with STK-push + confirmation polling. The confirmed-callback
+  wire-up: `payment.service` now calls `activateVerificationOnPayment` after a
+  confirmed verification payment, which resolves the profile by user and runs
+  `advanceToReview` (now storing `lastVerificationPaymentId` and resetting
+  attempts). The `pending_review` document lock in `vault.service.ts` (upload and
+  delete refuse while under review). A `payment_activation_failed` audit action
+  for activation failures.
+- **Files touched**: `src/payload/blocks/globals/platform-settings/schema.ts`
+  (new), `src/payload/blocks/globals/index.ts`, `src/services/settings.service.ts`
+  (new), `src/app/actions/payment.ts` (new),
+  `src/components/dashboard/mjakazi/verification/pay-verification.tsx` (new),
+  `src/services/verification.service.ts` (`advanceToReview` + `activateVerificationOnPayment`
+  + `loadProfileByUserId`), `src/services/payment.service.ts` (activation after
+  confirm + server-side PostHog), `src/lib/posthog-server.ts` (new),
+  `src/services/vault.service.ts` (document lock), `src/lib/audit.ts`,
+  `src/payload/collections/audit-logs/schema.ts`,
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/components/dashboard/mjakazi/verification/verification-state.tsx`
+  (`StatusState` type), `src/payload-types.ts` (regenerated).
+- **Notes**: Initiation was pulled forward out of 5.2 per the 4.4 scope decision.
+  Fee comes from `platform-settings`, never hardcoded (invariant #12). Document
+  lock applies to `pending_review` only — workers can still fix documents while
+  `draft`/`pending_payment`. On activation failure the payment stays `confirmed`
+  (immutable), the error is logged and a `payment_activation_failed` audit entry
+  is written; no admin alert or retry job in 4.4. Idempotency rests on the
+  payment's terminal-state check (duplicate callbacks never reach activation) and
+  `advanceToReview`'s CAS on `pending_payment`. Server-side PostHog is now wired
+  (`lib/posthog-server.ts`, `posthog-node`): `payment_completed` fires on a
+  confirmed callback and `payment_failed` on callback rejection or timeout, both
+  captured with the payer's Clerk id as `distinctId` (resolved from
+  `users.clerkId`) so they join the browser-identified person. `payment_initiated`
+  remains client-side. `pnpm lint` (0 errors, 2
+  pre-existing warnings) and `pnpm build` pass. **Manual verification pending**:
+  submit a complete profile, pay the KSh 1,500 fee in the sandbox, and confirm
+  the profile lands in `pending_review` with `lastVerificationPaymentId` set,
+  documents locked, and `payment_confirmed` + `verification_advanced` audit
+  entries; then replay the callback by hand and confirm nothing double-applies.
+
+### 2026-09-01 — Phase 10.3 (partial): Admin platform settings UI
+- **What was built**: The admin pricing UI at `/dashboard/admin/settings`. The
+  `platform-settings` global gained a `subscriptionTiers` array (`tierId`, `name`,
+  `price`, `durationDays`, `description`, `isActive`, `isConcierge`). Two admin
+  forms — `PlatformSettingsForm` (verification fee) and `SubscriptionTiersForm`
+  (editable tier list with Add/Remove + Active/Concierge checkboxes) — write
+  through Server Actions (`updateVerificationFeeAction`,
+  `updateSubscriptionTiersAction`) into a new `settings.service.ts`
+  (`updateVerificationFee`, `updateSubscriptionTiers`). Added "Settings" to the
+  admin nav.
+- **Files touched**: `src/payload/blocks/globals/platform-settings/schema.ts`
+  (tiers array), `src/services/settings.service.ts` (update fns),
+  `src/app/actions/settings.ts` (new),
+  `src/components/dashboard/admin/settings/platform-settings-form.tsx` (new),
+  `src/components/dashboard/admin/settings/subscription-tiers-form.tsx` (new),
+  `src/app/(saas)/dashboard/admin/settings/page.tsx` (new),
+  `src/lib/dashboard-nav.ts`, `src/payload-types.ts` (regenerated).
+- **Notes**: Follows the v1 pattern (start empty, Remove button + Active
+  checkbox, PUT-replace the whole array), adapted to the current conventions —
+  Server Actions instead of v1's `/apis` route handlers, and `isConcierge` added
+  per the current spec. Validation (required fields, unique `tierId`, price and
+  duration >= 1) lives in the service. Fee and tiers are admin-only at the panel
+  surface; reads go through the trusted local-api path. **Partial** — the
+  10.3 "Done when" also requires the mwajiri pricing page to read the tiers at
+  runtime, which is Phase 6.x and not built yet. The tiers are not yet consumed
+  by any flow (subscription purchase is 5.2).
+  `pnpm lint` + `pnpm build` pass. **Manual verification pending**: as admin, edit
+  the fee and a tier in `/dashboard/admin/settings`, save, and confirm the values
+  persist (reload the page).

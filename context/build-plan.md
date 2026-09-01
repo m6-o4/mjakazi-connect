@@ -287,16 +287,23 @@ must be refused and audit-logged.
 **Done when**: an ignored prompt expires on its own.
 **Verify**: initiate, ignore the prompt, wait, confirm the state changes.
 
-### 4.4 — Wire payment to verification
+### 4.4 — Verification payment: initiate + wire to review
 
-**Role**: the first monetized transition.
-**Builds**: on `payment.confirmed` with `paymentType = verification`, atomically
-move `pending_payment → pending_review`, lock documents, write the audit entry,
-store the payment reference.
-**Done when**: the transition happens only on a confirmed callback, and rollback
-is clean if any part fails.
+**Role**: the first monetized transition, end to end.
+**Builds**: a minimal admin-only `platform-settings` global holding
+`verificationFee` (pulled forward from 10.3); the verification payment
+initiation (pay button + Server Action calling `initiatePayment` with
+`paymentType = verification`, amount from `platform-settings`, phone from the
+profile — pulled forward out of 5.2); and the confirmed-callback wiring — on
+`payment.confirmed` with `paymentType = verification`, atomically move
+`pending_payment → pending_review`, store the payment reference, lock documents,
+write the audit entry.
+**Done when**: a complete profile can pay end to end and lands in
+`pending_review` only on a confirmed callback; a failed payment leaves the state
+untouched; documents are locked during review.
 **Verify**: pay the KSh 1,500 fee end to end. Then confirm a failed payment
-leaves the state untouched.
+leaves the state untouched, and replay the callback by hand — nothing applies
+twice.
 
 ---
 
@@ -452,13 +459,14 @@ running payment total split by verification fees and subscriptions.
 
 ### 10.3 — Staff management and platform settings
 
-**Builds**: `/dashboard/admin/staff`, and a `platform-settings` global (`admin`
+**Builds**: `/dashboard/admin/staff`, a `platform-settings` global (`admin`
 only) holding the verification fee plus the `subscriptionTiers` array
 (`tierId`, `name`, `price`, `durationDays`, `description`, `isActive`,
-`isConcierge`). Admin edits tiers through a form that PUT-replaces the whole
-array, validating required fields and unique `tierId` (the v1 pattern). Tiers are
-deactivated with `isActive`, never deleted; `tierId` is snapshotted onto
-subscriptions/payments at purchase and must not change after go-live.
+`isConcierge`), and `/dashboard/admin/settings` where the admin edits both.
+Admin edits tiers through a form that PUT-replaces the whole array, validating
+required fields and unique `tierId` (the v1 pattern). Tiers can be removed or
+deactivated with `isActive`; `tierId` is snapshotted onto subscriptions/payments
+at purchase and must not change after go-live.
 **Done when**: changing a tier price in settings changes what is charged with no
 deploy, and the mwajiri pricing page reads the tier list at runtime.
 **Verify**: change a tier price, initiate a purchase, confirm the STK amount;

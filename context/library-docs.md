@@ -292,6 +292,12 @@ full state machine is in `architecture.md`.
 document URL, no email, no name, no free text a user typed. The complete event
 list is in `code-standards.md` — adding an event means editing that list first.
 
+- **Server-side events use the Clerk id as `distinctId`.** The browser identifies
+  with Clerk's `user.id`; a server event carrying a Payload object id would create
+  a second, disconnected person. Resolve `users.clerkId` before capturing
+  server-side (`lib/posthog-server.ts`), falling back to the Payload id when the
+  Clerk id is absent.
+
 PostHog is not the audit log. Compliance questions are answered from
 `audit-logs`, never from analytics.
 

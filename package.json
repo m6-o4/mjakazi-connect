@@ -47,6 +47,7 @@
 		"payload": "3.88.0",
 		"postcss": "^8.5.26",
 		"posthog-js": "^1.407.2",
+		"posthog-node": "^5.51.4",
 		"prism-react-renderer": "^2.4.1",
 		"react": "19.2.8",
 		"react-day-picker": "^10.0.1",

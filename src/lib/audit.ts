@@ -20,6 +20,7 @@ type AuditAction =
 	| "payment_duplicate"
 	| "payment_failed"
 	| "payment_expired"
+	| "payment_activation_failed"
 	| "eoi_sent"
 	| "document_uploaded"
 	| "document_deleted"

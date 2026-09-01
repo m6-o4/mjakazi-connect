@@ -51,6 +51,17 @@ const uploadVaultDocument = async (
 		return { success: false, error: "Profile not found.", code: "not_found" };
 	}
 
+	// documents lock once verification is in review so the evidence staff are
+	// looking at cannot change under them. the lock is enforced here, not in the
+	// UI, so no edit path can bypass it
+	if (profile.verificationState === "pending_review") {
+		return {
+			success: false,
+			error: "Documents are locked while your verification is under review.",
+			code: "documents_locked",
+		};
+	}
+
 	try {
 		// read access scopes this to the owner, so only their own existing document
 		// of the same type is found
@@ -173,6 +184,24 @@ const deleteVaultDocument = async (
 
 		if (!document) {
 			return { success: false, error: "Document not found.", code: "not_found" };
+		}
+
+		// same review lock as upload — the owning profile must not be under
+		// review when a document is removed
+		const profileId = toId(document.profile);
+		if (profileId) {
+			const profile = await payload.findByID({
+				collection: "wajakazi-profiles",
+				id: profileId,
+				depth: 0,
+			});
+			if (profile?.verificationState === "pending_review") {
+				return {
+					success: false,
+					error: "Documents are locked while your verification is under review.",
+					code: "documents_locked",
+				};
+			}
 		}
 
 		await payload.delete({

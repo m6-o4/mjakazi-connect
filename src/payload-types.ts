@@ -115,12 +115,14 @@ export interface Config {
     header: Header;
     footer: Footer;
     branding: Branding;
+    'platform-settings': PlatformSetting;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     branding: BrandingSelect<false> | BrandingSelect<true>;
+    'platform-settings': PlatformSettingsSelect<false> | PlatformSettingsSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -641,6 +643,7 @@ export interface AuditLog {
     | 'payment_duplicate'
     | 'payment_failed'
     | 'payment_expired'
+    | 'payment_activation_failed'
     | 'eoi_sent'
     | 'document_uploaded'
     | 'document_deleted'
@@ -1978,6 +1981,34 @@ export interface Branding {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform-settings".
+ */
+export interface PlatformSetting {
+  id: string;
+  /**
+   * The one-time fee a mjakazi pays for document review. Integer KSh only.
+   */
+  verificationFee: number;
+  subscriptionTiers?:
+    | {
+        /**
+         * Machine-readable key. Snapshotted onto subscriptions at purchase — never change it after go-live.
+         */
+        tierId: string;
+        name: string;
+        price: number;
+        durationDays: number;
+        description?: string | null;
+        isActive?: boolean | null;
+        isConcierge?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -2121,6 +2152,28 @@ export interface FooterSelect<T extends boolean = true> {
  */
 export interface BrandingSelect<T extends boolean = true> {
   organizationIcon?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform-settings_select".
+ */
+export interface PlatformSettingsSelect<T extends boolean = true> {
+  verificationFee?: T;
+  subscriptionTiers?:
+    | T
+    | {
+        tierId?: T;
+        name?: T;
+        price?: T;
+        durationDays?: T;
+        description?: T;
+        isActive?: T;
+        isConcierge?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

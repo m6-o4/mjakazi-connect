@@ -730,7 +730,7 @@ there first.
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_ACCESS_KEY_SECRET`, `S3_REGION`, `S3_ENDPOINT` | storage. Endpoint switches MinIO ↔ R2. |
 | `MPESA_ENVIRONMENT`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`, `MPESA_CALLBACK_URL` | `lib/mpesa.ts` |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` | email |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` | analytics — **to be added** |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, `NEXT_PUBLIC_POSTHOG_HOST` | analytics — browser (`posthog-js`) and server (`posthog-node`) clients |
 
 `.env.example` must list every variable above, with the MinIO and Cloudflare
 blocks labelled by environment. It is committed; `.env` never is. `NEXT_PUBLIC_`

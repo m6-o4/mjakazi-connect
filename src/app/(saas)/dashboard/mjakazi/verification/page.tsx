@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { PayVerification } from "@/components/dashboard/mjakazi/verification/pay-verification";
 import { SubmitVerification } from "@/components/dashboard/mjakazi/verification/submit-verification";
 import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import config from "@/payload-config";
 import { getOwnProfile } from "@/services/profile.service";
+import { getVerificationFee } from "@/services/settings.service";
 
 export const metadata: Metadata = { title: "Verification" };
 
@@ -37,6 +39,10 @@ const MjakaziVerificationPage = async () => {
 		uploadedTypes.has(value),
 	);
 	const profileComplete = profile.profileComplete === true;
+	const verificationFee =
+		profile.verificationState === "pending_payment"
+			? await getVerificationFee(payload)
+			: null;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -52,6 +58,8 @@ const MjakaziVerificationPage = async () => {
 					profileComplete={profileComplete}
 					hasBothDocuments={hasBothDocuments}
 				/>
+			) : profile.verificationState === "pending_payment" ? (
+				<PayVerification fee={verificationFee} />
 			) : (
 				<VerificationStateCard
 					state={profile.verificationState}

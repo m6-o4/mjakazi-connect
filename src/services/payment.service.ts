@@ -2,17 +2,14 @@ import { randomInt } from "node:crypto";
 import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
-import {
-	getCallbackMetadataValue,
-	initiateStkPush,
-	type StkCallback,
-} from "@/lib/mpesa";
+import { getCallbackMetadataValue, initiateStkPush, type StkCallback } from "@/lib/mpesa";
 import { normalizeKenyanPhone } from "@/lib/phone";
+import { captureServerEvent } from "@/lib/posthog-server";
 import type { Payment, User } from "@/payload-types";
+import { activateVerificationOnPayment } from "@/services/verification.service";
 
 type Result<T = void> =
-	| { success: true; data: T }
-	| { success: false; error: string; code?: string };
+	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 type PaymentType = NonNullable<Payment["paymentType"]>;
 type Tier = NonNullable<Payment["tier"]>;
@@ -197,7 +194,8 @@ const TERMINAL_STATUSES: ReadonlyArray<Payment["status"]> = [
 	"cancelled",
 ];
 
-const isTerminal = (payment: Payment): boolean => TERMINAL_STATUSES.includes(payment.status);
+const isTerminal = (payment: Payment): boolean =>
+	TERMINAL_STATUSES.includes(payment.status);
 
 // relationships come back as an id string at depth 0, or an object when
 // populated. normalized to an id here
@@ -207,6 +205,29 @@ const toId = (
 	if (!value) return null;
 	if (typeof value === "string") return value;
 	return typeof value.id === "number" ? String(value.id) : (value.id ?? null);
+};
+
+// resolves the payer's clerk id so server-side analytics events land on the same
+// person the browser identified (clerk id, not the payload object id), then
+// captures. fire-and-forget — an analytics miss never affects the payment path
+const capturePaymentEvent = async (
+	payload: Payload,
+	payment: Payment,
+	event: "payment_completed" | "payment_failed",
+	properties: Record<string, string | number | boolean | null>,
+): Promise<void> => {
+	try {
+		const userId = toId(payment.user);
+		if (!userId) return;
+
+		let distinctId = userId;
+		const user = await payload.findByID({ collection: "users", id: userId, depth: 0 });
+		if (user?.clerkId) distinctId = user.clerkId;
+
+		captureServerEvent({ distinctId, event, properties });
+	} catch (error) {
+		console.error(`[services/payment] capture ${event} failed:`, error);
+	}
 };
 
 // moves a payment to its terminal state in one compare-and-swap write, stores
@@ -231,10 +252,7 @@ const settleCallback = async (
 		const result = await payload.update({
 			collection: "payments",
 			where: {
-				and: [
-					{ id: { equals: payment.id } },
-					{ status: { equals: previousState } },
-				],
+				and: [{ id: { equals: payment.id } }, { status: { equals: previousState } }],
 			},
 			data: {
 				status: nextStatus,
@@ -294,6 +312,18 @@ const settleCallback = async (
 		},
 		source: "system",
 	});
+
+	await capturePaymentEvent(
+		payload,
+		payment,
+		nextStatus === "confirmed" ? "payment_completed" : "payment_failed",
+		nextStatus === "confirmed"
+			? { paymentType: payment.paymentType, tierId: payment.tier ?? null }
+			: {
+					paymentType: payment.paymentType,
+					reason: detail.reason ?? (detail.resultCode !== 0 ? "cancelled" : "failed"),
+				},
+	);
 
 	return { success: true, data: { status: nextStatus, payment: updated } };
 };
@@ -387,10 +417,44 @@ const handleCallback = async (
 		});
 	}
 
-	return settleCallback(payload, payment, callback, "confirmed", {
+	const settled = await settleCallback(payload, payment, callback, "confirmed", {
 		resultCode: ResultCode,
 		resultDesc: ResultDesc ?? null,
 	});
+
+	// 4.4: a confirmed verification payment activates the profile. a failed
+	// activation leaves the payment confirmed (immutable) and is audit-logged
+	// for investigation — it is never rolled back
+	if (
+		settled.success &&
+		settled.data.status === "confirmed" &&
+		settled.data.payment?.paymentType === "verification"
+	) {
+		const activation = await activateVerificationOnPayment(payload, settled.data.payment);
+		if (!activation.success) {
+			console.error(
+				`[services/payment] verification activation failed for payment ${settled.data.payment.id}:`,
+				activation.error,
+			);
+			await writeAuditLog({
+				action: "payment_activation_failed",
+				actorId: null,
+				targetId: toId(settled.data.payment.user),
+				previousState: "pending_payment",
+				newState: "pending_payment",
+				metadata: {
+					paymentId: settled.data.payment.id,
+					mpesaReference: settled.data.payment.mpesaReference,
+					paymentType: settled.data.payment.paymentType,
+					error: activation.error,
+					code: activation.code ?? null,
+				},
+				source: "system",
+			});
+		}
+	}
+
+	return settled;
 };
 
 // an stk push the worker never answers has a fixed window to be confirmed. past
@@ -398,9 +462,7 @@ const handleCallback = async (
 // the timeout job polls this every minute, so a missed window self-corrects.
 const STK_TIMEOUT_MINUTES = 2;
 
-const expireTimedOutPayments = async (
-	payload: Payload,
-): Promise<{ expired: number }> => {
+const expireTimedOutPayments = async (payload: Payload): Promise<{ expired: number }> => {
 	const cutoff = new Date(Date.now() - STK_TIMEOUT_MINUTES * 60_000);
 
 	let candidates: Payment[];
@@ -433,10 +495,7 @@ const expireTimedOutPayments = async (
 			const result = await payload.update({
 				collection: "payments",
 				where: {
-					and: [
-						{ id: { equals: payment.id } },
-						{ status: { equals: "stk_sent" } },
-					],
+					and: [{ id: { equals: payment.id } }, { status: { equals: "stk_sent" } }],
 				},
 				data: { status: "expired", expiredAt: new Date().toISOString() },
 				overrideAccess: true,
@@ -459,6 +518,11 @@ const expireTimedOutPayments = async (
 					reason: `STK push not responded to within ${STK_TIMEOUT_MINUTES} minutes`,
 				},
 				source: "system",
+			});
+
+			await capturePaymentEvent(payload, payment, "payment_failed", {
+				paymentType: payment.paymentType,
+				reason: "timeout",
 			});
 
 			expired += 1;
