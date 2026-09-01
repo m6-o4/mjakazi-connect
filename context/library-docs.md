@@ -196,6 +196,13 @@ hits `/api/payload-jobs/run` with `CRON_SECRET` as a bearer token.
   fields, bound the result set, exit early when there is nothing to do.
 - **Idempotency is mandatory.** A task may run twice against the same record.
   Guard on current state, not on a timestamp.
+- **A standalone task config must be typed `TaskConfig<any>`.** The plain
+  `TaskConfig` constrains `slug` to `TaskType` (`keyof TypedJobs['tasks']`), which
+  is empty before the task is registered — annotating a task as `TaskConfig`
+  fails type-checking.
+- **`schedule` queues, `autoRun` runs.** A task's `schedule` (cron + `queue`) is
+  what places a job in the queue; `autoRun` picks it up. Both use the same cron
+  parser — `* * * * *` is every minute.
 
 ### Project rules
 
@@ -284,6 +291,12 @@ full state machine is in `architecture.md`.
 **No personally identifying data. Ever.** No phone number, no ID number, no
 document URL, no email, no name, no free text a user typed. The complete event
 list is in `code-standards.md` — adding an event means editing that list first.
+
+- **Server-side events use the Clerk id as `distinctId`.** The browser identifies
+  with Clerk's `user.id`; a server event carrying a Payload object id would create
+  a second, disconnected person. Resolve `users.clerkId` before capturing
+  server-side (`lib/posthog-server.ts`), falling back to the Payload id when the
+  Clerk id is absent.
 
 PostHog is not the audit log. Compliance questions are answered from
 `audit-logs`, never from analytics.
@@ -389,6 +402,9 @@ appends duration to the existing expiry rather than to `now()` — see
 
 - The sending domain must be verified or delivery silently fails.
 - `RESEND_FROM_EMAIL` must be on the verified domain.
+- `payload.sendEmail` throws on failure — the adapter wraps a non-2xx as an
+  `APIError` rather than returning an error object, so wrap the send in try/catch
+  and log instead of inspecting the return value.
 
 ### Project rules
 

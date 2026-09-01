@@ -1,84 +1,82 @@
-# Memory — Phase 3.3 Staff Review Queue
+# Memory — Phase 4.4 (verification payment) + Phase 10.3 admin settings
 
-Last updated: 2026-09-01
+Last updated: 2026-09-01 21:29
 
 ## What was built
 
-- **`services/verification.service.ts`** — added `listPendingReviews(payload,
-  actor)`: `pending_review` profiles, oldest first (`sort:
-  "verificationSubmittedAt"`), explicit `select`, `overrideAccess: false`.
-- **`app/actions/verification.ts`** — added `approveVerificationAction(profileId,
-  notes?)` and `rejectVerificationAction(profileId, reason)`. Approve takes an
-  optional note (max 1000 chars via zod) passed to `approveVerification` →
-  `verificationNotes`; reject requires a non-empty reason (zod) → `rejectionReason`.
-- **`app/(saas)/dashboard/staff/verifications/page.tsx`** (new) — queue, admin +
-  staff guard (inline, matching accounts/audit-logs pages).
-- **`app/(saas)/dashboard/staff/verifications/[id]/page.tsx`** (new) — review
-  case: identity summary (legal name, DOB, nationality, phone), side-by-side
-  document viewer, decision form. Shows "Already resolved" when the profile is no
-  longer `pending_review`.
-- **`components/dashboard/staff/verifications/verification-queue.tsx`** (new) —
-  presentational list + "prior rejections" badge + `Inbox` empty state.
-- **`components/dashboard/staff/verifications/document-viewer.tsx`** (new) — two
-  `<iframe src="/api/actions/vault/{id}">` (auth + `document_viewed` audit +
-  signed-URL redirect), "Open in new tab" fallback.
-- **`components/dashboard/staff/verifications/review-form.tsx`** (new, client) —
-  optional "Note" textarea (approve) + required "Rejection reason" textarea
-  (reject); fires `verification_approved` (`daysToVerify`) / `verification_rejected`
-  (`attempt`); redirects back to the queue on success.
-- **`lib/dashboard-nav.ts`** — "Verifications" item for admin + staff.
+Phase 4.4 (extended) — verification payment end to end:
+- `platform-settings` global with `verificationFee` (default 1500), later extended
+  with a `subscriptionTiers` array (`tierId`, `name`, `price`, `durationDays`,
+  `description`, `isActive`, `isConcierge`).
+- `src/services/settings.service.ts` — `getVerificationFee`,
+  `updateVerificationFee`, `updateSubscriptionTiers` (validates required fields,
+  unique `tierId`, price/duration >= 1; PUT-replaces the array).
+- `src/app/actions/payment.ts` — `initiateVerificationPaymentAction` (Server
+  Action: fee from settings, phone from profile, calls existing `initiatePayment`).
+- `src/components/dashboard/mjakazi/verification/pay-verification.tsx` — "Pay"
+  button + STK-push confirmation polling (`router.refresh` every 5s, ~2.5min cap).
+- Wire-up: `payment.service.handleCallback` calls `activateVerificationOnPayment`
+  (new, in `verification.service`) after a confirmed verification callback →
+  `pending_payment → pending_review`, stores `lastVerificationPaymentId`, resets
+  attempts. `advanceToReview` now takes an optional `paymentId`.
+- Document lock: `vault.service` refuses upload/delete while `pending_review`.
+- `payment_activation_failed` audit action (lib/audit.ts + audit-logs schema).
+- Server-side PostHog: `src/lib/posthog-server.ts` (posthog-node, `flushAt:1`,
+  `flushInterval:0`) — `payment_completed` on confirmed callback, `payment_failed`
+  on rejection/timeout; `capturePaymentEvent` resolves `users.clerkId` as
+  `distinctId`.
+
+Phase 10.3 (partial) — admin pricing UI:
+- `/dashboard/admin/settings` page + "Settings" nav item; two forms
+  (`PlatformSettingsForm` for fee, `SubscriptionTiersForm` for tiers) writing via
+  `src/app/actions/settings.ts`.
+
+Docs updated: progress-tracker, ui-registry, build-plan (4.4 + 10.3), architecture
+(env var fix), library-docs (PostHog distinctId rule).
 
 ## Decisions made
 
-- Review screen is a **separate route** `/dashboard/staff/verifications/[id]`
-  (shareable, route-per-page convention), not inline on the queue.
-- After approve/reject the reviewer is **redirected back to the queue**.
-- Documents render through the **existing audited vault route** (iframe → signed
-  URL), never by minting signed URLs server-side — keeps role check + audit entry
-  in exactly one place.
-- **Reject reason** (`rejectionReason`) is the mjakazi-facing "why failed"
-  message, already shown on `/dashboard/mjakazi/verification` (Phase 3.2).
-  **Approve note** (`verificationNotes`) is internal staff record, not shown to
-  the worker.
-- Both roles (admin + staff) reach the queue; guard is inline (no staff layout).
+- **4.4 scope**: verification payment *initiation* (pay button + action) was pulled
+  forward into 4.4 (out of 5.2). Fee sourced from `platform-settings` (invariant
+  #12); initiate is a Server Action, not a route handler.
+- **Activation failure**: payment stays `confirmed` (immutable); log + write
+  `payment_activation_failed` audit; no admin alert/retry in 4.4.
+- **PostHog identity**: server events use the Clerk id as `distinctId` (resolved
+  from `users.clerkId`), not the Payload object id — otherwise they don't join the
+  browser-identified person. `payment_initiated` stays client-side; completed/
+  failed are server-side.
+- **10.3 tiers**: start empty (v1), form has a Remove button + Active checkbox
+  (diverges from the build-plan's "deactivated, never deleted" — the safety is the
+  "never change tierId after go-live" copy). `isConcierge` flag added per spec.
 
 ## Problems solved
 
-- `react-hooks/purity` lint error: `Date.now()` in render flagged as impure —
-  moved `daysToVerify` computation inside the approve handler.
-- shadcn 4 `Button` (Base UI) has **no `asChild`** prop — use `buttonVariants({
-  variant })` on a `Link` for link-styled buttons.
-- **Sign-in misdirect fix**: `(auth)/sign-in/[[...sign-in]]/page.tsx` used
-  `forceRedirectUrl`, which overrides Clerk's `redirect_url` (the return-to set by
-  `auth.protect()`). Changed to `fallbackRedirectUrl` so users bounced from
-  `/admin` return there after sign-in; direct sign-in still falls back to
-  `/authenticating` → `/post-auth`. Sign-up keeps `forceRedirectUrl` (role
-  promotion must always run).
+- posthog-node v5 API: `new PostHog(token, { host, flushAt, flushInterval })` +
+  `client.capture({ distinctId, event, properties })`.
+- Payload array `interfaceName` names the ARRAY type (e.g. `SubscriptionTier` =
+  `{...}[] | null`), not the item — removed it and use inline typing instead.
+- posthog-node v5 engines require Node >=20.20/22.22 — installed fine.
 
 ## Current state
 
-- Phase 3.3 **built and lint/build green**, but **end-to-end verification
-  deferred to Phase 4.4** (payment must move `pending_payment → pending_review`
-  before a real review can be exercised). Michael confirmed the staff/admin
-  interface renders.
-- `pnpm lint` (0 errors, 1 pre-existing `pages/schema.ts` warning) and
-  `pnpm build` pass.
-- Michael manually verified the `/admin` sign-in redirect fix works.
+- **Phase 4 code-complete** (4.1–4.4). `pnpm lint` (0 errors, 2 pre-existing
+  warnings) and `pnpm build` green.
+- **Phase 10.3 partial**: admin settings UI done; the "Done when" also needs the
+  mwajiri pricing page (6.x) to read tiers at runtime — not built. Tiers are not
+  yet consumed by any flow (subscription purchase is 5.2).
+- **All manual sandbox verification deferred** (developer will test later, once a
+  UI is available): pay fee end-to-end, replay callback (no double-apply), document
+  lock, PostHog events landing on one person, admin fee/tier edits persisting.
 
 ## Next session starts with
 
-Phase 4 — Payments, isolated. Start 4.1: `payments` collection, `lib/mpesa.ts`
-(OAuth, password/timestamp generation, phone normalization, STK initiation,
-environment resolution), and a scratch route to prove a sandbox STK push. Do NOT
-wire payment to verification until 4.4.
+Phase 5 (Subscriptions): 5.1 `subscriptions` collection (`subscriptionState`,
+`tierId`/`tierName` string snapshots from `platform-settings`, `lastPaymentId`);
+5.2 purchase flow (tier selection, initiate, status polling, `payment.confirmed` →
+activation); 5.3 `jobs/subscription-expiry.ts` hourly task. Re-check
+`context/build-plan.md` 5.x and `context/progress-tracker.md` before starting.
 
 ## Open questions
 
-- `verified → pending_review` identity-change trigger (later phase) unresolved.
-- "Fresh Certificate" renewal enforcement unresolved.
-- Free-resubmit boundary `FREE_REJECTIONS = 3` (`<= 3` free / `> 3` paid)
-  confirmation open.
-- `blacklisted → deactivated` currently illegal (terminal) — Phase 10.1 may need
-  it.
-- Whether approve `verificationNotes` should also be surfaced to the worker
-  (currently internal-only).
+- Manual end-to-end testing (Phase 4 + 10.3) is outstanding and scheduled by the
+  developer later.

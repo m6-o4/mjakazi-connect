@@ -78,6 +78,7 @@ export interface Config {
     'waajiri-profiles': WaajiriProfile;
     'profile-photos': ProfilePhoto;
     'vault-documents': VaultDocument;
+    payments: Payment;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -98,6 +99,7 @@ export interface Config {
     'waajiri-profiles': WaajiriProfilesSelect<false> | WaajiriProfilesSelect<true>;
     'profile-photos': ProfilePhotosSelect<false> | ProfilePhotosSelect<true>;
     'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
+    payments: PaymentsSelect<false> | PaymentsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -113,11 +115,15 @@ export interface Config {
     header: Header;
     footer: Footer;
     branding: Branding;
+    'platform-settings': PlatformSetting;
+    'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     branding: BrandingSelect<false> | BrandingSelect<true>;
+    'platform-settings': PlatformSettingsSelect<false> | PlatformSettingsSelect<true>;
+    'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -126,6 +132,7 @@ export interface Config {
   user: User;
   jobs: {
     tasks: {
+      'payment-timeout': TaskPaymentTimeout;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -633,8 +640,10 @@ export interface AuditLog {
     | 'verification_deactivated'
     | 'payment_initiated'
     | 'payment_confirmed'
+    | 'payment_duplicate'
     | 'payment_failed'
     | 'payment_expired'
+    | 'payment_activation_failed'
     | 'eoi_sent'
     | 'document_uploaded'
     | 'document_deleted'
@@ -882,6 +891,40 @@ export interface VaultDocument {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments".
+ */
+export interface Payment {
+  id: string;
+  user: string | User;
+  paymentType: 'verification' | 'subscription';
+  status: 'initiated' | 'stk_sent' | 'callback_received' | 'confirmed' | 'failed' | 'expired' | 'cancelled';
+  amount: number;
+  tier?: ('1' | '2' | '3') | null;
+  phoneNumber?: string | null;
+  mpesaReference: string;
+  merchantRequestId?: string | null;
+  checkoutRequestId?: string | null;
+  /**
+   * The raw daraja callback body, stored whole for audit.
+   */
+  callbackPayload?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  initiatedAt?: string | null;
+  confirmedAt?: string | null;
+  failedAt?: string | null;
+  expiredAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -975,7 +1018,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'schedulePublish';
+        taskSlug: 'inline' | 'payment-timeout' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1008,10 +1051,19 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'payment-timeout' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
+  meta?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1065,6 +1117,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'vault-documents';
         value: string | VaultDocument;
+      } | null)
+    | ({
+        relationTo: 'payments';
+        value: string | Payment;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1658,6 +1714,28 @@ export interface VaultDocumentsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments_select".
+ */
+export interface PaymentsSelect<T extends boolean = true> {
+  user?: T;
+  paymentType?: T;
+  status?: T;
+  amount?: T;
+  tier?: T;
+  phoneNumber?: T;
+  mpesaReference?: T;
+  merchantRequestId?: T;
+  checkoutRequestId?: T;
+  callbackPayload?: T;
+  initiatedAt?: T;
+  confirmedAt?: T;
+  failedAt?: T;
+  expiredAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
@@ -1708,6 +1786,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
   queue?: T;
   waitUntil?: T;
   processing?: T;
+  meta?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1902,6 +1981,52 @@ export interface Branding {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform-settings".
+ */
+export interface PlatformSetting {
+  id: string;
+  /**
+   * The one-time fee a mjakazi pays for document review. Integer KSh only.
+   */
+  verificationFee: number;
+  subscriptionTiers?:
+    | {
+        /**
+         * Machine-readable key. Snapshotted onto subscriptions at purchase — never change it after go-live.
+         */
+        tierId: string;
+        name: string;
+        price: number;
+        durationDays: number;
+        description?: string | null;
+        isActive?: boolean | null;
+        isConcierge?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs-stats".
+ */
+export interface PayloadJobsStat {
+  id: string;
+  stats?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -2033,6 +2158,38 @@ export interface BrandingSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform-settings_select".
+ */
+export interface PlatformSettingsSelect<T extends boolean = true> {
+  verificationFee?: T;
+  subscriptionTiers?:
+    | T
+    | {
+        tierId?: T;
+        name?: T;
+        price?: T;
+        durationDays?: T;
+        description?: T;
+        isActive?: T;
+        isConcierge?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs-stats_select".
+ */
+export interface PayloadJobsStatsSelect<T extends boolean = true> {
+  stats?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "collections_widget".
  */
 export interface CollectionsWidget {
@@ -2040,6 +2197,14 @@ export interface CollectionsWidget {
     [k: string]: unknown;
   };
   width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskPayment-timeout".
+ */
+export interface TaskPaymentTimeout {
+  input?: unknown;
+  output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

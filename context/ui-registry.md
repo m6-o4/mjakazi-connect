@@ -118,9 +118,16 @@ registry never drifts from the actual codebase.
 
 ### `VerificationStateCard`
 - **Location**: `src/components/dashboard/mjakazi/verification/verification-state.tsx`
-- **Purpose**: Status copy for every non-draft verification state (pending_payment, pending_review, verified, rejected, verification_expired, blacklisted, deactivated)
-- **Props**: `{ state: NonDraftState; verificationExpiry?: string | null; rejectionReason?: string | null }`
+- **Purpose**: Status copy for every status-only verification state (pending_review, verified, rejected, verification_expired, blacklisted, deactivated)
+- **Props**: `{ state: StatusState; verificationExpiry?: string | null; rejectionReason?: string | null }`
 - **Visual pattern**: shadcn `Card`; per-state lucide icon in `text-accent`; shows "Valid until" date (verified) or "Reason" (rejected); no action buttons yet
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+
+### `PayVerification`
+- **Location**: `src/components/dashboard/mjakazi/verification/pay-verification.tsx`
+- **Purpose**: The `pending_payment` pay flow — sends the M-Pesa STK push via `initiateVerificationPaymentAction`, then polls `router.refresh()` until the callback flips the profile into review
+- **Props**: `{ fee: number | null }`
+- **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `VerificationQueue`
@@ -157,6 +164,20 @@ registry never drifts from the actual codebase.
 - **Props**: `{ staff: StaffRecord[]; currentUserId: string }`
 - **Visual pattern**: `divide-y` list rows (stack on mobile, spread on desktop); initials avatar in `bg-primary/10 text-primary`; `Badge` role + "You"; inline `EditNameForm`; `AlertDialog`-guarded delete
 - **Used in**: `(saas)/dashboard/admin/staff/page.tsx`
+
+### `PlatformSettingsForm`
+- **Location**: `src/components/dashboard/admin/settings/platform-settings-form.tsx`
+- **Purpose**: Edits the mjakazi verification fee (single number) via `updateVerificationFeeAction`
+- **Props**: `{ currentVerificationFee: number }`
+- **Visual pattern**: shadcn `Card`; "KSh" prefix + number `Input`; Save `Button` with saving/saved state; inline `text-destructive` error; disabled when unchanged
+- **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
+
+### `SubscriptionTiersForm`
+- **Location**: `src/components/dashboard/admin/settings/subscription-tiers-form.tsx`
+- **Purpose**: Edits the mwajiri subscription tiers (add/remove rows, PUT-replace the whole array) via `updateSubscriptionTiersAction`
+- **Props**: `{ initialTiers: Tier[] }` (one empty row shown when none exist)
+- **Visual pattern**: shadcn `Card`; per-tier bordered sub-card with name/id/price/duration `Input`s, description `Textarea`, Active + Concierge checkboxes; ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"; tierId auto-slugified from name
+- **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
 ### `AccountsTable`
 - **Location**: `src/components/dashboard/accounts/accounts-table.tsx`

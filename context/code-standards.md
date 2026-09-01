@@ -396,9 +396,9 @@ This is the complete list. **Adding an event means adding it here first.**
 | `verification_rejected` | staff rejects | `attempt` |
 | `directory_searched` | directory filter applied | `filters`, `resultCount` |
 | `profile_viewed` | profile detail opened | `isUnlocked` |
-| `plan_selected` | tier chosen | `tier` |
-| `payment_initiated` | STK push sent | `paymentType`, `tier` |
-| `payment_completed` | callback confirms | `paymentType`, `tier` |
+| `plan_selected` | tier chosen | `tierId` |
+| `payment_initiated` | STK push sent | `paymentType`, `tierId` |
+| `payment_completed` | callback confirms | `paymentType`, `tierId` |
 | `payment_failed` | callback rejects or times out | `paymentType`, `reason` |
 | `contact_unlocked` | contact revealed | `tierAtUnlock` |
 | `interest_sent` | expression of interest batch sent | `count` |

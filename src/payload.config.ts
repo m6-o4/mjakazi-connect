@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import { buildConfig, PayloadRequest } from "payload";
 import sharp from "sharp";
 
+import { paymentTimeoutTask } from "@/jobs/payment-timeout";
 import { globals } from "@/payload/blocks/globals";
 import { collections } from "@/payload/collections";
 import { Users } from "@/payload/collections/users/schema";
@@ -76,7 +77,7 @@ export default buildConfig({
 			},
 		},
 		autoRun: [{ cron: "* * * * *", limit: 10 }],
-		tasks: [],
+		tasks: [paymentTimeoutTask],
 	},
 	plugins: [...plugins],
 	secret: payloadSecret,

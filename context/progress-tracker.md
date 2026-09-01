@@ -345,3 +345,168 @@ every feature is finished.
   guard requires `verified` (invariant #17), not merely `pending_review` exiting.
   `verification_approved` (`daysToVerify`) and `verification_rejected` (`attempt`)
   PostHog events fire client-side on success. Manual verification pending.
+
+### 2026-09-01 — Phase 4.1: Payments collection and M-Pesa client
+- **What was built**: The `payments` collection (sealed — `create`/`update`/`delete`
+  restricted, `read` = admin/staff/owner) with the full `architecture.md` field set
+  (`user`, `paymentType`, `status`, `amount`, `tier`, `phoneNumber`,
+  `mpesaReference` unique, `merchantRequestId`, `checkoutRequestId`,
+  `callbackPayload`, `initiatedAt`/`confirmedAt`/`failedAt`/`expiredAt`). A
+  server-only `lib/mpesa.ts` Daraja client (base-URL resolution by
+  `MPESA_ENVIRONMENT`, Africa/Nairobi timestamp, password generation, cached OAuth
+  token, STK push). A `services/payment.service.ts` `initiatePayment()` that mints
+  a unique reference, creates the `initiated` record, sends the push, and lands
+  the record at `stk_sent` (accepted) or `failed` (rejected) with audit entries.
+- **Files touched**: `src/payload/collections/payments/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/lib/mpesa.ts` (new),
+  `src/services/payment.service.ts` (new), `src/payload-types.ts` (regenerated).
+- **Notes**: `mpesaReference` is *our* minted 12-char unique reference (fits
+  Daraja's `AccountReference` 12-char cap), and `checkoutRequestId` is Daraja's
+  per-push id — the Phase 4.2 callback matching/idempotency key. Phone
+  normalization reuses `normalizeKenyanPhone` from `lib/phone.ts` (single source
+  of truth) rather than duplicating in `lib/mpesa.ts`. No server-side PostHog
+  events yet (no `posthog-node` SDK installed; `payment_initiated`/`payment_failed`
+  will fire client-side with the purchase UI in later phases). The initiate
+  *route* (`/api/actions/payments/initiate`) is deliberately deferred to 5.2;
+  4.1 has no HTTP caller. `pnpm lint` (0 errors, 1 pre-existing `pages/schema.ts`
+   warning) and `pnpm build` pass. **Manual verification pending**: initiate an
+   STK push against the sandbox and confirm the prompt reaches the handset and
+   the `payments` record is `stk_sent`.
+
+### 2026-09-01 — Phase 4.2: Payment callback handling
+- **What was built**: The M-Pesa STK callback route at
+  `/api/webhooks/payments/callback` (`route.ts`) plus `handleCallback` /
+  `settleCallback` in `payment.service.ts`. Daraja's callback body is parsed by a
+  new zod schema + `parseStkCallback` in `lib/mpesa.ts`. The service finds the
+  payment by `checkoutRequestId` (the idempotency key), verifies merchant
+  correlation (`MerchantRequestID`), amount and phone before writing `confirmed`
+  (or `failed`), stores the raw callback in `callbackPayload`, and writes a
+  `payment_confirmed` / `payment_failed` audit entry. Duplicate and unverifiable
+  callbacks are refused and audit-logged via a new `payment_duplicate` action.
+  No domain transition yet — that is Phase 4.4.
+- **Files touched**: `src/app/(payload)/api/webhooks/payments/callback/route.ts`
+  (new), `src/lib/mpesa.ts` (callback schema + parser), `src/services/payment.service.ts`
+  (`handleCallback`/`settleCallback`), `src/lib/audit.ts` (`payment_duplicate`
+  action), `src/payload/collections/audit-logs/schema.ts` (`payment_duplicate`
+  option), `src/payload-types.ts` (regenerated).
+- **Notes**: The callback carries no signature (unlike Clerk), so authenticity
+  rests entirely on the correlation checks. Every path returns 200 to Daraja so
+  it never retries. Amount/phone/merchant mismatches land the payment at
+  `failed` (fail-safe — no access granted). `MpesaReceiptNumber` is captured into
+  the `payment_confirmed` audit metadata rather than a dedicated schema field,
+  resolving the 4.1 open question for now. `pnpm lint` (0 errors) and
+  `pnpm build` pass. **Manual verification pending**: pay in the sandbox, then
+  replay the same callback by hand — the second must be refused and audit-logged
+  (`payment_duplicate`).
+
+### 2026-09-01 — Verification approval/rejection emails (3.3 follow-up)
+- **What was built**: Transactional emails on staff approve/reject of a mjakazi
+  verification. `sendVerificationApprovedEmail` (new — v1 only emailed on
+  rejection) and `sendVerificationRejectedEmail` (reason + free resubmissions
+  remaining) in a new `src/lib/email.ts`, sent through Payload's `sendEmail`
+  (Resend adapter) with brand-token inline-styled HTML. Wired into
+  `approveVerification`/`rejectVerification` via a `notifyWorker` helper that
+  resolves the owner's `users.email` and sends after the transition commits.
+- **Files touched**: `src/lib/email.ts` (new), `src/services/verification.service.ts`
+- **Notes**: Email is fire-and-forget — a failed send is caught + logged and never
+  blocks the state transition (library-docs.md → Resend). `attemptsRemaining =
+  max(0, FREE_REJECTIONS - attempts)` mirrors v1's "3 - attempts" copy. `from`
+  and `fromName` come from the adapter's `RESEND_FROM_*` env, not hardcoded.
+  Email templates inline the ui-tokens hex values directly (clients strip CSS
+  variables) — the one justified hardcoded-hex exception. `pnpm lint` (0 errors)
+  and `pnpm build` pass. **Manual verification pending**: approve and reject a
+  sandbox profile and confirm both emails arrive.
+
+### 2026-09-01 — Phase 4.3: Payment timeout task
+- **What was built**: The `payment-timeout` job on Payload's queue. A new
+  `jobs/payment-timeout.ts` registers a task with `schedule` every minute and a
+  handler that delegates to `expireTimedOutPayments()` in `payment.service.ts`.
+  The service polls `stk_sent` payments older than the 2-minute window,
+  compare-and-swaps each to `expired` (only if still `stk_sent`), stamps
+  `expiredAt`, and writes a `payment_expired` audit entry.
+- **Files touched**: `src/jobs/payment-timeout.ts` (new),
+  `src/services/payment.service.ts` (`expireTimedOutPayments`),
+  `src/payload.config.ts` (`jobs.tasks`).
+- **Notes**: 2-minute window matches v1's Inngest timeout. Idempotent — CAS on
+  `status === "stk_sent"`, so a concurrent callback wins; polls every minute so a
+  missed window self-corrects. `payment_expired` audit action already existed
+  (4.1/4.2), so no schema change and no `generate:types`. The `status` query is
+  on the indexed field; the window filter is applied in JS to keep the run cheap.
+   No domain transition — that is 4.4. `pnpm lint` (0 errors) and `pnpm build`
+   pass. **Manual verification pending**: initiate an STK push, ignore the prompt,
+   and confirm the record is `expired` after ~2 minutes.
+
+### 2026-09-01 — Phase 4.4: Verification payment (initiate + wire to review)
+- **What was built**: The verification payment end to end. A minimal admin-only
+  `platform-settings` global (`verificationFee`, default 1500 — pulled forward
+  from 10.3) sourced via `getVerificationFee` in a new `settings.service.ts`.
+  The initiate as a Server Action (`initiateVerificationPaymentAction`) that
+  reads the fee and the profile phone and calls the existing `initiatePayment`
+  with `paymentType = verification`. The `pending_payment` pay UI
+  (`PayVerification`) with STK-push + confirmation polling. The confirmed-callback
+  wire-up: `payment.service` now calls `activateVerificationOnPayment` after a
+  confirmed verification payment, which resolves the profile by user and runs
+  `advanceToReview` (now storing `lastVerificationPaymentId` and resetting
+  attempts). The `pending_review` document lock in `vault.service.ts` (upload and
+  delete refuse while under review). A `payment_activation_failed` audit action
+  for activation failures.
+- **Files touched**: `src/payload/blocks/globals/platform-settings/schema.ts`
+  (new), `src/payload/blocks/globals/index.ts`, `src/services/settings.service.ts`
+  (new), `src/app/actions/payment.ts` (new),
+  `src/components/dashboard/mjakazi/verification/pay-verification.tsx` (new),
+  `src/services/verification.service.ts` (`advanceToReview` + `activateVerificationOnPayment`
+  + `loadProfileByUserId`), `src/services/payment.service.ts` (activation after
+  confirm + server-side PostHog), `src/lib/posthog-server.ts` (new),
+  `src/services/vault.service.ts` (document lock), `src/lib/audit.ts`,
+  `src/payload/collections/audit-logs/schema.ts`,
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/components/dashboard/mjakazi/verification/verification-state.tsx`
+  (`StatusState` type), `src/payload-types.ts` (regenerated).
+- **Notes**: Initiation was pulled forward out of 5.2 per the 4.4 scope decision.
+  Fee comes from `platform-settings`, never hardcoded (invariant #12). Document
+  lock applies to `pending_review` only — workers can still fix documents while
+  `draft`/`pending_payment`. On activation failure the payment stays `confirmed`
+  (immutable), the error is logged and a `payment_activation_failed` audit entry
+  is written; no admin alert or retry job in 4.4. Idempotency rests on the
+  payment's terminal-state check (duplicate callbacks never reach activation) and
+  `advanceToReview`'s CAS on `pending_payment`. Server-side PostHog is now wired
+  (`lib/posthog-server.ts`, `posthog-node`): `payment_completed` fires on a
+  confirmed callback and `payment_failed` on callback rejection or timeout, both
+  captured with the payer's Clerk id as `distinctId` (resolved from
+  `users.clerkId`) so they join the browser-identified person. `payment_initiated`
+  remains client-side. `pnpm lint` (0 errors, 2
+  pre-existing warnings) and `pnpm build` pass. **Manual verification pending**:
+  submit a complete profile, pay the KSh 1,500 fee in the sandbox, and confirm
+  the profile lands in `pending_review` with `lastVerificationPaymentId` set,
+  documents locked, and `payment_confirmed` + `verification_advanced` audit
+  entries; then replay the callback by hand and confirm nothing double-applies.
+
+### 2026-09-01 — Phase 10.3 (partial): Admin platform settings UI
+- **What was built**: The admin pricing UI at `/dashboard/admin/settings`. The
+  `platform-settings` global gained a `subscriptionTiers` array (`tierId`, `name`,
+  `price`, `durationDays`, `description`, `isActive`, `isConcierge`). Two admin
+  forms — `PlatformSettingsForm` (verification fee) and `SubscriptionTiersForm`
+  (editable tier list with Add/Remove + Active/Concierge checkboxes) — write
+  through Server Actions (`updateVerificationFeeAction`,
+  `updateSubscriptionTiersAction`) into a new `settings.service.ts`
+  (`updateVerificationFee`, `updateSubscriptionTiers`). Added "Settings" to the
+  admin nav.
+- **Files touched**: `src/payload/blocks/globals/platform-settings/schema.ts`
+  (tiers array), `src/services/settings.service.ts` (update fns),
+  `src/app/actions/settings.ts` (new),
+  `src/components/dashboard/admin/settings/platform-settings-form.tsx` (new),
+  `src/components/dashboard/admin/settings/subscription-tiers-form.tsx` (new),
+  `src/app/(saas)/dashboard/admin/settings/page.tsx` (new),
+  `src/lib/dashboard-nav.ts`, `src/payload-types.ts` (regenerated).
+- **Notes**: Follows the v1 pattern (start empty, Remove button + Active
+  checkbox, PUT-replace the whole array), adapted to the current conventions —
+  Server Actions instead of v1's `/apis` route handlers, and `isConcierge` added
+  per the current spec. Validation (required fields, unique `tierId`, price and
+  duration >= 1) lives in the service. Fee and tiers are admin-only at the panel
+  surface; reads go through the trusted local-api path. **Partial** — the
+  10.3 "Done when" also requires the mwajiri pricing page to read the tiers at
+  runtime, which is Phase 6.x and not built yet. The tiers are not yet consumed
+  by any flow (subscription purchase is 5.2).
+  `pnpm lint` + `pnpm build` pass. **Manual verification pending**: as admin, edit
+  the fee and a tier in `/dashboard/admin/settings`, save, and confirm the values
+  persist (reload the page).

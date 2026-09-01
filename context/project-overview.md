@@ -192,7 +192,7 @@ return contact fields.
 | `/dashboard/mwajiri/browse` | Full directory with filters. Contacts unlockable when active. |
 | `/dashboard/mwajiri/browse/[id]` | Profile detail with contact reveal. |
 | `/dashboard/mwajiri/subscription` | Current plan, purchase, history. |
-| `/dashboard/mwajiri/concierge` | Requirements brief and delivered shortlist. Tier 3 only. |
+| `/dashboard/mwajiri/concierge` | Requirements brief and delivered shortlist. Concierge tier only. |
 | `/dashboard/mwajiri/settings` | Account settings, deletion request. |
 
 ### SaaS — Staff
@@ -215,7 +215,7 @@ Everything staff can reach, plus:
 |---|---|
 | `/dashboard/admin` | Platform overview: accounts, verification throughput, and a running total of all payments received, split by verification fees and subscriptions. |
 | `/dashboard/admin/staff` | Create, edit and remove staff accounts. |
-| `/dashboard/admin/settings` | Pricing, tier durations, verification fee, platform settings. |
+| `/dashboard/admin/settings` | Subscription tiers, verification fee, platform settings. |
 
 ### Payload
 
@@ -346,13 +346,13 @@ concierge replacement guarantee counts from.
 At expiry → `expired`. Previously unlocked contacts remain visible permanently.
 New unlocks require a new purchase.
 
-### Concierge — Tier 3 only
+### Concierge — concierge tier only
 
-Staff-assisted matching, layered on top of ordinary Tier 3 access. A Concierge
+Staff-assisted matching, layered on top of the concierge tier. A Concierge
 subscriber can still browse and unlock normally; the service is additive.
 
 ```
-Tier 3 payment confirmed
+Concierge tier payment confirmed
         ↓
 [intake]                case created automatically; Mwajiri completes a
                         requirements brief
@@ -406,6 +406,10 @@ Listing is free. Being *found* is not: an unverified profile never appears in th
 directory.
 
 ### Mwajiri — access fee
+
+The tiers below are the seeded default. Tier prices and durations are managed
+dynamically by `admin` via `platform-settings.subscriptionTiers`, never
+hardcoded.
 
 | Plan | Price | Duration | Includes |
 |---|---|---|---|
@@ -526,12 +530,12 @@ which is part of building the feature, not an afterthought.
 **Mwajiri**
 - Directory browse with category, location and experience filters
 - Six-state subscription lifecycle
-- Three tiers purchased by M-Pesa, with stacking
+- Subscription tiers purchased by M-Pesa, with stacking
 - Contact vault reveal, permanently durable
 - Expressions of interest: send, in batches of 3 to 5
 - Hire confirmation
 - Reviews of unlocked wajakazi
-- Concierge brief and shortlist, Tier 3
+- Concierge brief and shortlist, concierge tier
 
 **Staff and Admin**
 - Verification review queue with document viewer

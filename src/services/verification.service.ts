@@ -2,8 +2,12 @@ import { addMonths } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
+import {
+	sendVerificationApprovedEmail,
+	sendVerificationRejectedEmail,
+} from "@/lib/email";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
-import type { User, WajakaziProfile } from "@/payload-types";
+import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 
 type Result<T = void> =
@@ -116,6 +120,81 @@ const loadProfileById = async (
 		});
 	} catch {
 		return null;
+	}
+};
+
+// trusted system read resolving the profile for a given user id — used when the
+// caller has a payment but no session (the callback) and needs the profile to
+// transition. profiles are 1:1 with users, so this returns at most one record
+const loadProfileByUserId = async (
+	payload: Payload,
+	userId: string,
+): Promise<WajakaziProfile | null> => {
+	try {
+		const result = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { user: { equals: userId } },
+			limit: 1,
+			overrideAccess: true,
+		});
+		return result.docs[0] ?? null;
+	} catch {
+		return null;
+	}
+};
+
+// the worker who owns the profile, resolved for a notification send. a trusted
+// read: the email is used only as a send destination, never returned to the client
+const loadWorkerEmail = async (
+	payload: Payload,
+	profile: WajakaziProfile,
+): Promise<{ email: string; firstName: string } | null> => {
+	const userId = toId(profile.user);
+	if (!userId) return null;
+
+	try {
+		const user = await payload.findByID({
+			collection: "users",
+			id: userId,
+			depth: 0,
+		});
+		if (!user?.email) return null;
+		return { email: user.email, firstName: user.firstName ?? "there" };
+	} catch {
+		return null;
+	}
+};
+
+// fire-and-forget notification. the transition is already committed by the time
+// this runs, so a failed send is logged and the verified/rejected state stands
+const notifyWorker = async (
+	payload: Payload,
+	profile: WajakaziProfile,
+	outcome:
+		| { type: "approved" }
+		| { type: "rejected"; reason: string; attemptsRemaining: number },
+): Promise<void> => {
+	try {
+		const recipient = await loadWorkerEmail(payload, profile);
+		if (!recipient) return;
+
+		if (outcome.type === "approved") {
+			await sendVerificationApprovedEmail({
+				payload,
+				to: recipient.email,
+				firstName: recipient.firstName,
+			});
+		} else {
+			await sendVerificationRejectedEmail({
+				payload,
+				to: recipient.email,
+				firstName: recipient.firstName,
+				rejectionReason: outcome.reason,
+				attemptsRemaining: outcome.attemptsRemaining,
+			});
+		}
+	} catch (error) {
+		console.error("[services/verification] notification email failed:", error);
 	}
 };
 
@@ -372,11 +451,13 @@ const renewVerification = async (
 	});
 };
 
-// pending_payment → pending_review. the only caller will be the payment callback
-// in Phase 4.4 — no bypass, no mock, no caller in this phase
+// pending_payment → pending_review. the only caller is the payment path in
+// Phase 4.4 — no bypass, no mock. stores the payment reference and resets the
+// attempt count so a fresh cycle starts clean
 const advanceToReview = async (
 	payload: Payload,
 	profileId: string,
+	paymentId?: string,
 ): Promise<Result<WajakaziProfile>> => {
 	const profile = await loadProfileById(payload, profileId);
 	if (!profile) return fail("Profile not found.", "not_found");
@@ -388,11 +469,32 @@ const advanceToReview = async (
 		payload,
 		profile,
 		nextState: "pending_review",
-		data: { verificationAttempts: 0 },
+		data: {
+			verificationAttempts: 0,
+			lastVerificationPaymentId: paymentId ?? null,
+		},
 		action: "verification_advanced",
 		actor: null,
 		source: "system",
 	});
+};
+
+// the 4.4 wire-up: a confirmed verification payment moves the profile from
+// pending_payment to pending_review and records the payment reference. called
+// from the payment service after the callback confirms. the profile's current
+// state is the idempotency guard, so a repeated activation is refused rather
+// than double-applied
+const activateVerificationOnPayment = async (
+	payload: Payload,
+	payment: Payment,
+): Promise<Result<WajakaziProfile>> => {
+	const userId = toId(payment.user);
+	if (!userId) return fail("Payment has no payer.", "missing_user");
+
+	const profile = await loadProfileByUserId(payload, userId);
+	if (!profile) return fail("Profile not found.", "not_found");
+
+	return advanceToReview(payload, profile.id, payment.id);
 };
 
 // pending_review → verified. sets the 12-month expiry and records the reviewer
@@ -410,7 +512,7 @@ const approveVerification = async (
 		return fail("Profile is not pending review.", "wrong_state");
 	}
 
-	return applyTransition({
+	const result = await applyTransition({
 		payload,
 		profile,
 		nextState: "verified",
@@ -426,6 +528,12 @@ const approveVerification = async (
 		action: "verification_approved",
 		actor,
 	});
+
+	if (result.success) {
+		await notifyWorker(payload, result.data, { type: "approved" });
+	}
+
+	return result;
 };
 
 // pending_review → rejected. a mandatory reason, and the attempt count increments
@@ -449,7 +557,7 @@ const rejectVerification = async (
 
 	const attempts = (profile.verificationAttempts ?? 0) + 1;
 
-	return applyTransition({
+	const result = await applyTransition({
 		payload,
 		profile,
 		nextState: "rejected",
@@ -463,6 +571,16 @@ const rejectVerification = async (
 		reason: reason.trim(),
 		metadata: { attemptNumber: attempts },
 	});
+
+	if (result.success) {
+		await notifyWorker(payload, result.data, {
+			type: "rejected",
+			reason: reason.trim(),
+			attemptsRemaining: Math.max(0, FREE_REJECTIONS - attempts),
+		});
+	}
+
+	return result;
 };
 
 // verified → pending_review. triggered when a verified worker changes their legal
@@ -617,6 +735,7 @@ const listPendingReviews = async (
 };
 
 export {
+	activateVerificationOnPayment,
 	advanceToReview,
 	approveVerification,
 	blacklistProfile,

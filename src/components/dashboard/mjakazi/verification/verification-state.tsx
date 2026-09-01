@@ -2,7 +2,6 @@ import {
 	BadgeCheck,
 	Ban,
 	CircleOff,
-	Clock,
 	Eye,
 	History,
 	XCircle,
@@ -19,27 +18,24 @@ import {
 import type { WajakaziProfile } from "@/payload-types";
 
 type VerificationState = NonNullable<WajakaziProfile["verificationState"]>;
-type NonDraftState = Exclude<VerificationState, "draft">;
+// states that are pure status display. draft (submit flow) and pending_payment
+// (pay flow) each render their own interactive component instead
+type StatusState = Exclude<VerificationState, "draft" | "pending_payment">;
 
 type VerificationStateCardProps = {
-	state: NonDraftState;
+	state: StatusState;
 	verificationExpiry?: string | null;
 	rejectionReason?: string | null;
 };
 
 // correct, no-action status copy for every verification state that is not the
-// draft submit flow. the action buttons for review, resubmit, renew and payment
-// land with their owning phases and slot in here then
+// draft submit flow or the pending-payment pay flow. the action buttons for
+// review, resubmit, renew and payment land with their owning phases and slot in
+// here then
 const STATE_CONFIG: Record<
-	NonDraftState,
+	StatusState,
 	{ icon: LucideIcon; title: string; description: string }
 > = {
-	pending_payment: {
-		icon: Clock,
-		title: "Awaiting payment",
-		description:
-			"Your profile and documents have been submitted. Payment is the next step and will be available here shortly.",
-	},
 	pending_review: {
 		icon: Eye,
 		title: "Under review",
@@ -113,4 +109,4 @@ const VerificationStateCard = ({
 };
 
 export { VerificationStateCard };
-export type { NonDraftState };
+export type { StatusState };

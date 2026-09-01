@@ -98,6 +98,9 @@ importers:
       posthog-js:
         specifier: ^1.407.2
         version: 1.422.1(@types/react@19.2.18)(react@19.2.8)
+      posthog-node:
+        specifier: ^5.51.4
+        version: 5.51.4
       prism-react-renderer:
         specifier: ^2.4.1
         version: 2.4.1(react@19.2.8)
@@ -4861,6 +4864,15 @@ packages:
       '@types/react':
         optional: true
       react:
+        optional: true
+
+  posthog-node@5.51.4:
+    resolution: {integrity: sha512-gI6JMBnU3vjDNclUBWonw3y7k8Y0UPIAVO4AQ2zu9eyW+7sY8UQRofx4JIA7IGYLMEbs4gykfogOmXp16+oUdg==}
+    engines: {node: ^20.20.0 || >=22.22.0}
+    peerDependencies:
+      rxjs: ^7.0.0
+    peerDependenciesMeta:
+      rxjs:
         optional: true
 
   powershell-utils@0.1.0:
@@ -11238,6 +11250,10 @@ snapshots:
       react: 19.2.8
     transitivePeerDependencies:
       - preact-render-to-string
+
+  posthog-node@5.51.4:
+    dependencies:
+      '@posthog/core': 1.49.1
 
   powershell-utils@0.1.0: {}
 
