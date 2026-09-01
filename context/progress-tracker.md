@@ -398,3 +398,40 @@ every feature is finished.
   `pnpm build` pass. **Manual verification pending**: pay in the sandbox, then
   replay the same callback by hand — the second must be refused and audit-logged
   (`payment_duplicate`).
+
+### 2026-09-01 — Verification approval/rejection emails (3.3 follow-up)
+- **What was built**: Transactional emails on staff approve/reject of a mjakazi
+  verification. `sendVerificationApprovedEmail` (new — v1 only emailed on
+  rejection) and `sendVerificationRejectedEmail` (reason + free resubmissions
+  remaining) in a new `src/lib/email.ts`, sent through Payload's `sendEmail`
+  (Resend adapter) with brand-token inline-styled HTML. Wired into
+  `approveVerification`/`rejectVerification` via a `notifyWorker` helper that
+  resolves the owner's `users.email` and sends after the transition commits.
+- **Files touched**: `src/lib/email.ts` (new), `src/services/verification.service.ts`
+- **Notes**: Email is fire-and-forget — a failed send is caught + logged and never
+  blocks the state transition (library-docs.md → Resend). `attemptsRemaining =
+  max(0, FREE_REJECTIONS - attempts)` mirrors v1's "3 - attempts" copy. `from`
+  and `fromName` come from the adapter's `RESEND_FROM_*` env, not hardcoded.
+  Email templates inline the ui-tokens hex values directly (clients strip CSS
+  variables) — the one justified hardcoded-hex exception. `pnpm lint` (0 errors)
+  and `pnpm build` pass. **Manual verification pending**: approve and reject a
+  sandbox profile and confirm both emails arrive.
+
+### 2026-09-01 — Phase 4.3: Payment timeout task
+- **What was built**: The `payment-timeout` job on Payload's queue. A new
+  `jobs/payment-timeout.ts` registers a task with `schedule` every minute and a
+  handler that delegates to `expireTimedOutPayments()` in `payment.service.ts`.
+  The service polls `stk_sent` payments older than the 2-minute window,
+  compare-and-swaps each to `expired` (only if still `stk_sent`), stamps
+  `expiredAt`, and writes a `payment_expired` audit entry.
+- **Files touched**: `src/jobs/payment-timeout.ts` (new),
+  `src/services/payment.service.ts` (`expireTimedOutPayments`),
+  `src/payload.config.ts` (`jobs.tasks`).
+- **Notes**: 2-minute window matches v1's Inngest timeout. Idempotent — CAS on
+  `status === "stk_sent"`, so a concurrent callback wins; polls every minute so a
+  missed window self-corrects. `payment_expired` audit action already existed
+  (4.1/4.2), so no schema change and no `generate:types`. The `status` query is
+  on the indexed field; the window filter is applied in JS to keep the run cheap.
+  No domain transition — that is 4.4. `pnpm lint` (0 errors) and `pnpm build`
+  pass. **Manual verification pending**: initiate an STK push, ignore the prompt,
+  and confirm the record is `expired` after ~2 minutes.

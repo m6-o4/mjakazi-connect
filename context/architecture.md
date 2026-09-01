@@ -457,8 +457,10 @@ Access: `staff` and `admin`, plus the owning Mjakazi. No one else, ever.
 **`subscriptions`** — one active record per Mwajiri.
 
 `user`, `subscriptionState` (`none | pending_payment | active | expired |
-suspended | blacklisted`), `tier` (`1 | 2 | 3 | null`), `tierStartedAt`,
-`tierExpiry`, `suspendedAt`, `suspensionReason`, `lastPaymentId`.
+suspended | blacklisted`), `tierId` (text — the tier's stable key, snapshotted
+from `platform-settings.subscriptionTiers` at purchase), `tierName` (text —
+snapshot), `tierStartedAt`, `tierExpiry`, `suspendedAt`, `suspensionReason`,
+`lastPaymentId`.
 
 Stores no amounts.
 
@@ -466,7 +468,8 @@ Stores no amounts.
 
 `user`, `paymentType` (`verification | subscription`), `status` (`initiated |
 stk_sent | callback_received | confirmed | failed | expired | cancelled`),
-`amount` (integer KSh), `tier`, `phoneNumber`, `mpesaReference` (unique),
+`amount` (integer KSh), `tierId` + `tierName` (text snapshots, null for
+verification payments), `phoneNumber`, `mpesaReference` (unique),
 `merchantRequestId`, `checkoutRequestId`, `callbackPayload` (json),
 `initiatedAt`, `confirmedAt`, `failedAt`, `expiredAt`.
 
@@ -514,15 +517,18 @@ Already built and registered: `pages`, `posts`, `categories`, `calls-to-action`,
 `media`, `users`, plus the `redirects` plugin. Globals live in
 `src/payload/blocks/globals`.
 
-To be added: `platform-settings` as a global, holding tier prices, tier durations
-and the verification fee. `admin` only.
+To be added: `platform-settings` as a global, `admin` only, holding the
+verification fee and the `subscriptionTiers` array (each tier: `tierId`, `name`,
+`price`, `durationDays`, `description`, `isActive`, `isConcierge`). Prices and
+durations live here, never hardcoded; the mwajiri pricing page and purchase flow
+read them at runtime.
 
 Everything in the Identity, Domain profiles, Documents, Commerce, Interactions and
 Operations sections above is **not yet built**. The marketing half is done; the
 SaaS half is greenfield.
 
-`platform-settings` holds tier prices, tier durations and the verification fee.
-`admin` only. Prices are never hardcoded in application code.
+`platform-settings` holds the verification fee and the subscription tier list.
+Prices are never hardcoded in application code.
 
 ### Relationships
 

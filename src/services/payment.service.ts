@@ -393,5 +393,82 @@ const handleCallback = async (
 	});
 };
 
-export { handleCallback, initiatePayment };
+// an stk push the worker never answers has a fixed window to be confirmed. past
+// it the payment is expired and a late daraja callback is ignored as a duplicate.
+// the timeout job polls this every minute, so a missed window self-corrects.
+const STK_TIMEOUT_MINUTES = 2;
+
+const expireTimedOutPayments = async (
+	payload: Payload,
+): Promise<{ expired: number }> => {
+	const cutoff = new Date(Date.now() - STK_TIMEOUT_MINUTES * 60_000);
+
+	let candidates: Payment[];
+	try {
+		// `status` is indexed; the window is applied in JS so the query stays on
+		// the index and the result set stays bounded for an every-minute run
+		const result = await payload.find({
+			collection: "payments",
+			where: { status: { equals: "stk_sent" } },
+			limit: 100,
+			overrideAccess: true,
+		});
+		candidates = result.docs;
+	} catch (error) {
+		console.error("[services/payment] timeout lookup failed:", error);
+		return { expired: 0 };
+	}
+
+	let expired = 0;
+
+	for (const payment of candidates) {
+		// skip anything still inside the window, or missing an initiation time
+		if (!payment.initiatedAt || new Date(payment.initiatedAt) > cutoff) continue;
+
+		const previousState = payment.status;
+
+		try {
+			// compare-and-swap so a concurrent callback that settled the payment
+			// wins and this run never double-applies
+			const result = await payload.update({
+				collection: "payments",
+				where: {
+					and: [
+						{ id: { equals: payment.id } },
+						{ status: { equals: "stk_sent" } },
+					],
+				},
+				data: { status: "expired", expiredAt: new Date().toISOString() },
+				overrideAccess: true,
+			});
+
+			if (result.docs.length === 0) continue;
+
+			await writeAuditLog({
+				action: "payment_expired",
+				actorId: null,
+				targetId: toId(payment.user),
+				previousState,
+				newState: "expired",
+				metadata: {
+					paymentId: payment.id,
+					mpesaReference: payment.mpesaReference,
+					checkoutRequestId: payment.checkoutRequestId ?? null,
+					amount: payment.amount,
+					paymentType: payment.paymentType,
+					reason: `STK push not responded to within ${STK_TIMEOUT_MINUTES} minutes`,
+				},
+				source: "system",
+			});
+
+			expired += 1;
+		} catch (error) {
+			console.error("[services/payment] timeout expire failed:", error);
+		}
+	}
+
+	return { expired };
+};
+
+export { expireTimedOutPayments, handleCallback, initiatePayment };
 export type { CallbackOutcome, PaymentInput };

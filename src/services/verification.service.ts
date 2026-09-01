@@ -2,6 +2,10 @@ import { addMonths } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
+import {
+	sendVerificationApprovedEmail,
+	sendVerificationRejectedEmail,
+} from "@/lib/email";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import type { User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
@@ -116,6 +120,61 @@ const loadProfileById = async (
 		});
 	} catch {
 		return null;
+	}
+};
+
+// the worker who owns the profile, resolved for a notification send. a trusted
+// read: the email is used only as a send destination, never returned to the client
+const loadWorkerEmail = async (
+	payload: Payload,
+	profile: WajakaziProfile,
+): Promise<{ email: string; firstName: string } | null> => {
+	const userId = toId(profile.user);
+	if (!userId) return null;
+
+	try {
+		const user = await payload.findByID({
+			collection: "users",
+			id: userId,
+			depth: 0,
+		});
+		if (!user?.email) return null;
+		return { email: user.email, firstName: user.firstName ?? "there" };
+	} catch {
+		return null;
+	}
+};
+
+// fire-and-forget notification. the transition is already committed by the time
+// this runs, so a failed send is logged and the verified/rejected state stands
+const notifyWorker = async (
+	payload: Payload,
+	profile: WajakaziProfile,
+	outcome:
+		| { type: "approved" }
+		| { type: "rejected"; reason: string; attemptsRemaining: number },
+): Promise<void> => {
+	try {
+		const recipient = await loadWorkerEmail(payload, profile);
+		if (!recipient) return;
+
+		if (outcome.type === "approved") {
+			await sendVerificationApprovedEmail({
+				payload,
+				to: recipient.email,
+				firstName: recipient.firstName,
+			});
+		} else {
+			await sendVerificationRejectedEmail({
+				payload,
+				to: recipient.email,
+				firstName: recipient.firstName,
+				rejectionReason: outcome.reason,
+				attemptsRemaining: outcome.attemptsRemaining,
+			});
+		}
+	} catch (error) {
+		console.error("[services/verification] notification email failed:", error);
 	}
 };
 
@@ -410,7 +469,7 @@ const approveVerification = async (
 		return fail("Profile is not pending review.", "wrong_state");
 	}
 
-	return applyTransition({
+	const result = await applyTransition({
 		payload,
 		profile,
 		nextState: "verified",
@@ -426,6 +485,12 @@ const approveVerification = async (
 		action: "verification_approved",
 		actor,
 	});
+
+	if (result.success) {
+		await notifyWorker(payload, result.data, { type: "approved" });
+	}
+
+	return result;
 };
 
 // pending_review → rejected. a mandatory reason, and the attempt count increments
@@ -449,7 +514,7 @@ const rejectVerification = async (
 
 	const attempts = (profile.verificationAttempts ?? 0) + 1;
 
-	return applyTransition({
+	const result = await applyTransition({
 		payload,
 		profile,
 		nextState: "rejected",
@@ -463,6 +528,16 @@ const rejectVerification = async (
 		reason: reason.trim(),
 		metadata: { attemptNumber: attempts },
 	});
+
+	if (result.success) {
+		await notifyWorker(payload, result.data, {
+			type: "rejected",
+			reason: reason.trim(),
+			attemptsRemaining: Math.max(0, FREE_REJECTIONS - attempts),
+		});
+	}
+
+	return result;
 };
 
 // verified → pending_review. triggered when a verified worker changes their legal

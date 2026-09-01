@@ -1,58 +1,67 @@
-# Memory — Phase 4.2 Payment Callback Handling
+# Memory — Phase 4.3 Payment Timeout + Verification Emails
 
-Last updated: 2026-09-01 14:35
+Last updated: 2026-09-01 16:52
 
 ## What was built
 
-- `src/app/(payload)/api/webhooks/payments/callback/route.ts` (new) — the Daraja
-  STK callback webhook. Parses the body, delegates to the service, and returns
-  200 to every outcome so Daraja never retries a settled payment.
-- `src/lib/mpesa.ts` — added a zod schema + `parseStkCallback()` +
-  `getCallbackMetadataValue()` and the `StkCallback` type (Daraja callback
-  shape).
-- `src/services/payment.service.ts` — added `handleCallback()` and
-  `settleCallback()`: find by `checkoutRequestId`, verify merchant correlation
-  (`MerchantRequestID`), amount and phone, then compare-and-swap to `confirmed`
-  or `failed`, storing the raw payload and writing the audit entry.
-- `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` — new
-  `payment_duplicate` audit action. `src/payload-types.ts` regenerated.
+- `src/lib/email.ts` (new) — `sendVerificationApprovedEmail` +
+  `sendVerificationRejectedEmail` via Payload's `sendEmail` (Resend adapter),
+  brand-token inline HTML, HTML-escaped interpolation.
+- `src/services/verification.service.ts` — `loadWorkerEmail` + `notifyWorker`,
+  called after `approveVerification`/`rejectVerification` commit (fire-and-forget).
+- `src/jobs/payment-timeout.ts` (new) — Payload queue task, `schedule` every
+  minute, delegating to the service.
+- `src/services/payment.service.ts` — `expireTimedOutPayments()`: 2-min window,
+  compare-and-swap `stk_sent` → `expired`, writes `payment_expired` audit.
+- `src/payload.config.ts` — `jobs.tasks` registers `paymentTimeoutTask`.
+- Docs updated: `context/progress-tracker.md`, `context/library-docs.md`.
 
 ## Decisions made
 
-- Duplicate and unverifiable callbacks are refused and audit-logged via a new
-  `payment_duplicate` action; nothing ever activates twice.
-- `MpesaReceiptNumber` is captured into the `payment_confirmed` audit metadata
-  only — no dedicated schema field (resolves the 4.1 open question for now).
-- **Testing is deferred when the interface doesn't exist yet.** No throwaway test
-  scripts, no "pending manual verification" against an unreachable route/UI. Trust
-  completed work; fix failures only when they surface.
-- **Cron/scheduled work uses Payload's job queue, not Inngest** (confirmed again
-  this session).
+- **Dynamic subscription pricing = v1's `platform-settings.subscriptionTiers`
+  array** (`tierId`, `name`, `price`, `durationDays`, `description`, `isActive`,
+  `isConcierge`), NOT a separate `subscription-plans` collection. `subscriptions`
+  and `payments` store `tierId` + `tierName` string snapshots (no relationships);
+  `contact-unlocks` keeps `tierAtUnlock`. Concierge gated by `isConcierge`.
+  "tier" = domain term, "plan" = display term. Recorded across build-plan /
+  architecture / project-overview / code-standards / library-docs. Not built yet —
+  lands in Phase 5.1/10.3.
+- Verification approve/reject email pulled forward to Phase 3.3 (out of 12.1).
+- Email is fire-and-forget — never blocks a state transition.
+- Payment timeout window = 2 minutes (matches v1).
 
 ## Problems solved
 
-- `pnpm` is blocked by PowerShell execution policy in this shell — use
-  `pnpm.cmd` for all scripts.
-- The `scripts/mpesa-initiate.ts` verifier from 4.1 is already deleted (no
-  `scripts/` dir exists); removed stale references to it from progress-tracker.
+- Payload task config must be typed `TaskConfig<any>` — plain `TaskConfig`
+  constrains `slug` to `TaskType` (`keyof TypedJobs['tasks']`), empty before the
+  task is registered. (Documented in library-docs.)
+- Resend adapter's `payload.sendEmail` **throws** on failure (doesn't return an
+  error object) — wrap in try/catch. (Documented in library-docs.)
+- `pnpm` blocked by PowerShell policy — use `pnpm.cmd`.
 
 ## Current state
 
-- Phase 4.1 + 4.2 code-complete. `pnpm lint` (0 errors, 1 pre-existing
-  `pages/schema.ts` warning) and `pnpm build` green; `/api/webhooks/payments/callback`
-  is registered.
-- Payment state machine: `initiated` → `stk_sent` → (`confirmed` | `failed`).
-  No domain transition yet — that is 4.4 / 5.2.
-- No server-side PostHog (`posthog-node` not installed); `payment_*` analytics
-  fire client-side with the purchase UI in later phases.
+- Phases 3.3 (review queue + emails), 4.1, 4.2, 4.3 code-complete. `pnpm lint`
+  (0 errors, 1 pre-existing `pages/schema.ts` warning) and `pnpm build` green.
+- `payment-timeout` job confirmed firing every minute (autoRun logs
+  "Running 1 jobs. new: 1").
+- **No payment initiation UI/route yet** — a mjakazi can submit for verification
+  (`draft` → `pending_payment`) but there is no "Pay" button; the initiate route
+  is unbuilt and `initiatePayment()` has no caller.
 
 ## Next session starts with
 
-Phase 4.3 — `jobs/payment-timeout.ts`, a Payload queue task moving `stk_sent` to
-`expired` after the timeout window, registered in `payload.config.ts` `jobs.tasks`.
-Then 4.4 (wire `payment.confirmed` → verification `pending_review`).
+Phase 4.4 — wire `payment.confirmed` → verification `pending_review` (atomic,
+lock documents, audit, store payment reference). Resolve first: 4.4 only covers
+the callback→transition wiring; the verification payment *initiation* (pay button
++ initiate route for `paymentType: verification`) has no explicit home in the plan
+(the initiate route was deferred to 5.2 = subscription).
 
 ## Open questions
 
-- `platform-settings` global (tier prices + verification fee) is not built until
-  Phase 10.3 — services take `amount` as a parameter, never hardcode a price.
+- Where does the mjakazi "pay verification fee" initiation live — extend 4.4 or a
+  separate step? Needed before 4.3/4.4/emails can be verified end to end.
+- `platform-settings` global (verification fee + subscription tiers) is built in
+  Phase 10.3; services take `amount` as a parameter, never hardcode a price.
+- Manual verification deferred (no interface): STK initiate→expire (4.3),
+  approve/reject emails, and the 4.1/4.2 callback sandbox test.

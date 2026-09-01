@@ -244,11 +244,12 @@ completeness and both documents present.
 **Role**: the human judgement the whole product rests on.
 **Builds**: `/dashboard/staff/verifications`, oldest first; side-by-side document
 viewer; approve and reject with a mandatory reason; attempts increment; 12-month
-expiry set on approval.
+expiry set on approval. Transactional email to the worker on both approve and
+reject (pulled forward from 12.1).
 **Done when**: approve makes a profile eligible for the directory, reject records
-a reason and increments attempts.
-**Verify**: approve one, reject another. Confirm expiry is 12 months out.
-Rejected profile must not be publicly visible.
+a reason and increments attempts, and the worker is emailed either way.
+**Verify**: approve one, reject another. Confirm expiry is 12 months out, the
+emails arrive, and the rejected profile is not publicly visible.
 
 ---
 
@@ -305,15 +306,20 @@ leaves the state untouched.
 
 **Builds**: `subscriptions` collection, `services/subscription.service.ts`, six
 states, stacking logic that appends to existing expiry rather than to `now()`.
-Tier prices and durations read from `platform-settings`.
+Tier prices and durations read live from `platform-settings.subscriptionTiers`,
+never hardcoded. `payments.tier` (currently `'1'|'2'|'3'`) is replaced by
+`tierId` + `tierName` string snapshots in the same pass.
 **Done when**: every transition is guarded and stacking is correct.
 **Verify**: with an active window, purchase again. Confirm the new expiry is old
 expiry plus duration, not today plus duration.
 
 ### 5.2 — Purchase flow
 
-**Builds**: `/dashboard/mwajiri/subscription`, tier selection, payment
-initiation, status polling, wiring `payment.confirmed` to activation.
+**Builds**: `/dashboard/mwajiri/subscription`, which renders the tier list
+(names + prices) live from `platform-settings.subscriptionTiers` — never
+hardcoded, so an admin price change is what a mwajiri sees at sign-up — plus tier
+selection, payment initiation, status polling, wiring `payment.confirmed` to
+activation.
 **Done when**: paying activates access within seconds of the handset
 confirmation.
 **Verify**: buy Essentials in sandbox. Confirm state, tier and expiry.
@@ -446,12 +452,17 @@ running payment total split by verification fees and subscriptions.
 
 ### 10.3 — Staff management and platform settings
 
-**Builds**: `/dashboard/admin/staff`, `platform-settings` global holding tier
-prices, durations and the verification fee.
-**Done when**: changing a price in settings changes what is charged, with no
-deploy.
-**Verify**: change Essentials to KSh 1, initiate a purchase, confirm the STK
-amount.
+**Builds**: `/dashboard/admin/staff`, and a `platform-settings` global (`admin`
+only) holding the verification fee plus the `subscriptionTiers` array
+(`tierId`, `name`, `price`, `durationDays`, `description`, `isActive`,
+`isConcierge`). Admin edits tiers through a form that PUT-replaces the whole
+array, validating required fields and unique `tierId` (the v1 pattern). Tiers are
+deactivated with `isActive`, never deleted; `tierId` is snapshotted onto
+subscriptions/payments at purchase and must not change after go-live.
+**Done when**: changing a tier price in settings changes what is charged with no
+deploy, and the mwajiri pricing page reads the tier list at runtime.
+**Verify**: change a tier price, initiate a purchase, confirm the STK amount;
+add a new tier and confirm it appears on the pricing page.
 
 ### 10.4 — Audit log viewer
 
@@ -464,8 +475,8 @@ amount.
 
 ### 11.1 — Cases and intake
 
-**Builds**: `concierge-cases`, auto-created on a confirmed Tier 3 payment,
-requirements brief at `/dashboard/mwajiri/concierge`.
+**Builds**: `concierge-cases`, auto-created on a confirmed concierge
+(`isConcierge`) tier payment, requirements brief at `/dashboard/mwajiri/concierge`.
 **Verify**: buy Concierge in sandbox, confirm a case appears in `intake`.
 
 ### 11.2 — Staff queue and shortlist
@@ -490,9 +501,9 @@ Request a second — it must be refused.
 
 ### 12.1 — Notifications sweep
 
-Every email in one pass: verification approved and rejected, expiry warning and
-expiry, payment receipt, expression of interest sent and answered, hire
-confirmed, shortlist delivered, suspension.
+Every email in one pass: expiry warning and expiry, payment receipt, expression
+of interest sent and answered, hire confirmed, shortlist delivered, suspension.
+(Verification approved/rejected emails were pulled forward to Phase 3.3.)
 **Verify**: trigger each once. Check copy, links and sender.
 
 ### 12.2 — PostHog sweep
