@@ -7,8 +7,14 @@ type AuditAction =
 	| "account_updated"
 	| "account_deleted"
 	| "verification_submitted"
+	| "verification_advanced"
+	| "verification_resubmitted"
+	| "verification_reverted"
 	| "verification_approved"
 	| "verification_rejected"
+	| "verification_expired"
+	| "verification_blacklisted"
+	| "verification_deactivated"
 	| "payment_initiated"
 	| "payment_confirmed"
 	| "payment_failed"
@@ -32,6 +38,11 @@ interface WriteAuditLogParams {
 	targetLabel?: string | null;
 	// event-specific context such as rejection reasons or payment amounts
 	metadata?: Record<string, unknown> | null;
+	// first-class state-machine context so transitions are filterable
+	previousState?: string | null;
+	newState?: string | null;
+	// mandatory for hand-initiated moderation actions; optional otherwise
+	reason?: string | null;
 	source?: AuditSource;
 }
 
@@ -46,6 +57,9 @@ const writeAuditLog = async ({
 	targetId = null,
 	targetLabel = null,
 	metadata = null,
+	previousState = null,
+	newState = null,
+	reason = null,
 	source = "user",
 }: WriteAuditLogParams): Promise<void> => {
 	try {
@@ -62,6 +76,9 @@ const writeAuditLog = async ({
 				target: targetId ?? undefined,
 				targetLabel: targetLabel ?? undefined,
 				metadata: metadata ?? undefined,
+				previousState: previousState ?? undefined,
+				newState: newState ?? undefined,
+				reason: reason ?? undefined,
 				source,
 			},
 			overrideAccess: true,

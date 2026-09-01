@@ -261,3 +261,87 @@ every feature is finished.
   `(saas)/dashboard/audit-logs/page.tsx` (new), `components/auth/{authenticating,post-auth-resolver}.tsx`
   (new), `(auth)/post-auth/page.tsx` (new), `dashboard-nav.ts`, `clerk-sync.ts`,
   `accounts-table.tsx`, the accounts pages, sign-in/up pages.
+
+### 2026-09-01 — Phase 3.1: Verification state machine
+- **What was built**: `services/verification.service.ts` — the eight-state
+  verification state machine as an explicit transition whitelist, with ten
+  exported transition functions (`submitForVerification`, `resubmitForVerification`,
+  `renewVerification`, `advanceToReview`, `approveVerification`,
+  `rejectVerification`, `revertToReview`, `expireVerification`, `blacklistProfile`,
+  `deactivateProfile`). Each is guarded on actor role + current state and writes
+  an audit entry with first-class `previousState`/`newState`/`reason`. Every
+  transition is a compare-and-swap (0 docs updated → `conflict`). No payment
+  wiring, no UI, no bypass — `advanceToReview` (`pending_payment → pending_review`)
+  has no caller until Phase 4.4.
+- **Schema**: `wajakazi-profiles` gained `verificationSubmittedAt`,
+  `verificationReviewedAt`, `verificationExpiry`, `verificationAttempts`,
+  `lastVerificationPaymentId`, `blacklistedAt`, `deactivatedAt`, `rejectionReason`,
+  `verificationNotes` (all field-locked to staff/admin). `audit-logs` gained
+  `previousState`/`newState`/`reason` and six new actions
+  (`verification_advanced`, `verification_resubmitted`, `verification_reverted`,
+  `verification_expired`, `verification_blacklisted`, `verification_deactivated`);
+  `lib/audit.ts` extended to match.
+- **Files touched**: `services/verification.service.ts` (new),
+  `payload/collections/wajakazi-profiles/schema.ts`,
+  `payload/collections/audit-logs/schema.ts`, `lib/audit.ts`, `payload-types.ts`
+  (regenerated).
+- **Notes**: The transition graph corrects the product spec — rejection is free
+  to retry (`rejected → pending_review`) up to 3 rejections, and the 4th forces a
+  fresh fee (`rejected → pending_payment`); `verificationAttempts` resets to 0 on
+  the next confirmed payment. `verified → pending_review` exists for legal-name/ID
+  change (no caller yet). Expiry is 12 months via `date-fns addMonths`.
+  `blacklisted` and `deactivated` are terminal. Verified with a throwaway `tsx`
+  scratch script (21/21 legal + illegal transitions passed), then deleted.
+  `pnpm lint` (0 errors) and `pnpm build` pass. Open: the `verified → pending_review`
+  identity-change *trigger* (profile/document-edit detection) and the "fresh
+  Certificate" renewal check land in later phases.
+
+### 2026-09-01 — Phase 3.2: Submit for verification
+- **What was built**: The verification page at `/dashboard/mjakazi/verification`,
+  state-aware across all eight verification states. The `draft` state renders a
+  readiness checklist (profile complete + both documents) with a submit button
+  wired to `submitForVerification` via a Server Action; every other state renders
+  correct status copy with no action buttons yet. The `pending_payment` state is
+  an honest "awaiting payment" card with no price or pay button (payment lands in
+  Phase 4.4, the fee in `platform-settings`). Added the "Verification" nav item
+  and linked the overview `VerificationStatusCard` "ready" state to the new page.
+- **Files touched**: `app/actions/verification.ts` (new),
+  `app/(saas)/dashboard/mjakazi/verification/page.tsx` (new),
+  `components/dashboard/mjakazi/verification/submit-verification.tsx` (new),
+  `components/dashboard/mjakazi/verification/verification-state.tsx` (new),
+  `lib/dashboard-nav.ts`, `components/dashboard/mjakazi/verification-status-card/index.tsx`,
+  `context/ui-registry.md`.
+- **Notes**: Submit is a Server Action (not a route handler) per the
+  "prefer a Server Action" rule. `verification_submitted` PostHog event fires
+  client-side on success; the `verification_submitted` audit entry is written
+  inside the service transition. Resubmit (`resubmitForVerification`) and renew
+  (`renewVerification`) are deliberately not wired — `rejected` and
+  `verification_expired` are unreachable until Phases 3.3 / 7.1. No schema change,
+  so no `generate:types` needed.
+
+### 2026-09-01 — Phase 3.3: Staff review queue
+- **What was built**: The verification review queue at
+  `/dashboard/staff/verifications` (admin + staff) — every `pending_review`
+  profile, oldest submission first — and a per-case review screen at
+  `/dashboard/staff/verifications/[id]` showing the legal name, date of birth,
+  nationality and phone next to the National ID and Certificate of Good Conduct
+  side by side. Approve and reject are wired to the existing
+  `approveVerification` / `rejectVerification` service functions (mandatory reject
+  reason, attempts increment, 12-month expiry on approve). Documents render
+  through the existing audited vault route, so every view still writes a
+  `document_viewed` entry.
+- **Files touched**: `services/verification.service.ts` (added
+  `listPendingReviews`), `app/actions/verification.ts` (added
+  `approveVerificationAction` / `rejectVerificationAction`),
+  `app/(saas)/dashboard/staff/verifications/page.tsx` (new),
+  `app/(saas)/dashboard/staff/verifications/[id]/page.tsx` (new),
+  `components/dashboard/staff/verifications/{verification-queue,document-viewer,review-form}.tsx`
+  (new), `lib/dashboard-nav.ts`, `context/ui-registry.md`.
+- **Notes**: No schema change, so no `generate:types`. The document viewer points
+  `<iframe>`s at `/api/actions/vault/{id}` rather than minting signed URLs
+  server-side, so role check and the audit entry stay in exactly one place. Approve
+  carries no notes field (the service's optional `notes` stays unwired — not in
+  the plan). Rejected profiles never become directory-visible because the directory
+  guard requires `verified` (invariant #17), not merely `pending_review` exiting.
+  `verification_approved` (`daysToVerify`) and `verification_rejected` (`attempt`)
+  PostHog events fire client-side on success. Manual verification pending.

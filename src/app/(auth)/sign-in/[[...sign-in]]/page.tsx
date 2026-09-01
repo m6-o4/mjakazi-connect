@@ -3,7 +3,7 @@ import { SignIn } from "@clerk/nextjs";
 const Page = () => {
 	return (
 		<SignIn
-			forceRedirectUrl="/authenticating?action=sign-in"
+			fallbackRedirectUrl="/authenticating?action=sign-in"
 			appearance={{
 				elements: {
 					rootBox: "w-full",

@@ -207,6 +207,75 @@ const WajakaziProfiles: CollectionConfig = {
 			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
 			admin: { readOnly: true, position: "sidebar" },
 		},
+		// --- verification bookkeeping (service-managed, staff/admin only) ---
+		// every field below is written by the verification service, never by a
+		// mjakazi directly — a mjakazi can only ever trigger a transition through
+		// the service, which is why these are field-locked to staff/admin
+		{
+			name: "verificationSubmittedAt",
+			type: "date",
+			label: "Verification Submitted At",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "verificationReviewedAt",
+			type: "date",
+			label: "Verification Reviewed At",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "verificationExpiry",
+			type: "date",
+			label: "Verification Expiry",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "verificationAttempts",
+			type: "number",
+			label: "Verification Attempts",
+			defaultValue: 0,
+			min: 0,
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "lastVerificationPaymentId",
+			type: "text",
+			label: "Last Verification Payment ID",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "blacklistedAt",
+			type: "date",
+			label: "Blacklisted At",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "deactivatedAt",
+			type: "date",
+			label: "Deactivated At",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "rejectionReason",
+			type: "textarea",
+			label: "Rejection Reason",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true },
+		},
+		{
+			name: "verificationNotes",
+			type: "textarea",
+			label: "Verification Notes",
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true },
+		},
 	],
 	timestamps: true,
 };

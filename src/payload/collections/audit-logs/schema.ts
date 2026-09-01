@@ -36,8 +36,14 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Account Deleted", value: "account_deleted" },
 				// verification lifecycle
 				{ label: "Verification Submitted", value: "verification_submitted" },
+				{ label: "Verification Advanced to Review", value: "verification_advanced" },
+				{ label: "Verification Resubmitted", value: "verification_resubmitted" },
+				{ label: "Verification Reverted", value: "verification_reverted" },
 				{ label: "Verification Approved", value: "verification_approved" },
 				{ label: "Verification Rejected", value: "verification_rejected" },
+				{ label: "Verification Expired", value: "verification_expired" },
+				{ label: "Verification Blacklisted", value: "verification_blacklisted" },
+				{ label: "Verification Deactivated", value: "verification_deactivated" },
 				// payment lifecycle
 				{ label: "Payment Initiated", value: "payment_initiated" },
 				{ label: "Payment Confirmed", value: "payment_confirmed" },
@@ -94,6 +100,27 @@ const AuditLogs: CollectionConfig = {
 				description:
 					"Structured context for the event — rejection reasons, amounts, etc.",
 			},
+		},
+		{
+			// first-class previous/new state so state-machine transitions can be
+			// filtered and audited without parsing the metadata blob
+			name: "previousState",
+			type: "text",
+			label: "Previous State",
+			admin: { readOnly: true },
+		},
+		{
+			name: "newState",
+			type: "text",
+			label: "New State",
+			admin: { readOnly: true },
+		},
+		{
+			// mandatory for hand-initiated moderation actions; optional otherwise
+			name: "reason",
+			type: "text",
+			label: "Reason",
+			admin: { readOnly: true },
 		},
 		{
 			// distinguishes deliberate user actions from automated background operations,

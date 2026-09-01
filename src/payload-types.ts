@@ -623,8 +623,14 @@ export interface AuditLog {
     | 'account_updated'
     | 'account_deleted'
     | 'verification_submitted'
+    | 'verification_advanced'
+    | 'verification_resubmitted'
+    | 'verification_reverted'
     | 'verification_approved'
     | 'verification_rejected'
+    | 'verification_expired'
+    | 'verification_blacklisted'
+    | 'verification_deactivated'
     | 'payment_initiated'
     | 'payment_confirmed'
     | 'payment_failed'
@@ -649,6 +655,9 @@ export interface AuditLog {
     | number
     | boolean
     | null;
+  previousState?: string | null;
+  newState?: string | null;
+  reason?: string | null;
   source: 'user' | 'system';
   updatedAt: string;
   createdAt: string;
@@ -783,6 +792,15 @@ export interface WajakaziProfile {
     | 'deactivated';
   availabilityStatus: 'available' | 'hired' | 'on_break';
   profileComplete?: boolean | null;
+  verificationSubmittedAt?: string | null;
+  verificationReviewedAt?: string | null;
+  verificationExpiry?: string | null;
+  verificationAttempts?: number | null;
+  lastVerificationPaymentId?: string | null;
+  blacklistedAt?: string | null;
+  deactivatedAt?: string | null;
+  rejectionReason?: string | null;
+  verificationNotes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1515,6 +1533,9 @@ export interface AuditLogsSelect<T extends boolean = true> {
   target?: T;
   targetLabel?: T;
   metadata?: T;
+  previousState?: T;
+  newState?: T;
+  reason?: T;
   source?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1547,6 +1568,15 @@ export interface WajakaziProfilesSelect<T extends boolean = true> {
   verificationState?: T;
   availabilityStatus?: T;
   profileComplete?: T;
+  verificationSubmittedAt?: T;
+  verificationReviewedAt?: T;
+  verificationExpiry?: T;
+  verificationAttempts?: T;
+  lastVerificationPaymentId?: T;
+  blacklistedAt?: T;
+  deactivatedAt?: T;
+  rejectionReason?: T;
+  verificationNotes?: T;
   updatedAt?: T;
   createdAt?: T;
 }
