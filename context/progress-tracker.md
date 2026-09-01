@@ -261,3 +261,37 @@ every feature is finished.
   `(saas)/dashboard/audit-logs/page.tsx` (new), `components/auth/{authenticating,post-auth-resolver}.tsx`
   (new), `(auth)/post-auth/page.tsx` (new), `dashboard-nav.ts`, `clerk-sync.ts`,
   `accounts-table.tsx`, the accounts pages, sign-in/up pages.
+
+### 2026-09-01 — Phase 3.1: Verification state machine
+- **What was built**: `services/verification.service.ts` — the eight-state
+  verification state machine as an explicit transition whitelist, with ten
+  exported transition functions (`submitForVerification`, `resubmitForVerification`,
+  `renewVerification`, `advanceToReview`, `approveVerification`,
+  `rejectVerification`, `revertToReview`, `expireVerification`, `blacklistProfile`,
+  `deactivateProfile`). Each is guarded on actor role + current state and writes
+  an audit entry with first-class `previousState`/`newState`/`reason`. Every
+  transition is a compare-and-swap (0 docs updated → `conflict`). No payment
+  wiring, no UI, no bypass — `advanceToReview` (`pending_payment → pending_review`)
+  has no caller until Phase 4.4.
+- **Schema**: `wajakazi-profiles` gained `verificationSubmittedAt`,
+  `verificationReviewedAt`, `verificationExpiry`, `verificationAttempts`,
+  `lastVerificationPaymentId`, `blacklistedAt`, `deactivatedAt`, `rejectionReason`,
+  `verificationNotes` (all field-locked to staff/admin). `audit-logs` gained
+  `previousState`/`newState`/`reason` and six new actions
+  (`verification_advanced`, `verification_resubmitted`, `verification_reverted`,
+  `verification_expired`, `verification_blacklisted`, `verification_deactivated`);
+  `lib/audit.ts` extended to match.
+- **Files touched**: `services/verification.service.ts` (new),
+  `payload/collections/wajakazi-profiles/schema.ts`,
+  `payload/collections/audit-logs/schema.ts`, `lib/audit.ts`, `payload-types.ts`
+  (regenerated).
+- **Notes**: The transition graph corrects the product spec — rejection is free
+  to retry (`rejected → pending_review`) up to 3 rejections, and the 4th forces a
+  fresh fee (`rejected → pending_payment`); `verificationAttempts` resets to 0 on
+  the next confirmed payment. `verified → pending_review` exists for legal-name/ID
+  change (no caller yet). Expiry is 12 months via `date-fns addMonths`.
+  `blacklisted` and `deactivated` are terminal. Verified with a throwaway `tsx`
+  scratch script (21/21 legal + illegal transitions passed), then deleted.
+  `pnpm lint` (0 errors) and `pnpm build` pass. Open: the `verified → pending_review`
+  identity-change *trigger* (profile/document-edit detection) and the "fresh
+  Certificate" renewal check land in later phases.
