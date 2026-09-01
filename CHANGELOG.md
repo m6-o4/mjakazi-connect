@@ -1,3 +1,12 @@
+# [2.4.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.3.0...v2.4.0) (2026-09-01)
+
+
+### Features
+
+* **mjakazi:** add verification submission page and server action ([45d4916](https://github.com/m6-o4/mjakazi-connect/commit/45d4916661dea50cd42d8b187238caee2944d270))
+* **staff:** add verification review queue and decision actions ([23c6d09](https://github.com/m6-o4/mjakazi-connect/commit/23c6d09b49106bb9168bd859617ecec49376f82c))
+* **verification:** add eight-state verification state machine service ([5fa4cef](https://github.com/m6-o4/mjakazi-connect/commit/5fa4cef6f75ff5c2191ca48ed5caa832b92cf109))
+
 # [2.3.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.2.0...v2.3.0) (2026-08-31)
 
 ### Features
