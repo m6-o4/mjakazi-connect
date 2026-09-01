@@ -1,68 +1,58 @@
-# Memory — Phase 4.1 Payments Collection + M-Pesa Client
+# Memory — Phase 4.2 Payment Callback Handling
 
-Last updated: 2026-09-01
+Last updated: 2026-09-01 14:35
 
 ## What was built
 
-- `src/payload/collections/payments/schema.ts` (new) — sealed collection
-  (create/update/delete `isRestricted`, read `isAdminOrOwner("user")`), full
-  `architecture.md` field set. Registered in `collections/index.ts`.
-- `src/lib/mpesa.ts` (new) — server-only Daraja STK client: base-URL resolution
-  by `MPESA_ENVIRONMENT`, Africa/Nairobi timestamp, password generation, cached
-  OAuth token, `initiateStkPush()`.
-- `src/services/payment.service.ts` (new) — `initiatePayment()`: mints a 12-char
-  reference, creates the `initiated` record, sends the push, lands at `stk_sent`
-  (accepted) or `failed` (rejected), writes `payment_initiated`/`payment_failed`
-  audit entries.
-- `scripts/mpesa-initiate.ts` (new, throwaway) — CLI verifier; delete after
-  manual verification.
+- `src/app/(payload)/api/webhooks/payments/callback/route.ts` (new) — the Daraja
+  STK callback webhook. Parses the body, delegates to the service, and returns
+  200 to every outcome so Daraja never retries a settled payment.
+- `src/lib/mpesa.ts` — added a zod schema + `parseStkCallback()` +
+  `getCallbackMetadataValue()` and the `StkCallback` type (Daraja callback
+  shape).
+- `src/services/payment.service.ts` — added `handleCallback()` and
+  `settleCallback()`: find by `checkoutRequestId`, verify merchant correlation
+  (`MerchantRequestID`), amount and phone, then compare-and-swap to `confirmed`
+  or `failed`, storing the raw payload and writing the audit entry.
+- `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` — new
+  `payment_duplicate` audit action. `src/payload-types.ts` regenerated.
 
 ## Decisions made
 
-- `mpesaReference` = our minted 12-char unique business reference (fits Daraja's
-  `AccountReference` 12-char cap), generated with `node:crypto` `randomInt` (no
-  modulo bias), passed as `AccountReference`.
-- `checkoutRequestId` = Daraja's per-push id — the Phase 4.2 callback
-  matching/idempotency key (Daraja does NOT echo `AccountReference` back).
-- Phone normalization reuses `normalizeKenyanPhone` from `lib/phone.ts` (single
-  source of truth) — the "normalize in lib/mpesa.ts" note predates `phone.ts`.
-- The initiate route (`/api/actions/payments/initiate`) is deliberately deferred
-  to Phase 5.2; 4.1 has no HTTP caller.
+- Duplicate and unverifiable callbacks are refused and audit-logged via a new
+  `payment_duplicate` action; nothing ever activates twice.
+- `MpesaReceiptNumber` is captured into the `payment_confirmed` audit metadata
+  only — no dedicated schema field (resolves the 4.1 open question for now).
+- **Testing is deferred when the interface doesn't exist yet.** No throwaway test
+  scripts, no "pending manual verification" against an unreachable route/UI. Trust
+  completed work; fix failures only when they surface.
+- **Cron/scheduled work uses Payload's job queue, not Inngest** (confirmed again
+  this session).
 
 ## Problems solved
 
 - `pnpm` is blocked by PowerShell execution policy in this shell — use
   `pnpm.cmd` for all scripts.
-- Scratch script hit the service's role guard ("Forbidden") because it defaulted
-  `paymentType: "verification"`; fixed by inferring the payment type from the
-  account's role (mjakazi → verification, mwajiri → subscription).
+- The `scripts/mpesa-initiate.ts` verifier from 4.1 is already deleted (no
+  `scripts/` dir exists); removed stale references to it from progress-tracker.
 
 ## Current state
 
-- Phase 4.1 built; `pnpm lint` (0 errors) + `pnpm build` green.
-- Sandbox STK push accepted: a `subscription` payment reached `stk_sent` with
-  `merchantRequestId` + `checkoutRequestId` populated and the phone normalized
-  to `254…`.
-- The callback route (`/api/webhooks/payments/callback`) does not exist yet — a
-  404 from Daraja after the handset prompt is expected until 4.2.
-- `scripts/mpesa-initiate.ts` still present; delete once the handset prompt is
-  confirmed.
-- No server-side PostHog (`posthog-node` not installed); `payment_initiated` /
-  `payment_failed` will fire client-side with the purchase UI in later phases.
+- Phase 4.1 + 4.2 code-complete. `pnpm lint` (0 errors, 1 pre-existing
+  `pages/schema.ts` warning) and `pnpm build` green; `/api/webhooks/payments/callback`
+  is registered.
+- Payment state machine: `initiated` → `stk_sent` → (`confirmed` | `failed`).
+  No domain transition yet — that is 4.4 / 5.2.
+- No server-side PostHog (`posthog-node` not installed); `payment_*` analytics
+  fire client-side with the purchase UI in later phases.
 
 ## Next session starts with
 
-Phase 4.2 — Callback handling. Build
-`src/app/(payload)/api/webhooks/payments/callback/route.ts`: verify amount,
-phone, merchant credentials and transaction-id (`checkoutRequestId`) uniqueness,
-store the raw payload, confirm or fail, reject duplicates (audit-logged). No
-domain transition yet. Then 4.3 (`jobs/payment-timeout.ts`), then 4.4 (wire
-payment → `pending_review`).
+Phase 4.3 — `jobs/payment-timeout.ts`, a Payload queue task moving `stk_sent` to
+`expired` after the timeout window, registered in `payload.config.ts` `jobs.tasks`.
+Then 4.4 (wire `payment.confirmed` → verification `pending_review`).
 
 ## Open questions
 
 - `platform-settings` global (tier prices + verification fee) is not built until
-  Phase 10.3 — the service takes `amount` as a parameter, never hardcodes a
-  price.
-- In 4.2, decide whether to also surface the actual `MpesaReceiptNumber` from
-  the callback (distinct from our minted `mpesaReference`) for staff display.
+  Phase 10.3 — services take `amount` as a parameter, never hardcode a price.

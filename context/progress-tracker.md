@@ -359,8 +359,7 @@ every feature is finished.
   the record at `stk_sent` (accepted) or `failed` (rejected) with audit entries.
 - **Files touched**: `src/payload/collections/payments/schema.ts` (new),
   `src/payload/collections/index.ts`, `src/lib/mpesa.ts` (new),
-  `src/services/payment.service.ts` (new), `scripts/mpesa-initiate.ts` (new,
-  throwaway), `src/payload-types.ts` (regenerated).
+  `src/services/payment.service.ts` (new), `src/payload-types.ts` (regenerated).
 - **Notes**: `mpesaReference` is *our* minted 12-char unique reference (fits
   Daraja's `AccountReference` 12-char cap), and `checkoutRequestId` is Daraja's
   per-push id — the Phase 4.2 callback matching/idempotency key. Phone
@@ -370,7 +369,32 @@ every feature is finished.
   will fire client-side with the purchase UI in later phases). The initiate
   *route* (`/api/actions/payments/initiate`) is deliberately deferred to 5.2;
   4.1 has no HTTP caller. `pnpm lint` (0 errors, 1 pre-existing `pages/schema.ts`
-  warning) and `pnpm build` pass. **Manual verification pending**: run
-  `pnpm tsx scripts/mpesa-initiate.ts <email> <phone> <amount>` against the
-  sandbox and confirm the STK prompt reaches the handset and the `payments`
-  record is `stk_sent`; then delete the script.
+   warning) and `pnpm build` pass. **Manual verification pending**: initiate an
+   STK push against the sandbox and confirm the prompt reaches the handset and
+   the `payments` record is `stk_sent`.
+
+### 2026-09-01 — Phase 4.2: Payment callback handling
+- **What was built**: The M-Pesa STK callback route at
+  `/api/webhooks/payments/callback` (`route.ts`) plus `handleCallback` /
+  `settleCallback` in `payment.service.ts`. Daraja's callback body is parsed by a
+  new zod schema + `parseStkCallback` in `lib/mpesa.ts`. The service finds the
+  payment by `checkoutRequestId` (the idempotency key), verifies merchant
+  correlation (`MerchantRequestID`), amount and phone before writing `confirmed`
+  (or `failed`), stores the raw callback in `callbackPayload`, and writes a
+  `payment_confirmed` / `payment_failed` audit entry. Duplicate and unverifiable
+  callbacks are refused and audit-logged via a new `payment_duplicate` action.
+  No domain transition yet — that is Phase 4.4.
+- **Files touched**: `src/app/(payload)/api/webhooks/payments/callback/route.ts`
+  (new), `src/lib/mpesa.ts` (callback schema + parser), `src/services/payment.service.ts`
+  (`handleCallback`/`settleCallback`), `src/lib/audit.ts` (`payment_duplicate`
+  action), `src/payload/collections/audit-logs/schema.ts` (`payment_duplicate`
+  option), `src/payload-types.ts` (regenerated).
+- **Notes**: The callback carries no signature (unlike Clerk), so authenticity
+  rests entirely on the correlation checks. Every path returns 200 to Daraja so
+  it never retries. Amount/phone/merchant mismatches land the payment at
+  `failed` (fail-safe — no access granted). `MpesaReceiptNumber` is captured into
+  the `payment_confirmed` audit metadata rather than a dedicated schema field,
+  resolving the 4.1 open question for now. `pnpm lint` (0 errors) and
+  `pnpm build` pass. **Manual verification pending**: pay in the sandbox, then
+  replay the same callback by hand — the second must be refused and audit-logged
+  (`payment_duplicate`).

@@ -2,7 +2,11 @@ import { randomInt } from "node:crypto";
 import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
-import { initiateStkPush } from "@/lib/mpesa";
+import {
+	getCallbackMetadataValue,
+	initiateStkPush,
+	type StkCallback,
+} from "@/lib/mpesa";
 import { normalizeKenyanPhone } from "@/lib/phone";
 import type { Payment, User } from "@/payload-types";
 
@@ -176,5 +180,218 @@ const initiatePayment = async (
 	return { success: true, data: updated };
 };
 
-export { initiatePayment };
-export type { PaymentInput };
+type CallbackStatus = "confirmed" | "failed" | "duplicate" | "not_found";
+
+type CallbackOutcome = {
+	status: CallbackStatus;
+	payment?: Payment;
+};
+
+// the settled states a callback must never transition out of. daraja retries a
+// callback that does not get a 200, so a payment already at one of these is a
+// duplicate rather than a fresh confirmation
+const TERMINAL_STATUSES: ReadonlyArray<Payment["status"]> = [
+	"confirmed",
+	"failed",
+	"expired",
+	"cancelled",
+];
+
+const isTerminal = (payment: Payment): boolean => TERMINAL_STATUSES.includes(payment.status);
+
+// relationships come back as an id string at depth 0, or an object when
+// populated. normalized to an id here
+const toId = (
+	value: string | { id?: string | number } | null | undefined,
+): string | null => {
+	if (!value) return null;
+	if (typeof value === "string") return value;
+	return typeof value.id === "number" ? String(value.id) : (value.id ?? null);
+};
+
+// moves a payment to its terminal state in one compare-and-swap write, stores
+// the raw callback for audit, and writes the matching payment audit entry.
+// nothing here triggers a domain transition — that is phase 4.4 / 5.2
+const settleCallback = async (
+	payload: Payload,
+	payment: Payment,
+	callback: StkCallback,
+	nextStatus: "confirmed" | "failed",
+	detail: {
+		resultCode: number;
+		resultDesc: string | null;
+		reason?: string;
+	},
+): Promise<Result<CallbackOutcome>> => {
+	const previousState = payment.status;
+	const timestamp = new Date().toISOString();
+
+	let updated: Payment;
+	try {
+		const result = await payload.update({
+			collection: "payments",
+			where: {
+				and: [
+					{ id: { equals: payment.id } },
+					{ status: { equals: previousState } },
+				],
+			},
+			data: {
+				status: nextStatus,
+				callbackPayload: callback,
+				...(nextStatus === "confirmed"
+					? { confirmedAt: timestamp }
+					: { failedAt: timestamp }),
+			},
+			overrideAccess: true,
+		});
+
+		if (result.docs.length === 0) {
+			// a concurrent callback settled it first — treated as a duplicate
+			await writeAuditLog({
+				action: "payment_duplicate",
+				actorId: null,
+				targetId: toId(payment.user),
+				previousState,
+				newState: previousState,
+				metadata: {
+					paymentId: payment.id,
+					checkoutRequestId: payment.checkoutRequestId ?? null,
+					resultCode: detail.resultCode,
+				},
+				source: "system",
+			});
+			return { success: true, data: { status: "duplicate", payment } };
+		}
+
+		updated = result.docs[0];
+	} catch (error) {
+		console.error("[services/payment] callback settle failed:", error);
+		return fail("Could not record the callback.");
+	}
+
+	const receiptNumber = getCallbackMetadataValue(callback, "MpesaReceiptNumber");
+
+	await writeAuditLog({
+		action: nextStatus === "confirmed" ? "payment_confirmed" : "payment_failed",
+		actorId: null,
+		targetId: toId(payment.user),
+		previousState,
+		newState: nextStatus,
+		metadata: {
+			paymentId: payment.id,
+			mpesaReference: payment.mpesaReference,
+			amount: payment.amount,
+			paymentType: payment.paymentType,
+			tier: payment.tier ?? null,
+			checkoutRequestId: payment.checkoutRequestId ?? null,
+			resultCode: detail.resultCode,
+			resultDesc: detail.resultDesc,
+			...(nextStatus === "confirmed"
+				? { mpesaReceiptNumber: receiptNumber ?? null }
+				: {}),
+			...(detail.reason ? { reason: detail.reason } : {}),
+		},
+		source: "system",
+	});
+
+	return { success: true, data: { status: nextStatus, payment: updated } };
+};
+
+// processes a daraja stk push callback. the callback is the only thing that may
+// confirm a payment, so the success path verifies merchant correlation, amount
+// and phone against the initiated record before writing `confirmed`. a callback
+// that cannot be matched, has already been settled, or fails verification is
+// ignored (audit-logged where appropriate) and never activates anything twice
+const handleCallback = async (
+	payload: Payload,
+	callback: StkCallback,
+): Promise<Result<CallbackOutcome>> => {
+	const { MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc } =
+		callback.Body.stkCallback;
+
+	let payment: Payment | null;
+	try {
+		const result = await payload.find({
+			collection: "payments",
+			where: { checkoutRequestId: { equals: CheckoutRequestID } },
+			limit: 1,
+			overrideAccess: true,
+		});
+		payment = result.docs[0] ?? null;
+	} catch (error) {
+		console.error("[services/payment] callback lookup failed:", error);
+		return fail("Could not look up the payment.");
+	}
+
+	if (!payment) {
+		console.error(
+			`[services/payment] callback for unknown CheckoutRequestID ${CheckoutRequestID}`,
+		);
+		return { success: true, data: { status: "not_found" } };
+	}
+
+	if (isTerminal(payment)) {
+		await writeAuditLog({
+			action: "payment_duplicate",
+			actorId: null,
+			targetId: toId(payment.user),
+			previousState: payment.status,
+			newState: payment.status,
+			metadata: {
+				paymentId: payment.id,
+				checkoutRequestId: CheckoutRequestID,
+				resultCode: ResultCode,
+			},
+			source: "system",
+		});
+		return { success: true, data: { status: "duplicate", payment } };
+	}
+
+	// verify the callback correlates to the push we actually sent before trusting
+	// anything in it
+	if (MerchantRequestID !== payment.merchantRequestId) {
+		return settleCallback(payload, payment, callback, "failed", {
+			resultCode: ResultCode,
+			resultDesc: ResultDesc ?? null,
+			reason: "merchant_request_mismatch",
+		});
+	}
+
+	// result code 0 means the handset confirmed; anything else is a cancellation
+	// or failure and carries no metadata
+	if (ResultCode !== 0) {
+		return settleCallback(payload, payment, callback, "failed", {
+			resultCode: ResultCode,
+			resultDesc: ResultDesc ?? null,
+		});
+	}
+
+	const amountPaid = Number(getCallbackMetadataValue(callback, "Amount"));
+	if (!Number.isInteger(amountPaid) || amountPaid !== payment.amount) {
+		return settleCallback(payload, payment, callback, "failed", {
+			resultCode: ResultCode,
+			resultDesc: ResultDesc ?? null,
+			reason: "amount_mismatch",
+		});
+	}
+
+	const phonePaid = getCallbackMetadataValue(callback, "PhoneNumber");
+	const normalizedPhone =
+		phonePaid === undefined ? null : normalizeKenyanPhone(String(phonePaid));
+	if (!normalizedPhone || normalizedPhone !== payment.phoneNumber) {
+		return settleCallback(payload, payment, callback, "failed", {
+			resultCode: ResultCode,
+			resultDesc: ResultDesc ?? null,
+			reason: "phone_mismatch",
+		});
+	}
+
+	return settleCallback(payload, payment, callback, "confirmed", {
+		resultCode: ResultCode,
+		resultDesc: ResultDesc ?? null,
+	});
+};
+
+export { handleCallback, initiatePayment };
+export type { CallbackOutcome, PaymentInput };

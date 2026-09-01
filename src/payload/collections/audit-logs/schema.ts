@@ -47,6 +47,7 @@ const AuditLogs: CollectionConfig = {
 				// payment lifecycle
 				{ label: "Payment Initiated", value: "payment_initiated" },
 				{ label: "Payment Confirmed", value: "payment_confirmed" },
+				{ label: "Payment Duplicate", value: "payment_duplicate" },
 				{ label: "Payment Failed", value: "payment_failed" },
 				{ label: "Payment Expired", value: "payment_expired" },
 				// expression of interest lifecycle

@@ -635,6 +635,7 @@ export interface AuditLog {
     | 'verification_deactivated'
     | 'payment_initiated'
     | 'payment_confirmed'
+    | 'payment_duplicate'
     | 'payment_failed'
     | 'payment_expired'
     | 'eoi_sent'

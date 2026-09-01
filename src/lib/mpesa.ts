@@ -2,6 +2,8 @@
 // client component. the callback is the only source of truth for payment; this
 // module only initiates a push and reports whether daraja accepted the request.
 
+import { z } from "zod";
+
 import { normalizeKenyanPhone } from "@/lib/phone";
 
 const MPESA_ENVIRONMENT = process.env.MPESA_ENVIRONMENT;
@@ -188,5 +190,50 @@ const initiateStkPush = async ({
 	};
 };
 
-export { initiateStkPush };
-export type { StkPushResult };
+// --- callback parsing -------------------------------------------------------
+
+const callbackMetadataItemSchema = z.object({
+	Name: z.string(),
+	Value: z.union([z.string(), z.number()]),
+});
+
+// the shape daraja posts back once the handset responds. result code 0 means the
+// user paid; any other code is a cancellation or failure, in which case
+// CallbackMetadata is absent
+const stkCallbackSchema = z.object({
+	Body: z.object({
+		stkCallback: z.object({
+			MerchantRequestID: z.string(),
+			CheckoutRequestID: z.string(),
+			ResultCode: z.number().int(),
+			ResultDesc: z.string().optional(),
+			CallbackMetadata: z
+				.object({
+					Item: z.array(callbackMetadataItemSchema),
+				})
+				.optional(),
+		}),
+	}),
+});
+
+type StkCallback = z.infer<typeof stkCallbackSchema>;
+
+// validates and narrows an unknown request body into the daraja callback shape.
+// returns null for anything that is not a recognizable stk callback so the
+// caller can drop it with a 200 rather than fail loudly and invite retries
+const parseStkCallback = (raw: unknown): StkCallback | null => {
+	const result = stkCallbackSchema.safeParse(raw);
+	return result.success ? result.data : null;
+};
+
+// reads a named value out of the callback's metadata items
+const getCallbackMetadataValue = (
+	callback: StkCallback,
+	name: string,
+): string | number | undefined => {
+	const items = callback.Body.stkCallback.CallbackMetadata?.Item ?? [];
+	return items.find((item) => item.Name === name)?.Value;
+};
+
+export { getCallbackMetadataValue, initiateStkPush, parseStkCallback };
+export type { StkCallback, StkPushResult };
