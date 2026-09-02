@@ -1,10 +1,11 @@
-import { sendEoiMjakaziEmail, sendEoiMwajiriEmail } from "@/lib/email";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
 import { writeAuditLog } from "@/lib/audit";
+import { sendEoiMjakaziEmail, sendEoiMwajiriEmail } from "@/lib/email";
+import { resolveIdentity } from "@/services/identity.service";
 
 const POST = async (req: Request) => {
 	const { userId } = await auth();

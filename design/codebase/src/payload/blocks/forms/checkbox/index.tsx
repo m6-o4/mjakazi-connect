@@ -1,9 +1,10 @@
-import { Checkbox as CheckboxUI } from "@/payload/blocks/forms/checkbox/icon";
-import { Error } from "@/payload/blocks/forms/error";
-import { Width } from "@/payload/blocks/forms/width";
 import type { CheckboxField } from "@payloadcms/plugin-form-builder/types";
 import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
 import { useFormContext } from "react-hook-form";
+
+import { Checkbox as CheckboxUI } from "@/payload/blocks/forms/checkbox/icon";
+import { Error } from "@/payload/blocks/forms/error";
+import { Width } from "@/payload/blocks/forms/width";
 
 // defines all properties required for the checkbox field
 type CheckboxProps = CheckboxField & {

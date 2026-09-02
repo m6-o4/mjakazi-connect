@@ -1,9 +1,9 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useEffect } from "react";
 
 import { useClerk } from "@clerk/nextjs";
-import posthog from "posthog-js";
 
 // sign-out has to happen client-side so clerk can clear its own cookies. a
 // server component can revoke the session but cannot touch the browser's

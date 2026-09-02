@@ -1,6 +1,7 @@
-import { Error } from "@/payload/blocks/forms/error";
 import type { TextAreaField } from "@payloadcms/plugin-form-builder/types";
 import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
+
+import { Error } from "@/payload/blocks/forms/error";
 
 // defines the combined props required for the textarea component
 type TextareaProps = {

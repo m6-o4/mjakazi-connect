@@ -1,8 +1,9 @@
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
 
 // PATCH /apis/sa/platform-settings — updates platform-wide config; restricted to the sa role
 export const PATCH = async (req: Request) => {

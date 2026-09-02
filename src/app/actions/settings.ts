@@ -6,7 +6,10 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import config from "@/payload-config";
-import { updateSubscriptionTiers, updateVerificationFee } from "@/services/settings.service";
+import {
+	updateSubscriptionTiers,
+	updateVerificationFee,
+} from "@/services/settings.service";
 
 type ActionResult = { success: boolean; error?: string; code?: string };
 
@@ -37,7 +40,8 @@ const updateVerificationFeeAction = async (input: unknown): Promise<ActionResult
 
 		const payload = await getPayload({ config });
 		const result = await updateVerificationFee(payload, user, parsed.data);
-		if (!result.success) return { success: false, error: result.error, code: result.code };
+		if (!result.success)
+			return { success: false, error: result.error, code: result.code };
 
 		revalidatePath("/dashboard/admin/settings");
 		return { success: true };
@@ -60,7 +64,8 @@ const updateSubscriptionTiersAction = async (input: unknown): Promise<ActionResu
 
 		const payload = await getPayload({ config });
 		const result = await updateSubscriptionTiers(payload, user, parsed.data);
-		if (!result.success) return { success: false, error: result.error, code: result.code };
+		if (!result.success)
+			return { success: false, error: result.error, code: result.code };
 
 		revalidatePath("/dashboard/admin/settings");
 		return { success: true };

@@ -1,8 +1,9 @@
+import { Check } from "lucide-react";
+
 import { Container } from "@/components/container";
 import { CMSLink } from "@/components/link";
 import { cn } from "@/lib/utils";
 import { Pricing } from "@/payload-types";
-import { Check } from "lucide-react";
 
 // map background variants to css classes for easy styling
 const bgMap: Record<string, string> = { subtle: "bg-bg-subtle", white: "bg-bg-white" };

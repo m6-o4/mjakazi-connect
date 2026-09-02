@@ -1,5 +1,6 @@
-import type { User } from "@/payload-types";
 import type { Access, AccessArgs } from "payload";
+
+import type { User } from "@/payload-types";
 
 type IsAuthenticated = (args: AccessArgs<User>) => boolean;
 

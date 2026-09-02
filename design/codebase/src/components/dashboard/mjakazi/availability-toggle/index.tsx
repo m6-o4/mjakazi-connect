@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Briefcase, Coffee, CheckCircle2 } from "lucide-react";
+import { Briefcase, CheckCircle2, Coffee } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type AvailabilityStatus = "available" | "hired" | "on_break";
 

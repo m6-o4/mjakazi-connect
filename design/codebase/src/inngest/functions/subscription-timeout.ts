@@ -1,7 +1,8 @@
-import { inngest } from "@/inngest/client";
-import { writeAuditLog } from "@/lib/audit";
 import config from "@payload-config";
 import { getPayload } from "payload";
+
+import { inngest } from "@/inngest/client";
+import { writeAuditLog } from "@/lib/audit";
 
 // handle subscription stk push timeouts
 export const subscriptionTimeout = inngest.createFunction(

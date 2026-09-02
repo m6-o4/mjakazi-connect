@@ -1,5 +1,3 @@
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { CheckCircle, Clock, Users } from "lucide-react";
@@ -7,6 +5,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { resolveIdentity } from "@/services/identity.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";

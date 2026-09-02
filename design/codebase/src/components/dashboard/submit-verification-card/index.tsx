@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ReactNode, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 interface SubmitVerificationCardProps {
 	verificationStatus: string;

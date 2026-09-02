@@ -1,7 +1,8 @@
+import type { ArrayField, Field } from "payload";
+
 import { link } from "@/payload/fields/link";
 import type { LinkAppearances } from "@/payload/fields/link";
 import deepMerge from "@/payload/utilities/deep-merge";
-import type { ArrayField, Field } from "payload";
 
 type LinkGroupType = (options?: {
 	appearances?: LinkAppearances[] | false;

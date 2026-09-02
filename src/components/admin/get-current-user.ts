@@ -1,6 +1,6 @@
-import { cache } from "react";
 import { headers as nextHeaders } from "next/headers";
 import { getPayload } from "payload";
+import { cache } from "react";
 
 import config from "@/payload-config";
 

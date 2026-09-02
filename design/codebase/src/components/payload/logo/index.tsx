@@ -1,7 +1,8 @@
-import { Media } from "@/payload-types";
 import config from "@payload-config";
 import Image from "next/image";
 import { getPayload } from "payload";
+
+import { Media } from "@/payload-types";
 
 /**
  * an asynchronous server component to fetch and render the organization's logo.

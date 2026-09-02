@@ -1,7 +1,8 @@
-import { Input } from "@/payload/blocks/forms/input";
-import { Width } from "@/payload/blocks/forms/width";
 import type { TextField } from "@payloadcms/plugin-form-builder/types";
 import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
+
+import { Input } from "@/payload/blocks/forms/input";
+import { Width } from "@/payload/blocks/forms/width";
 
 // defines the combined props required for the number input component
 type NumberProps = {

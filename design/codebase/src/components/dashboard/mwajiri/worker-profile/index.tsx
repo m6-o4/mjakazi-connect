@@ -10,6 +10,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import Link from "next/link";
+
 import { EoiButton } from "@/components/dashboard/mwajiri/eoi-button";
 
 interface JobLabel {

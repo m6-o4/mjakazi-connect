@@ -1,6 +1,7 @@
+import type { CollectionConfig } from "payload";
+
 import { isAuthenticated, isPublic } from "@/payload/access/access-control";
 import { link } from "@/payload/fields/link";
-import type { CollectionConfig } from "payload";
 
 // defines a collection for reusable call to action items
 const CallsToAction: CollectionConfig = {

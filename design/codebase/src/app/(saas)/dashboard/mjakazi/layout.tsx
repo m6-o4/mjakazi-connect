@@ -1,11 +1,12 @@
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 import { ReactNode } from "react";
+
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { resolveIdentity } from "@/services/identity.service";
 
 const MjakaziDashboardLayout = async ({ children }: { children: ReactNode }) => {
 	const { userId } = await auth();

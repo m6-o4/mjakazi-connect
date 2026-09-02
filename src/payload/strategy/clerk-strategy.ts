@@ -11,7 +11,13 @@ import { createClerkClient } from "@clerk/backend";
 // re-fetch and return the winner's record instead of failing this login
 const createOrFindUser = async (
 	payload: Payload,
-	params: { clerkId: string; email: string; firstName: string; lastName: string; role: Role },
+	params: {
+		clerkId: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		role: Role;
+	},
 ) => {
 	try {
 		return await payload.create({

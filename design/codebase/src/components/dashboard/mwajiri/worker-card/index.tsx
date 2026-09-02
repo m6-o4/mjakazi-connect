@@ -1,6 +1,7 @@
 import { BookOpen, Briefcase, Calendar, Globe, MapPin, Wallet } from "lucide-react";
-import { LANGUAGE_OPTIONS } from "@/lib/profile-constants";
 import Link from "next/link";
+
+import { LANGUAGE_OPTIONS } from "@/lib/profile-constants";
 
 interface JobLabel {
 	label: string;

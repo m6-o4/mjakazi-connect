@@ -1,5 +1,9 @@
 "use client";
 
+import { Camera, CheckCircle2, UserCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +18,6 @@ import {
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 } from "@/lib/profile-constants";
-import { Camera, CheckCircle2, UserCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
 
 interface ProfileFormProps {
 	currentDisplayName: string;

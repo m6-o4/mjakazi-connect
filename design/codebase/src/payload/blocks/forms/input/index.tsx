@@ -1,5 +1,6 @@
-import { Error } from "@/payload/blocks/forms/error";
 import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
+
+import { Error } from "@/payload/blocks/forms/error";
 
 // defines all properties accepted by the form input component
 type Props = {

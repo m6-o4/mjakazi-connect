@@ -1,3 +1,5 @@
+import type { CollectionConfig } from "payload";
+
 import {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
@@ -10,7 +12,6 @@ import {
 } from "@/lib/profile-constants";
 import { isAdminOrProfileOwner, isRestricted } from "@/payload/access/access-control";
 import { revalidateMjakazi } from "@/payload/collections/wajakazi-profiles/hooks/revalidate-mjakazi";
-import type { CollectionConfig } from "payload";
 
 // payload collection definition for worker profiles
 const WajakaziProfiles: CollectionConfig = {

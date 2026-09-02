@@ -1,7 +1,8 @@
 "use client";
 
-import { Footer } from "@/payload-types";
 import { RowLabelProps, useRowLabel } from "@payloadcms/ui";
+
+import { Footer } from "@/payload-types";
 
 // maps complex footer array items to a single type for label processing
 type FooterItem =

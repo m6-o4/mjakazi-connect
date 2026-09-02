@@ -1,6 +1,7 @@
-import { inngest } from "@/inngest/client";
 import config from "@payload-config";
 import { getPayload } from "payload";
+
+import { inngest } from "@/inngest/client";
 
 export const verificationExpiry = inngest.createFunction(
 	{ id: "verification-expiry-job", triggers: [{ cron: "0 2 * * *" }] },

@@ -1,7 +1,8 @@
-import { Container } from "@/components/container";
-import type { Footer } from "@/payload-types";
 import Image from "next/image";
 import Link from "next/link";
+
+import { Container } from "@/components/container";
+import type { Footer } from "@/payload-types";
 
 interface FooterClientProps {
 	data: Footer;

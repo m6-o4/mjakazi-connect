@@ -24,6 +24,7 @@ const normalizeKenyanPhone = (input: string): string | null => {
 	return KENYAN_PHONE_PATTERN.test(digits) ? digits : null;
 };
 
-const isValidKenyanPhone = (input: string): boolean => normalizeKenyanPhone(input) !== null;
+const isValidKenyanPhone = (input: string): boolean =>
+	normalizeKenyanPhone(input) !== null;
 
 export { isValidKenyanPhone, normalizeKenyanPhone };

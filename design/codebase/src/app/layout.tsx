@@ -1,8 +1,9 @@
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import { ReactNode } from "react";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 // configure brand-specific typography with css variables for tailwind integration
 const grotesk = Space_Grotesk({

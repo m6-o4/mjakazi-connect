@@ -1,9 +1,10 @@
-import { writeAuditLog } from "@/lib/audit";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
+import { resolveIdentity } from "@/services/identity.service";
 
 const DELETE = async () => {
 	// only authenticated users may delete their own account

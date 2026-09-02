@@ -1,13 +1,14 @@
-import { PaywallOverlay } from "@/components/dashboard/mwajiri/paywall-overlay";
-import { WorkerCard } from "@/components/dashboard/mwajiri/worker-card";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { JOB_OPTIONS, LOCATION_OPTIONS } from "@/lib/profile-constants";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { PaywallOverlay } from "@/components/dashboard/mwajiri/paywall-overlay";
+import { WorkerCard } from "@/components/dashboard/mwajiri/worker-card";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { JOB_OPTIONS, LOCATION_OPTIONS } from "@/lib/profile-constants";
+import { resolveIdentity } from "@/services/identity.service";
 
 export const metadata: Metadata = { title: "Browse Wajakazi" };
 export const dynamic = "force-dynamic";

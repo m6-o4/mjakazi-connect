@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidKenyanPhone } from "@/lib/phone";
 import {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
@@ -10,7 +11,6 @@ import {
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 } from "@/lib/profile-constants";
-import { isValidKenyanPhone } from "@/lib/phone";
 
 // word limit for the "about" field — one source for the schema check and the
 // form's live counter
@@ -22,10 +22,7 @@ const countWords = (value: string): number =>
 // maps an `as const` options array to the tuple shape z.enum expects, preserving
 // the literal value types so the schema validates membership, not just shape
 const enumOf = <const T extends readonly { value: string }[]>(options: T) =>
-	options.map((o) => o.value) as unknown as [
-		T[number]["value"],
-		...T[number]["value"][],
-	];
+	options.map((o) => o.value) as unknown as [T[number]["value"], ...T[number]["value"][]];
 
 // a select that may be empty: "" means "not set" and is dropped before storage
 const emptyable = <const T extends readonly { value: string }[]>(options: T) =>

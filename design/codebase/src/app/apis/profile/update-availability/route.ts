@@ -1,8 +1,9 @@
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
 
 const VALID_STATUSES = ["available", "hired", "on_break"] as const;
 type AvailabilityStatus = (typeof VALID_STATUSES)[number];
@@ -10,7 +11,7 @@ type AvailabilityStatus = (typeof VALID_STATUSES)[number];
 const PATCH = async (req: Request) => {
 	const { userId } = await auth();
 
-// authenticate request
+	// authenticate request
 	if (!userId) {
 		return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 	}

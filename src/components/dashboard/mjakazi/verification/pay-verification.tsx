@@ -88,7 +88,9 @@ const PayVerification = ({ fee }: PayVerificationProps) => {
 							<Loader2 className="size-4 animate-spin" />
 							Waiting for your M-Pesa confirmation…
 						</div>
-						<p>Check your phone and enter your M-Pesa PIN. This page updates automatically.</p>
+						<p>
+							Check your phone and enter your M-Pesa PIN. This page updates automatically.
+						</p>
 					</div>
 				) : null}
 

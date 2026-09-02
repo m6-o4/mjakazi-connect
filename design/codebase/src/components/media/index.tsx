@@ -1,7 +1,8 @@
+import { Fragment } from "react";
+
 import { ImageMedia } from "@/components/media/image-media";
 import type { Props } from "@/components/media/types";
 import { VideoMedia } from "@/components/media/video-media";
-import { Fragment } from "react";
 
 /**
  * the main media abstraction component. it inspects the resource type to determine

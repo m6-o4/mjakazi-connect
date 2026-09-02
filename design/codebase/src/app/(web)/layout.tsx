@@ -1,11 +1,12 @@
+import type { Metadata } from "next";
+import { ReactNode } from "react";
+
 import { ClarityTracker } from "@/components/clarity-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Footer } from "@/payload/blocks/globals/footer/component";
 import { Header } from "@/payload/blocks/globals/header/component";
 import { getServerSideURL } from "@/payload/utilities/get-url";
 import { mergeOpenGraph } from "@/payload/utilities/merge-opengraph";
-import type { Metadata } from "next";
-import { ReactNode } from "react";
 
 // load foundational styles for the web application
 import "@/styles/globals.css";

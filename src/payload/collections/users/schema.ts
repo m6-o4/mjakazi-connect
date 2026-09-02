@@ -3,9 +3,9 @@ import type { CollectionConfig, FieldHook, TextFieldSingleValidation } from "pay
 import {
 	isAdmin,
 	isAdminField,
-	isAdminOrStaffOrSelfAccountEdit,
 	isAdminOrStaff,
 	isAdminOrStaffOrSelf,
+	isAdminOrStaffOrSelfAccountEdit,
 } from "@/payload/access/access-control";
 import {
 	createClerkUser,

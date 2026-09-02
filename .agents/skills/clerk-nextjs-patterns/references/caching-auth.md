@@ -26,19 +26,21 @@ export default async function ProfilePage() {
 ## Revalidate After Updates
 
 ```typescript
-'use server';
-import { revalidateTag } from 'next/cache';
-import { auth } from '@clerk/nextjs/server';
+"use server";
+
+import { revalidateTag } from "next/cache";
+
+import { auth } from "@clerk/nextjs/server";
 
 export async function updateProfile(formData: FormData) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Unauthorized');
+	const { userId } = await auth();
+	if (!userId) throw new Error("Unauthorized");
 
-  await db.users.update({
-    where: { id: userId },
-    data: { name: formData.get('name') as string },
-  });
-  revalidateTag(`user-${userId}`);
+	await db.users.update({
+		where: { id: userId },
+		data: { name: formData.get("name") as string },
+	});
+	revalidateTag(`user-${userId}`);
 }
 ```
 
@@ -47,9 +49,9 @@ export async function updateProfile(formData: FormData) {
 ```typescript
 const { orgId } = await auth();
 const getOrgData = unstable_cache(
-  () => db.orgData.findMany({ where: { organizationId: orgId } }),
-  [`org-${orgId}-data`],
-  { revalidate: 300, tags: [`org-${orgId}`] }
+	() => db.orgData.findMany({ where: { organizationId: orgId } }),
+	[`org-${orgId}-data`],
+	{ revalidate: 300, tags: [`org-${orgId}`] },
 );
 ```
 

@@ -1,6 +1,7 @@
-import type { Page } from "@/payload-types";
 import { revalidatePath, revalidateTag } from "next/cache";
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "payload";
+
+import type { Page } from "@/payload-types";
 
 /**
  * revalidates the page path and sitemap tag after a page document is changed.

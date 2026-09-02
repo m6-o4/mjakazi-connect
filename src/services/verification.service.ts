@@ -11,8 +11,7 @@ import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 
 type Result<T = void> =
-	| { success: true; data: T }
-	| { success: false; error: string; code?: string };
+	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 type VerificationState = NonNullable<WajakaziProfile["verificationState"]>;
 
@@ -201,7 +200,10 @@ const notifyWorker = async (
 // both vault document types must be present. this is a trusted count — the
 // caller has already proven ownership of the profile, and only the set of
 // document types is inspected, never the bytes
-const hasBothDocuments = async (payload: Payload, profileId: string): Promise<boolean> => {
+const hasBothDocuments = async (
+	payload: Payload,
+	profileId: string,
+): Promise<boolean> => {
 	const result = await payload.find({
 		collection: "vault-documents",
 		where: { profile: { equals: profileId } },
@@ -296,7 +298,10 @@ const applyTransition = async ({
 	const previousState = profile.verificationState;
 
 	if (!isLegalTransition(previousState, nextState)) {
-		return fail(`Invalid transition: ${previousState} → ${nextState}.`, "illegal_transition");
+		return fail(
+			`Invalid transition: ${previousState} → ${nextState}.`,
+			"illegal_transition",
+		);
 	}
 
 	try {

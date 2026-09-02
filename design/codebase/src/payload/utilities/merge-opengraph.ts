@@ -1,5 +1,6 @@
-import { getServerSideURL } from "@/payload/utilities/get-url";
 import type { Metadata } from "next";
+
+import { getServerSideURL } from "@/payload/utilities/get-url";
 
 // default open graph metadata used across pages
 const defaultOpenGraph: Metadata["openGraph"] = {

@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,8 +21,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { AuditLog } from "@/payload-types";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
 
 interface AuditLogTableProps {
 	logs: AuditLog[];

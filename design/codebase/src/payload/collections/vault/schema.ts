@@ -1,5 +1,6 @@
-import { isAdminOrVaultOwner, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrVaultOwner, isRestricted } from "@/payload/access/access-control";
 
 // secure document storage for wajakazi verification files
 const Vault: CollectionConfig = {

@@ -1,5 +1,6 @@
-import { DeleteUserAction } from "@/components/dashboard/accounts/delete-user-action";
 import { User } from "lucide-react";
+
+import { DeleteUserAction } from "@/components/dashboard/accounts/delete-user-action";
 
 interface WaajiriAccount {
 	id: string;

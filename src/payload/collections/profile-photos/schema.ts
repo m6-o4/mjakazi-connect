@@ -1,10 +1,6 @@
 import type { CollectionConfig } from "payload";
 
-import {
-	isAdminOrOwner,
-	isMjakazi,
-	isPublic,
-} from "@/payload/access/access-control";
+import { isAdminOrOwner, isMjakazi, isPublic } from "@/payload/access/access-control";
 
 // user-uploaded profile photos. deliberately separate from `media` (the public
 // marketing library): `media` is staff-authored and CDN-public, whereas a photo

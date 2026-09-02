@@ -1,5 +1,6 @@
-import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 
 // records every mwajiri subscription attempt as an immutable ledger
 // mirrors the payments collection discipline — all writes are server-side only

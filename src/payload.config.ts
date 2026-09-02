@@ -4,6 +4,7 @@ import { buildConfig, PayloadRequest } from "payload";
 import sharp from "sharp";
 
 import { paymentTimeoutTask } from "@/jobs/payment-timeout";
+import { subscriptionExpiryTask } from "@/jobs/subscription-expiry";
 import { globals } from "@/payload/blocks/globals";
 import { collections } from "@/payload/collections";
 import { Users } from "@/payload/collections/users/schema";
@@ -77,7 +78,7 @@ export default buildConfig({
 			},
 		},
 		autoRun: [{ cron: "* * * * *", limit: 10 }],
-		tasks: [paymentTimeoutTask],
+		tasks: [paymentTimeoutTask, subscriptionExpiryTask],
 	},
 	plugins: [...plugins],
 	secret: payloadSecret,

@@ -1,7 +1,8 @@
+import { notFound, redirect } from "next/navigation";
+
 import type { Page, Post } from "@/payload-types";
 import { getCachedDocument } from "@/payload/utilities/get-document";
 import { getCachedRedirects } from "@/payload/utilities/get-redirects";
-import { notFound, redirect } from "next/navigation";
 
 // props for the PayloadRedirects function
 interface Props {

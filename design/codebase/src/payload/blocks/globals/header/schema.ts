@@ -1,7 +1,8 @@
+import type { GlobalConfig } from "payload";
+
 import { isPublic } from "@/payload/access/access-control";
 import { revalidateHeader } from "@/payload/blocks/globals/header/hooks/revalidate-header";
 import { link } from "@/payload/fields/link";
-import type { GlobalConfig } from "payload";
 
 // defines the content structure for the site-wide header including branding and links
 const Header: GlobalConfig = {

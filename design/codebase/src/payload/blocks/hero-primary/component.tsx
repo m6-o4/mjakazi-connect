@@ -1,7 +1,8 @@
+import { ArrowRight, CheckCircle } from "lucide-react";
+
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { HeroPrimary } from "@/payload-types";
-import { ArrowRight, CheckCircle } from "lucide-react";
 
 // maps cms variant values to tailwind background utility classes
 const bgMap: Record<string, string> = { subtle: "bg-bg-subtle", white: "bg-bg-white" };

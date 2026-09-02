@@ -1,5 +1,6 @@
-import { isAuthenticated, isPublic } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAuthenticated, isPublic } from "@/payload/access/access-control";
 
 // defines the media collection for managing uploads and image processing
 const Media: CollectionConfig = {

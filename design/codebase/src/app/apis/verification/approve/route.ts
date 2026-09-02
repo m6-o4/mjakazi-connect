@@ -1,9 +1,10 @@
-import { resolveIdentity } from "@/services/identity.service";
-import { approveVerification } from "@/services/verification.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
+import { approveVerification } from "@/services/verification.service";
 
 const POST = async (req: Request) => {
 	// only authenticated users may trigger this action

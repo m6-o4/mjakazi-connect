@@ -1,5 +1,6 @@
-import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 
 // defines the payments collection for recording all mpesa stk push attempts
 const Payments: CollectionConfig = {

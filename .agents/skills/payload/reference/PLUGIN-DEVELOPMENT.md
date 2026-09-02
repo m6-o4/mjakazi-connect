@@ -182,7 +182,7 @@ plugin-<name>/
 ### Adding Fields to Collections
 
 ```ts
-import type { Config, Plugin, Field } from "payload";
+import type { Config, Field, Plugin } from "payload";
 
 export const seoPlugin =
 	(options: { collections?: string[] }): Plugin =>
@@ -216,7 +216,7 @@ export const seoPlugin =
 ### Adding New Collections
 
 ```ts
-import type { Config, Plugin, CollectionConfig } from "payload";
+import type { CollectionConfig, Config, Plugin } from "payload";
 
 export const redirectsPlugin =
 	(options: { overrides?: Partial<CollectionConfig> }): Plugin =>
@@ -241,7 +241,7 @@ export const redirectsPlugin =
 ### Adding Hooks
 
 ```ts
-import type { Config, Plugin, CollectionAfterChangeHook } from "payload";
+import type { CollectionAfterChangeHook, Config, Plugin } from "payload";
 
 const resaveChildrenHook: CollectionAfterChangeHook = async ({ doc, req, operation }) => {
 	if (operation === "update") {
@@ -286,7 +286,7 @@ export const nestedDocsPlugin =
 Add endpoints at the root config level (accessible at `/api/<path>`):
 
 ```ts
-import type { Config, Plugin, Endpoint } from "payload";
+import type { Config, Endpoint, Plugin } from "payload";
 
 export const seoPlugin =
 	(options: { generateTitle?: (doc: any) => string }): Plugin =>
@@ -331,7 +331,7 @@ const webhookEndpoint: Endpoint = {
 ### Field Overrides with Defaults
 
 ```ts
-import type { Config, Plugin, Field } from "payload";
+import type { Config, Field, Plugin } from "payload";
 
 type FieldsOverride = (args: { defaultFields: Field[] }) => Field[];
 
@@ -371,7 +371,7 @@ export const myPlugin =
 ### Tabs UI Pattern
 
 ```ts
-import type { Config, Plugin, TabsField, GroupField } from "payload";
+import type { Config, GroupField, Plugin, TabsField } from "payload";
 
 export const seoPlugin =
 	(options: { tabbedUI?: boolean }): Plugin =>
@@ -523,9 +523,11 @@ export const myPlugin =
 ```tsx
 // src/components/BeforeDashboardClient.tsx
 "use client";
-import { useConfig } from "@payloadcms/ui";
-import { useEffect, useState } from "react";
+
 import { formatAdminURL } from "payload/shared";
+import { useEffect, useState } from "react";
+
+import { useConfig } from "@payloadcms/ui";
 
 export const BeforeDashboardClient = () => {
 	const { config } = useConfig();
@@ -560,6 +562,11 @@ export { BeforeDashboardServer } from "../components/BeforeDashboardServer.js";
 ### Translations (i18n)
 
 ```ts
+// src/plugin.ts
+import { deepMergeSimple } from "payload/shared";
+
+import { translations } from "./translations/index.js";
+
 // src/translations/index.ts
 export const translations = {
 	en: {
@@ -571,10 +578,6 @@ export const translations = {
 		"plugin-name:fieldDescription": "Descripción del campo",
 	},
 };
-
-// src/plugin.ts
-import { deepMergeSimple } from "payload/shared";
-import { translations } from "./translations/index.js";
 
 export const myPlugin =
 	(options: PluginConfig): Plugin =>
@@ -625,7 +628,7 @@ export const myPlugin =
 ### Plugin Config Types
 
 ```ts
-import type { CollectionSlug, GlobalSlug, Field, CollectionConfig } from "payload";
+import type { CollectionConfig, CollectionSlug, Field, GlobalSlug } from "payload";
 
 export type FieldsOverride = (args: { defaultFields: Field[] }) => Field[];
 
@@ -656,11 +659,11 @@ export interface MyPluginConfig {
 ### Export Types
 
 ```ts
-// src/exports/types.ts
-export type { MyPluginConfig, FieldsOverride } from "../types.js";
-
 // Usage
 import type { MyPluginConfig } from "@payloadcms/plugin-example/types";
+
+// src/exports/types.ts
+export type { MyPluginConfig, FieldsOverride } from "../types.js";
 ```
 
 ## Client Components
@@ -670,8 +673,10 @@ import type { MyPluginConfig } from "@payloadcms/plugin-example/types";
 ```tsx
 // src/fields/CustomField/Component.tsx
 "use client";
-import { useField } from "@payloadcms/ui";
+
 import type { TextFieldClientComponent } from "payload";
+
+import { useField } from "@payloadcms/ui";
 
 export const CustomFieldComponent: TextFieldClientComponent = ({ field, path }) => {
 	const { value, setValue } = useField<string>({ path });
@@ -761,12 +766,12 @@ Use Payload's exported types:
 
 ```ts
 import type {
-	Config,
-	Plugin,
 	CollectionConfig,
-	Field,
 	CollectionSlug,
+	Config,
+	Field,
 	GlobalSlug,
+	Plugin,
 } from "payload";
 ```
 
@@ -1334,7 +1339,9 @@ PAYLOAD_SECRET=your-secret-here
 
 ```ts
 import { buildConfig } from "payload";
+
 import { mongooseAdapter } from "@payloadcms/db-mongodb";
+
 import { myPlugin } from "../src/index.js";
 
 export default buildConfig({
@@ -1365,10 +1372,11 @@ npm run dev  # Starts Next.js on http://localhost:3000
 Create `dev/int.spec.ts`:
 
 ```ts
-import type { Payload } from "payload";
-import config from "@/payload-config";
-import { createPayloadRequest, getPayload } from "payload";
+import { createPayloadRequest, getPayload, type Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+
+import config from "@/payload-config";
+
 import { customEndpointHandler } from "../src/endpoints/handler.js";
 
 let payload: Payload;
@@ -1416,7 +1424,7 @@ Run: `npm run test:int`
 Create `dev/e2e.spec.ts`:
 
 ```ts
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Plugin e2e tests", () => {
 	test("should render custom admin component", async ({ page }) => {

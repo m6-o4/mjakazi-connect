@@ -1,17 +1,4 @@
 import {
-	isAuthenticated,
-	isAuthenticatedOrPublished,
-} from "@/payload/access/access-control";
-import { Banner } from "@/payload/blocks/banner/schema";
-import { Media } from "@/payload/blocks/media/schema";
-import { populateAuthors } from "@/payload/collections/posts/hooks/populate-authors";
-import {
-	revalidateDelete,
-	revalidatePost,
-} from "@/payload/collections/posts/hooks/revalidate-post";
-import { slugField } from "@/payload/fields/slug";
-import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
-import {
 	MetaDescriptionField,
 	MetaImageField,
 	MetaTitleField,
@@ -27,6 +14,20 @@ import {
 	lexicalEditor,
 } from "@payloadcms/richtext-lexical";
 import type { CollectionConfig } from "payload";
+
+import {
+	isAuthenticated,
+	isAuthenticatedOrPublished,
+} from "@/payload/access/access-control";
+import { Banner } from "@/payload/blocks/banner/schema";
+import { Media } from "@/payload/blocks/media/schema";
+import { populateAuthors } from "@/payload/collections/posts/hooks/populate-authors";
+import {
+	revalidateDelete,
+	revalidatePost,
+} from "@/payload/collections/posts/hooks/revalidate-post";
+import { slugField } from "@/payload/fields/slug";
+import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
 
 /**
  * payload cms configuration for the 'posts' collection (Blog Posts).

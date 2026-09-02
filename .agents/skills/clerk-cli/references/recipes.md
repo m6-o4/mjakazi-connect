@@ -1,6 +1,8 @@
 # Clerk CLI - Recipes
 
-Copy-pasteable patterns for common tasks. Treat these as starting points; confirm exact paths and parameters with `clerk api ls <keyword>` and `clerk <command> --help`, since the Clerk API evolves.
+Copy-pasteable patterns for common tasks. Treat these as starting points; confirm exact
+paths and parameters with `clerk api ls <keyword>` and `clerk <command> --help`, since the
+Clerk API evolves.
 
 ## Discovery first
 
@@ -10,7 +12,9 @@ clerk api ls users            # filter by keyword
 clerk api ls --platform       # Platform API (account-level)
 ```
 
-The bundled catalog is cached locally for 1 hour. There is no force-refresh flag - once the TTL expires the next `clerk api ls` re-fetches automatically; on fetch failure the CLI falls back to the stale cache and prints a warning.
+The bundled catalog is cached locally for 1 hour. There is no force-refresh flag - once
+the TTL expires the next `clerk api ls` re-fetches automatically; on fetch failure the CLI
+falls back to the stale cache and prints a warning.
 
 ## Users
 
@@ -67,9 +71,12 @@ clerk api /users/user_abc123 -X DELETE --yes
 
 ### Test users (development only)
 
-For test accounts you need to sign into without real email or SMS delivery, Clerk provides two magic patterns that both verify with the fixed OTP `424242`. Use them on development instances; production rejects them.
+For test accounts you need to sign into without real email or SMS delivery, Clerk provides
+two magic patterns that both verify with the fixed OTP `424242`. Use them on development
+instances; production rejects them.
 
-**By email.** Any address with the `+clerk_test` subaddress is recognized as a test email. The domain portion is arbitrary.
+**By email.** Any address with the `+clerk_test` subaddress is recognized as a test email.
+The domain portion is arbitrary.
 
 ```sh
 # Create a test user with a test email (dev instance)
@@ -81,7 +88,8 @@ clerk users create -d '{
 }' --yes
 ```
 
-**By phone.** Any US fictional phone number in the `+1 (XXX) 555-0100` through `+1 (XXX) 555-0199` range is recognized as a test phone. Pass the E.164 form.
+**By phone.** Any US fictional phone number in the `+1 (XXX) 555-0100` through
+`+1 (XXX) 555-0199` range is recognized as a test phone. Pass the E.164 form.
 
 ```sh
 # Create a test user with a test phone (dev instance)
@@ -92,9 +100,15 @@ clerk users create -d '{
 }' --yes
 ```
 
-When signing in as either user in a browser or Playwright, enter `424242` at the OTP prompt.
+When signing in as either user in a browser or Playwright, enter `424242` at the OTP
+prompt.
 
-These patterns only apply to development instances. In production, client trust blocks sign-in regardless of suffix or number, and using real-looking test addresses is highly discouraged. Test addresses and numbers do not count against the dev-instance monthly caps (20 SMS, 100 emails). See [Clerk's test emails and phones reference](https://clerk.com/docs/guides/development/testing/test-emails-and-phones) for the full contract.
+These patterns only apply to development instances. In production, client trust blocks
+sign-in regardless of suffix or number, and using real-looking test addresses is highly
+discouraged. Test addresses and numbers do not count against the dev-instance monthly caps
+(20 SMS, 100 emails). See
+[Clerk's test emails and phones reference](https://clerk.com/docs/guides/development/testing/test-emails-and-phones)
+for the full contract.
 
 ## Organizations
 
@@ -122,7 +136,8 @@ clerk api /organizations/org_abc123/memberships/user_xyz -X DELETE --dry-run
 clerk api /organizations/org_abc123/invitations -d '{"email_address":"new@acme.com","role":"org:member"}'
 ```
 
-If organization endpoints return `organization_not_enabled_in_instance`, enable the feature first with the dedicated toggle:
+If organization endpoints return `organization_not_enabled_in_instance`, enable the
+feature first with the dedicated toggle:
 
 ```sh
 # Inspect org settings
@@ -133,7 +148,9 @@ clerk enable orgs --dry-run
 clerk enable orgs --yes
 ```
 
-For org settings the toggle flags don't cover, fall back to `clerk config patch --json '{"organization_settings":{...}}'`. Deeper org workflows (roles, memberships, components) live in the `clerk-orgs` skill.
+For org settings the toggle flags don't cover, fall back to
+`clerk config patch --json '{"organization_settings":{...}}'`. Deeper org workflows
+(roles, memberships, components) live in the `clerk-orgs` skill.
 
 ## Sessions
 
@@ -147,7 +164,9 @@ clerk api /sessions/sess_abc123/revoke -X POST
 
 ## Impersonation (sign in as a user)
 
-Impersonation goes through `clerk impersonate` (alias `imp`): it creates an actor token stamped `cli:<your-email>` so every impersonation session is traceable. Requires `clerk auth login`.
+Impersonation goes through `clerk impersonate` (alias `imp`): it creates an actor token
+stamped `cli:<your-email>` so every impersonation session is traceable. Requires
+`clerk auth login`.
 
 ```sh
 # Print the sign-in URL for a user (agent-safe: no browser, no prompt)
@@ -163,7 +182,8 @@ clerk imp user_abc123 --yes --expires-in 900
 clerk imp revoke act_abc123
 ```
 
-To mint a one-time **sign-in token** instead - for building custom token sign-in flows, signing in *as* the user with no actor audit trail - use the raw API:
+To mint a one-time **sign-in token** instead - for building custom token sign-in flows,
+signing in _as_ the user with no actor audit trail - use the raw API:
 
 ```sh
 clerk api /sign_in_tokens -d '{"user_id":"user_abc123"}'
@@ -191,7 +211,8 @@ clerk api /jwt_templates -d '{
 
 ## Webhooks (local testing)
 
-`listen` talks only to the Svix relay and `verify` is pure local HMAC - neither needs auth or a linked project.
+`listen` talks only to the Svix relay and `verify` is pure local HMAC - neither needs auth
+or a linked project.
 
 ```sh
 # 1. Mint a token and open a pinned tunnel that forwards deliveries to your handler.
@@ -210,11 +231,14 @@ clerk webhooks listen --forward-to http://localhost:3000/api/webhooks --json > e
 clerk webhooks verify --secret whsec_... --delivery @event.json
 ```
 
-Pin the token (`--token`) whenever you want the inbox URL to survive across machines and restarts - otherwise the relay URL can change and the Dashboard endpoint needs re-pointing.
+Pin the token (`--token`) whenever you want the inbox URL to survive across machines and
+restarts - otherwise the relay URL can change and the Dashboard endpoint needs
+re-pointing.
 
 ## Instance configuration
 
-Prefer the dedicated `config` commands over raw `api` calls - they handle confirmation, dry-run, and formatting.
+Prefer the dedicated `config` commands over raw `api` calls - they handle confirmation,
+dry-run, and formatting.
 
 ```sh
 # Pull the current dev config
@@ -249,7 +273,8 @@ clerk env pull --instance prod
 clerk env pull --file .env
 ```
 
-`env pull` merges into the existing file: existing Clerk keys are updated in place; new ones are appended under a `# Clerk` header; everything else is preserved.
+`env pull` merges into the existing file: existing Clerk keys are updated in place; new
+ones are appended under a `# Clerk` header; everything else is preserved.
 
 ## Applications (Platform API)
 
@@ -266,7 +291,9 @@ clerk api /v1/platform/applications/app_abc123 --platform
 
 ### Save large responses to a file before reading them
 
-`users list`, `apps list`, `config pull`, and most `clerk api` GETs can return responses ranging from kilobytes to megabytes. Reading the full payload into an LLM-driven session burns context for no benefit. Persist the response, then query just the slice you need:
+`users list`, `apps list`, `config pull`, and most `clerk api` GETs can return responses
+ranging from kilobytes to megabytes. Reading the full payload into an LLM-driven session
+burns context for no benefit. Persist the response, then query just the slice you need:
 
 ```sh
 # Persist once, query as many times as you need.
@@ -285,7 +312,8 @@ python3 -c 'import json; d=json.load(open("/tmp/users.json")); print(len(d["data
 node    -e 'const d=require("/tmp/users.json"); console.log(d.data.length, d.hasMore)'
 ```
 
-Only `cat`/`head` the file when you genuinely need the raw structure for one-off debugging.
+Only `cat`/`head` the file when you genuinely need the raw structure for one-off
+debugging.
 
 ### Pipe to `jq`
 

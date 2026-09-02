@@ -1,7 +1,8 @@
+import { ShieldCheck, User } from "lucide-react";
+
 import { ApproveAction } from "@/components/dashboard/accounts/approve-action";
 import { DeleteUserAction } from "@/components/dashboard/accounts/delete-user-action";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, User } from "lucide-react";
 
 interface WajakaziAccount {
 	id: string;

@@ -6,13 +6,13 @@ import { getCallbackMetadataValue, initiateStkPush, type StkCallback } from "@/l
 import { normalizeKenyanPhone } from "@/lib/phone";
 import { captureServerEvent } from "@/lib/posthog-server";
 import type { Payment, User } from "@/payload-types";
+import { activateSubscriptionOnPayment } from "@/services/subscription.service";
 import { activateVerificationOnPayment } from "@/services/verification.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 type PaymentType = NonNullable<Payment["paymentType"]>;
-type Tier = NonNullable<Payment["tier"]>;
 
 const fail = (
 	error: string,
@@ -41,7 +41,9 @@ type PaymentInput = {
 	paymentType: PaymentType;
 	amount: number;
 	phoneNumber: string;
-	tier?: Tier;
+	// tier snapshots — required for subscription payments, null for verification
+	tierId?: string | null;
+	tierName?: string | null;
 };
 
 // creates a payment record and fires the stk push. the record starts at
@@ -66,7 +68,7 @@ const initiatePayment = async (
 		return fail("Invalid amount.", "invalid_amount");
 	}
 
-	if (input.paymentType === "subscription" && !input.tier) {
+	if (input.paymentType === "subscription" && !input.tierId) {
 		return fail("A tier is required for a subscription payment.", "tier_required");
 	}
 
@@ -87,7 +89,8 @@ const initiatePayment = async (
 				paymentType: input.paymentType,
 				status: "initiated",
 				amount: input.amount,
-				tier: input.paymentType === "subscription" ? (input.tier ?? null) : null,
+				tierId: input.paymentType === "subscription" ? (input.tierId ?? null) : null,
+				tierName: input.paymentType === "subscription" ? (input.tierName ?? null) : null,
 				phoneNumber,
 				mpesaReference,
 				initiatedAt,
@@ -106,7 +109,7 @@ const initiatePayment = async (
 		description:
 			input.paymentType === "verification"
 				? "Mjakazi verification fee"
-				: `Subscription — tier ${input.tier}`,
+				: `Subscription — ${input.tierName ?? input.tierId ?? "tier"}`,
 	});
 
 	if (!push.success) {
@@ -170,7 +173,8 @@ const initiatePayment = async (
 			mpesaReference,
 			amount: input.amount,
 			paymentType: input.paymentType,
-			tier: input.tier ?? null,
+			tierId: input.tierId ?? null,
+			tierName: input.tierName ?? null,
 		},
 	});
 
@@ -301,7 +305,8 @@ const settleCallback = async (
 			mpesaReference: payment.mpesaReference,
 			amount: payment.amount,
 			paymentType: payment.paymentType,
-			tier: payment.tier ?? null,
+			tierId: payment.tierId ?? null,
+			tierName: payment.tierName ?? null,
 			checkoutRequestId: payment.checkoutRequestId ?? null,
 			resultCode: detail.resultCode,
 			resultDesc: detail.resultDesc,
@@ -318,7 +323,7 @@ const settleCallback = async (
 		payment,
 		nextStatus === "confirmed" ? "payment_completed" : "payment_failed",
 		nextStatus === "confirmed"
-			? { paymentType: payment.paymentType, tierId: payment.tier ?? null }
+			? { paymentType: payment.paymentType, tierId: payment.tierId ?? null }
 			: {
 					paymentType: payment.paymentType,
 					reason: detail.reason ?? (detail.resultCode !== 0 ? "cancelled" : "failed"),
@@ -422,30 +427,34 @@ const handleCallback = async (
 		resultDesc: ResultDesc ?? null,
 	});
 
-	// 4.4: a confirmed verification payment activates the profile. a failed
+	// 4.4 / 5.2: a confirmed payment activates its domain transition. a failed
 	// activation leaves the payment confirmed (immutable) and is audit-logged
 	// for investigation — it is never rolled back
-	if (
-		settled.success &&
-		settled.data.status === "confirmed" &&
-		settled.data.payment?.paymentType === "verification"
-	) {
-		const activation = await activateVerificationOnPayment(payload, settled.data.payment);
+	if (settled.success && settled.data.status === "confirmed" && settled.data.payment) {
+		const payment = settled.data.payment;
+		const activation =
+			payment.paymentType === "verification"
+				? await activateVerificationOnPayment(payload, payment)
+				: await activateSubscriptionOnPayment(payload, payment);
+
 		if (!activation.success) {
 			console.error(
-				`[services/payment] verification activation failed for payment ${settled.data.payment.id}:`,
+				`[services/payment] ${payment.paymentType} activation failed for payment ${payment.id}:`,
 				activation.error,
 			);
 			await writeAuditLog({
 				action: "payment_activation_failed",
 				actorId: null,
-				targetId: toId(settled.data.payment.user),
-				previousState: "pending_payment",
-				newState: "pending_payment",
+				targetId: toId(payment.user),
+				// a verification activation can only be attempted from
+				// pending_payment; a subscription activation can come from several
+				// states, so it carries no state here
+				previousState: payment.paymentType === "verification" ? "pending_payment" : null,
+				newState: payment.paymentType === "verification" ? "pending_payment" : null,
 				metadata: {
-					paymentId: settled.data.payment.id,
-					mpesaReference: settled.data.payment.mpesaReference,
-					paymentType: settled.data.payment.paymentType,
+					paymentId: payment.id,
+					mpesaReference: payment.mpesaReference,
+					paymentType: payment.paymentType,
 					error: activation.error,
 					code: activation.code ?? null,
 				},

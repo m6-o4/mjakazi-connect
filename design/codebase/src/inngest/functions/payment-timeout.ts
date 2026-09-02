@@ -1,7 +1,8 @@
-import { inngest } from "@/inngest/client";
-import { writeAuditLog } from "@/lib/audit";
 import config from "@payload-config";
 import { getPayload } from "payload";
+
+import { inngest } from "@/inngest/client";
+import { writeAuditLog } from "@/lib/audit";
 
 // monitor and expire stk push payments without callbacks
 export const paymentTimeout = inngest.createFunction(

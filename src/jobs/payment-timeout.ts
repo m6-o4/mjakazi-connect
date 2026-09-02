@@ -1,5 +1,4 @@
-import { getPayload } from "payload";
-import type { TaskConfig } from "payload";
+import { getPayload, type TaskConfig } from "payload";
 
 import config from "@/payload-config";
 import { expireTimedOutPayments } from "@/services/payment.service";

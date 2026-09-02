@@ -1,9 +1,10 @@
 "use client";
 
+import posthog from "posthog-js";
+
 import { Button } from "@/components/ui/button";
 
 import { useClerk } from "@clerk/nextjs";
-import posthog from "posthog-js";
 
 // sign-out must run client-side so clerk can clear its own cookies. redirects
 // home rather than back to the dashboard, which would immediately re-protect

@@ -1,5 +1,6 @@
-import { isAuthenticated } from "@/payload/access/access-control";
 import type { CollectionConfig, FieldHook } from "payload";
+
+import { isAuthenticated } from "@/payload/access/access-control";
 
 // combines first and last names into a single searchable string
 const populateFullName: FieldHook = async ({ data }) => {

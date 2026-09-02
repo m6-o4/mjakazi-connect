@@ -1,7 +1,8 @@
+import { Quote, Star } from "lucide-react";
+
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { Testimonials } from "@/payload-types";
-import { Quote, Star } from "lucide-react";
 
 const bgMap: Record<string, string> = {
 	subtle: "bg-bg-subtle",

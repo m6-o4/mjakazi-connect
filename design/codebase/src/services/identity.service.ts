@@ -1,5 +1,6 @@
-import { writeAuditLog } from "@/lib/audit";
 import type { Payload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
 
 type ClerkRole = "mjakazi" | "mwajiri" | "admin" | "sa";
 

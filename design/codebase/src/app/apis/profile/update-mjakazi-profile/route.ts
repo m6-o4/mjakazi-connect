@@ -1,9 +1,10 @@
-import { computeProfileComplete } from "@/lib/compute-profile-complete";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { computeProfileComplete } from "@/lib/compute-profile-complete";
+import { resolveIdentity } from "@/services/identity.service";
 
 const PATCH = async (req: Request) => {
 	const { userId } = await auth();

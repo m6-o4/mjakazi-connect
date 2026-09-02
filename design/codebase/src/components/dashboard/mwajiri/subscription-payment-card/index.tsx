@@ -1,11 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ArrowLeft, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Tier {
 	tierId: string;
@@ -21,12 +22,7 @@ interface SubscriptionPaymentCardProps {
 }
 
 type PaymentState =
-	| "idle"
-	| "submitting"
-	| "waiting"
-	| "confirmed"
-	| "failed"
-	| "timeout";
+	"idle" | "submitting" | "waiting" | "confirmed" | "failed" | "timeout";
 
 const formatDuration = (days: number) => {
 	if (days === 14) return "2 Weeks";

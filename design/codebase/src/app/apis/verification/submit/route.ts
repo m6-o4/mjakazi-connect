@@ -1,9 +1,10 @@
-import { resolveIdentity } from "@/services/identity.service";
-import { submitVerification } from "@/services/verification.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
+import { submitVerification } from "@/services/verification.service";
 
 // handles the initial submission of a worker verification request
 const POST = async () => {

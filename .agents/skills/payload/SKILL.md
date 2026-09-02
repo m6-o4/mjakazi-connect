@@ -54,11 +54,12 @@ pnpm dev
 ### Minimal Config
 
 ```ts
-import { buildConfig } from "payload";
-import { mongooseAdapter } from "@payloadcms/db-mongodb";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import path from "path";
 import { fileURLToPath } from "url";
+import { buildConfig } from "payload";
+
+import { mongooseAdapter } from "@payloadcms/db-mongodb";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -105,8 +106,7 @@ Apply these defaults when modeling content unless there's a clear reason not to:
 ### Basic Collection
 
 ```ts
-import type { CollectionConfig } from "payload";
-import { slugField } from "payload";
+import { slugField, type CollectionConfig } from "payload";
 
 export const Posts: CollectionConfig = {
 	slug: "posts",
@@ -219,6 +219,7 @@ For all hook patterns, see [HOOKS.md](reference/HOOKS.md). For access control, s
 
 ```ts
 import type { Access } from "payload";
+
 import type { User } from "@/payload-types";
 
 // Type-safe access control
@@ -444,6 +445,9 @@ hand.
   that doesn't run `payload build`).
 
 ```ts
+// Usage
+import type { Post, User } from "@/payload-types";
+
 // payload.config.ts
 export default buildConfig({
 	typescript: {
@@ -451,9 +455,6 @@ export default buildConfig({
 		// autoGenerate defaults to true — types regenerate in dev automatically
 	},
 });
-
-// Usage
-import type { Post, User } from "@/payload-types";
 ```
 
 ## Common Gotchas

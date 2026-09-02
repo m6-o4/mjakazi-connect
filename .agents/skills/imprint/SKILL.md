@@ -1,13 +1,22 @@
 ---
 name: imprint
-description: After building any UI component, extract the visual patterns that matter for consistency and save them to ui-registry.md. So every component built after this one matches what came before.
+description:
+  After building any UI component, extract the visual patterns that matter for consistency
+  and save them to ui-registry.md. So every component built after this one matches what
+  came before.
 ---
 
-UI consistency does not happen by accident. It happens because every component is built with awareness of what already exists.
+UI consistency does not happen by accident. It happens because every component is built
+with awareness of what already exists.
 
-The problem with AI-built interfaces is that each component gets built in isolation. The agent does not remember what it built three sessions ago. So spacing drifts. Colors vary slightly. Border radius is inconsistent. The app looks like it was built by multiple people with different tastes.
+The problem with AI-built interfaces is that each component gets built in isolation. The
+agent does not remember what it built three sessions ago. So spacing drifts. Colors vary
+slightly. Border radius is inconsistent. The app looks like it was built by multiple
+people with different tastes.
 
-This skill fixes that. Run it after building any UI component. It reads what was just built, extracts the patterns that matter for consistency, and saves them so every future component can match.
+This skill fixes that. Run it after building any UI component. It reads what was just
+built, extracts the patterns that matter for consistency, and saves them so every future
+component can match.
 
 One command. Run it every time. That is the whole system.
 
@@ -33,7 +42,8 @@ To audit an existing codebase for inconsistencies:
 /imprint audit
 ```
 
-If no filepath is given, the skill identifies recently created or modified component files automatically and captures from those.
+If no filepath is given, the skill identifies recently created or modified component files
+automatically and captures from those.
 
 **When to use audit mode:**
 
@@ -42,7 +52,8 @@ If no filepath is given, the skill identifies recently created or modified compo
 - Something looks visually off but it is hard to pinpoint why
 - Before establishing `ui-registry.md` for the first time on an existing project
 
-Run `/imprint audit` before running `/imprint` on any project where the UI was not tracked from the beginning.
+Run `/imprint audit` before running `/imprint` on any project where the UI was not tracked
+from the beginning.
 
 ---
 
@@ -50,7 +61,9 @@ Run `/imprint audit` before running `/imprint` on any project where the UI was n
 
 If a filepath was provided — read that file directly.
 
-If no filepath was provided — identify which component files were most recently created or modified in this session. Look in the components directory and any other locations where UI files typically live. Read those files.
+If no filepath was provided — identify which component files were most recently created or
+modified in this session. Look in the components directory and any other locations where
+UI files typically live. Read those files.
 
 If it is unclear which files to capture from, ask the developer:
 
@@ -62,7 +75,9 @@ Which component should I capture patterns from?
 
 ## Step 2 — Extract What Matters for Consistency
 
-Read the component code. Extract only the classes and values that affect visual consistency across the interface. Not everything — only what makes components look like they belong together.
+Read the component code. Extract only the classes and values that affect visual
+consistency across the interface. Not everything — only what makes components look like
+they belong together.
 
 **Extract these:**
 
@@ -90,7 +105,8 @@ Read the component code. Extract only the classes and values that affect visual 
 
 Open `ui-registry.md`. If it does not exist, create it.
 
-Add a new entry for the component that was captured. Do not overwrite existing entries — append to the registry.
+Add a new entry for the component that was captured. Do not overwrite existing entries —
+append to the registry.
 
 If an entry for this component type already exists — update it rather than duplicating.
 
@@ -99,8 +115,7 @@ If an entry for this component type already exists — update it rather than dup
 ```markdown
 ### [Component Name]
 
-File: [filepath]
-Last updated: [date]
+File: [filepath] Last updated: [date]
 
 | Property         | Class           |
 | ---------------- | --------------- |
@@ -114,10 +129,8 @@ Last updated: [date]
 | Shadow           | [class or none] |
 | Accent usage     | [class or none] |
 
-**Pattern notes:**
-[Any important pattern decisions worth noting —
-why a specific class was chosen, what this component
-should always match, what variations are allowed]
+**Pattern notes:** [Any important pattern decisions worth noting — why a specific class
+was chosen, what this component should always match, what variations are allowed]
 ```
 
 ---
@@ -151,11 +164,17 @@ developer knowing about]
 
 ## How ui-registry.md Gets Used
 
-The registry is not just a record. It is the consistency enforcer for every future session.
+The registry is not just a record. It is the consistency enforcer for every future
+session.
 
-At the start of any session that involves UI work, Claude reads ui-registry.md before writing any component. When building a new card, it checks how existing cards were built. When building a new button, it checks what button patterns already exist. When building a new status badge, it matches the exact classes already in use.
+At the start of any session that involves UI work, Claude reads ui-registry.md before
+writing any component. When building a new card, it checks how existing cards were built.
+When building a new button, it checks what button patterns already exist. When building a
+new status badge, it matches the exact classes already in use.
 
-The registry grows as the project grows. The more components are imprinted, the more consistent every new component becomes — because Claude always has a precise reference for what already exists.
+The registry grows as the project grows. The more components are imprinted, the more
+consistent every new component becomes — because Claude always has a precise reference for
+what already exists.
 
 ---
 
@@ -165,7 +184,8 @@ Build a component. Run `/imprint`. Move on.
 
 Every time. Without exception.
 
-A registry with ten entries is useful. A registry with thirty entries is powerful. A registry that is sometimes updated is unreliable.
+A registry with ten entries is useful. A registry with thirty entries is powerful. A
+registry that is sometimes updated is unreliable.
 
 Consistency is a habit, not a feature.
 
@@ -173,11 +193,14 @@ Consistency is a habit, not a feature.
 
 ## Audit Mode — /imprint audit
 
-Run this when the UI already exists and consistency is uncertain. Instead of capturing from one component, it scans the entire codebase, finds conflicts, and establishes a clean baseline before any further capturing happens.
+Run this when the UI already exists and consistency is uncertain. Instead of capturing
+from one component, it scans the entire codebase, finds conflicts, and establishes a clean
+baseline before any further capturing happens.
 
 ### Step 1 — Scan all UI components
 
-Find every component file in the project. Read each one. Build a complete picture of what visual patterns are currently in use across the entire interface.
+Find every component file in the project. Read each one. Build a complete picture of what
+visual patterns are currently in use across the entire interface.
 
 ### Step 2 — Identify conflicts
 
@@ -242,7 +265,8 @@ Confirm the baseline and I will write it to ui-registry.md.
 
 ### Step 4 — Write the confirmed baseline
 
-After the developer confirms — write the agreed baseline to `ui-registry.md` as the foundation. Label it clearly:
+After the developer confirms — write the agreed baseline to `ui-registry.md` as the
+foundation. Label it clearly:
 
 ```markdown
 ## Baseline — Established [date]
@@ -277,4 +301,6 @@ and should be updated:
 - [Component file] — [what is wrong] → [what it should be]
 ```
 
-The developer can now fix these systematically — or fix them as they encounter each component. Either way, the baseline is established and `/imprint` can be used going forward to keep new components consistent.
+The developer can now fix these systematically — or fix them as they encounter each
+component. Either way, the baseline is established and `/imprint` can be used going
+forward to keep new components consistent.

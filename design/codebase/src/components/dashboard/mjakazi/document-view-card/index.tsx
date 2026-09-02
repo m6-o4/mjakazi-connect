@@ -1,5 +1,6 @@
-import { Button } from "@/components/ui/button";
 import { CheckCircle2, ExternalLink } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 interface DocumentViewCardProps {
 	label: string;

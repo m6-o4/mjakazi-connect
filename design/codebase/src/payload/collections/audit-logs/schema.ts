@@ -1,5 +1,6 @@
-import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 
 // immutable audit trail for all significant platform events.
 // entries are written programmatically via writeAuditLog — never by users directly.
