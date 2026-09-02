@@ -1,3 +1,11 @@
+# [2.6.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.5.0...v2.6.0) (2026-09-02)
+
+
+### Features
+
+* subscriptions ([8b3dd26](https://github.com/m6-o4/mjakazi-connect/commit/8b3dd2664abb4a93ad5ff2d2904b0cd9a8b3bab4))
+* **subscriptions:** add subscription collection and state machine ([5597443](https://github.com/m6-o4/mjakazi-connect/commit/5597443d54853921aa45556d6db43693e547755e))
+
 # [2.5.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.4.0...v2.5.0) (2026-09-01)
 
 ### Features
