@@ -1,3 +1,5 @@
+import { ComponentType, Fragment } from "react";
+
 import type { Page } from "@/payload-types";
 import { CallToActionBlock } from "@/payload/blocks/call-to-action/component";
 import { ContentEditorBlock } from "@/payload/blocks/content-editor/component";
@@ -11,7 +13,6 @@ import { PricingBlock } from "@/payload/blocks/pricing/component";
 import { RegistrationBlock } from "@/payload/blocks/registration/component";
 import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
 import { WajakaziArchiveBlock } from "@/payload/blocks/wajakazi-archive/component";
-import { ComponentType, Fragment } from "react";
 
 // maps Payload block type slugs to their React components — add new block types here to make them renderable
 const blockComponents = {

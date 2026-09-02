@@ -1,17 +1,3 @@
-import { FormSubmission, Page, Post } from "@/payload-types";
-import {
-	defaultValue,
-	hidden,
-	label,
-	name,
-	placeholder,
-	required,
-	width,
-} from "@/payload/blocks/forms/config";
-import { revalidateRedirects } from "@/payload/hooks/revalidate-redirects";
-import { beforeSyncWithSearch } from "@/payload/search/before-sync";
-import { searchFields } from "@/payload/search/field-overrides";
-import { getServerSideURL } from "@/payload/utilities/get-url";
 import { payloadCloudPlugin } from "@payloadcms/payload-cloud";
 import { formBuilderPlugin } from "@payloadcms/plugin-form-builder";
 import { BeforeEmail } from "@payloadcms/plugin-form-builder/types";
@@ -28,6 +14,21 @@ import {
 } from "@payloadcms/richtext-lexical";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { Plugin } from "payload";
+
+import { FormSubmission, Page, Post } from "@/payload-types";
+import {
+	defaultValue,
+	hidden,
+	label,
+	name,
+	placeholder,
+	required,
+	width,
+} from "@/payload/blocks/forms/config";
+import { revalidateRedirects } from "@/payload/hooks/revalidate-redirects";
+import { beforeSyncWithSearch } from "@/payload/search/before-sync";
+import { searchFields } from "@/payload/search/field-overrides";
+import { getServerSideURL } from "@/payload/utilities/get-url";
 
 // dynamically constructs seo titles for pages and posts
 // adds brand consistency by appending the company name to each document title

@@ -1,6 +1,7 @@
 import { Briefcase, Calendar, MapPin } from "lucide-react";
-import { JOB_OPTIONS } from "@/lib/profile-constants";
 import Link from "next/link";
+
+import { JOB_OPTIONS } from "@/lib/profile-constants";
 
 interface WajakaziTeaserCardProps {
 	firstName: string;

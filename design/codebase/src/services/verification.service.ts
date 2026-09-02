@@ -1,5 +1,6 @@
-import { writeAuditLog } from "@/lib/audit";
 import type { Payload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
 
 // defines valid verification lifecycle states
 type VerificationState =

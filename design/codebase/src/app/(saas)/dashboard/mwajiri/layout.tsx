@@ -1,6 +1,7 @@
+import { ReactNode } from "react";
+
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ReactNode } from "react";
 
 const MwajiriDashboardLayout = ({ children }: { children: ReactNode }) => {
 	return (

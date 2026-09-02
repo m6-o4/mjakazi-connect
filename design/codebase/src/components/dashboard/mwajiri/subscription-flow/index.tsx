@@ -1,13 +1,14 @@
 "use client";
 
+import { CheckCircle2, Clock } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+
 import { SubscriptionPaymentCard } from "@/components/dashboard/mwajiri/subscription-payment-card";
 import { TierSelectionCard } from "@/components/dashboard/mwajiri/tier-selection-card";
 import type { Tier } from "@/components/dashboard/mwajiri/tier-selection-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
 
 interface SubscriptionFlowProps {
 	tiers: Tier[];

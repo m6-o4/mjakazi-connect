@@ -22,7 +22,9 @@ const ClarityTracker = () => {
 			clarity.init(clarityId);
 		} else {
 			// standard dev behavior: log that we are dormant
-			console.log("Clarity configured but dormant (set NEXT_PUBLIC_CLARITY_DEBUG=true to test)");
+			console.log(
+				"Clarity configured but dormant (set NEXT_PUBLIC_CLARITY_DEBUG=true to test)",
+			);
 		}
 	}, []);
 

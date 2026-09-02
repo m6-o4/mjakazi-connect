@@ -1,10 +1,11 @@
-import { writeAuditLog } from "@/lib/audit";
-import { generateUniqueFilename } from "@/lib/generate-unique-filename";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
+import { generateUniqueFilename } from "@/lib/generate-unique-filename";
+import { resolveIdentity } from "@/services/identity.service";
 
 // whitelist of allowed document types
 const VALID_DOCUMENT_TYPES = [

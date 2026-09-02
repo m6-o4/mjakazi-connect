@@ -1,22 +1,26 @@
 # Payload Skill for AI Coding Agents
 
-Agent skill providing comprehensive guidance for Payload development with TypeScript patterns, field configurations, hooks, access control, and API examples.
+Agent skill providing comprehensive guidance for Payload development with TypeScript
+patterns, field configurations, hooks, access control, and API examples.
 
 ## What's Included
 
 The `payload` skill provides expert guidance on:
 
 - **Collections**: Auth, uploads, drafts, live preview configurations
-- **Fields**: All field types including relationships, arrays, blocks, joins, virtual fields
+- **Fields**: All field types including relationships, arrays, blocks, joins, virtual
+  fields
 - **Hooks**: beforeChange, afterChange, beforeValidate, field hooks
-- **Access Control**: Collection, field, and global access patterns including RBAC and multi-tenant
+- **Access Control**: Collection, field, and global access patterns including RBAC and
+  multi-tenant
 - **Queries**: Local API, REST, and GraphQL with complex operators
 - **Database Adapters**: MongoDB, Postgres, SQLite configurations and transactions
 - **Advanced Features**: Jobs queue, custom endpoints, localization, plugins
 
 ## Usage
 
-Once installed, the Agent will automatically invoke the skill when you're working on Payload projects. The skill activates when you:
+Once installed, the Agent will automatically invoke the skill when you're working on
+Payload projects. The skill activates when you:
 
 - Edit `payload.config.ts` files
 - Work with collection or global configurations

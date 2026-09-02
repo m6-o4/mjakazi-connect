@@ -52,7 +52,10 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Payment Expired", value: "payment_expired" },
 				{ label: "Payment Activation Failed", value: "payment_activation_failed" },
 				// subscription lifecycle
-				{ label: "Subscription Purchase Started", value: "subscription_purchase_started" },
+				{
+					label: "Subscription Purchase Started",
+					value: "subscription_purchase_started",
+				},
 				{ label: "Subscription Activated", value: "subscription_activated" },
 				{ label: "Subscription Expired", value: "subscription_expired" },
 				{ label: "Subscription Suspended", value: "subscription_suspended" },

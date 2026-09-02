@@ -1,10 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/payload/utilities/use-debounce";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 // a client-side search component that updates the url query string
 // after the user stops typing, enabling debounced search navigation

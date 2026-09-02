@@ -25,10 +25,7 @@ const POST = async (req: NextRequest) => {
 		const result = await handleCallback(payload, callback);
 
 		if (!result.success) {
-			console.error(
-				"[api/webhooks/payments/callback] handling failed:",
-				result.error,
-			);
+			console.error("[api/webhooks/payments/callback] handling failed:", result.error);
 		}
 
 		return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" }, { status: 200 });

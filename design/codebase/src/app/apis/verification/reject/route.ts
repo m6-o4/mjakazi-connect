@@ -1,10 +1,11 @@
-import { sendVerificationRejectedEmail } from "@/lib/email";
-import { resolveIdentity } from "@/services/identity.service";
-import { rejectVerification } from "@/services/verification.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { sendVerificationRejectedEmail } from "@/lib/email";
+import { resolveIdentity } from "@/services/identity.service";
+import { rejectVerification } from "@/services/verification.service";
 
 // processes verification rejection; verifies admin/sa session and updates profile status
 const POST = async (req: Request) => {

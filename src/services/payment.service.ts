@@ -6,6 +6,7 @@ import { getCallbackMetadataValue, initiateStkPush, type StkCallback } from "@/l
 import { normalizeKenyanPhone } from "@/lib/phone";
 import { captureServerEvent } from "@/lib/posthog-server";
 import type { Payment, User } from "@/payload-types";
+import { activateSubscriptionOnPayment } from "@/services/subscription.service";
 import { activateVerificationOnPayment } from "@/services/verification.service";
 
 type Result<T = void> =
@@ -426,30 +427,34 @@ const handleCallback = async (
 		resultDesc: ResultDesc ?? null,
 	});
 
-	// 4.4: a confirmed verification payment activates the profile. a failed
+	// 4.4 / 5.2: a confirmed payment activates its domain transition. a failed
 	// activation leaves the payment confirmed (immutable) and is audit-logged
 	// for investigation — it is never rolled back
-	if (
-		settled.success &&
-		settled.data.status === "confirmed" &&
-		settled.data.payment?.paymentType === "verification"
-	) {
-		const activation = await activateVerificationOnPayment(payload, settled.data.payment);
+	if (settled.success && settled.data.status === "confirmed" && settled.data.payment) {
+		const payment = settled.data.payment;
+		const activation =
+			payment.paymentType === "verification"
+				? await activateVerificationOnPayment(payload, payment)
+				: await activateSubscriptionOnPayment(payload, payment);
+
 		if (!activation.success) {
 			console.error(
-				`[services/payment] verification activation failed for payment ${settled.data.payment.id}:`,
+				`[services/payment] ${payment.paymentType} activation failed for payment ${payment.id}:`,
 				activation.error,
 			);
 			await writeAuditLog({
 				action: "payment_activation_failed",
 				actorId: null,
-				targetId: toId(settled.data.payment.user),
-				previousState: "pending_payment",
-				newState: "pending_payment",
+				targetId: toId(payment.user),
+				// a verification activation can only be attempted from
+				// pending_payment; a subscription activation can come from several
+				// states, so it carries no state here
+				previousState: payment.paymentType === "verification" ? "pending_payment" : null,
+				newState: payment.paymentType === "verification" ? "pending_payment" : null,
 				metadata: {
-					paymentId: settled.data.payment.id,
-					mpesaReference: settled.data.payment.mpesaReference,
-					paymentType: settled.data.payment.paymentType,
+					paymentId: payment.id,
+					mpesaReference: payment.mpesaReference,
+					paymentType: payment.paymentType,
 					error: activation.error,
 					code: activation.code ?? null,
 				},

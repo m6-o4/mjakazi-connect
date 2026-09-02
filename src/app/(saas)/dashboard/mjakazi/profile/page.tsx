@@ -4,8 +4,8 @@ import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { ProfileForm } from "@/components/dashboard/mjakazi/profile-form";
-import config from "@/payload-config";
 import type { ProfileFormValues } from "@/lib/profile-schema";
+import config from "@/payload-config";
 import type { ProfilePhoto } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 
@@ -18,7 +18,9 @@ const toDateInputValue = (value: string | Date | null | undefined): string => {
 	return value.slice(0, 10);
 };
 
-const toPhotoInfo = (photo: WajakaziProfilePhoto): { id: string; url: string | null } | null => {
+const toPhotoInfo = (
+	photo: WajakaziProfilePhoto,
+): { id: string; url: string | null } | null => {
 	if (!photo) return null;
 	if (typeof photo === "string") return { id: photo, url: null };
 	return { id: photo.id, url: photo.url ?? null };

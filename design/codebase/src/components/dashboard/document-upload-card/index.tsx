@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileText, RefreshCw, UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 interface DocumentUploadCardProps {
 	documentType: "national_id" | "good_conduct" | "qualification" | "other";

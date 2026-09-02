@@ -1,9 +1,10 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { Check } from "lucide-react";
 import { forwardRef } from "react";
+
+import { cn } from "@/lib/utils";
 
 // defines the props by combining radix-ui's checkbox root props with standard html element props
 type CheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>;

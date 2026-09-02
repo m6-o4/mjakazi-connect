@@ -1,11 +1,12 @@
-import { WaajiriAccountsTable } from "@/components/dashboard/accounts/waajiri-accounts-table";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { WaajiriAccountsTable } from "@/components/dashboard/accounts/waajiri-accounts-table";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { resolveIdentity } from "@/services/identity.service";
 
 export const metadata: Metadata = { title: "Waajiri Accounts" };
 

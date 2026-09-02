@@ -1,8 +1,9 @@
 "use client";
 
-import { getClientSideURL } from "@/payload/utilities/get-url";
 import { RefreshRouteOnSave as PayloadLivePreview } from "@payloadcms/live-preview-react";
 import { useRouter } from "next/navigation";
+
+import { getClientSideURL } from "@/payload/utilities/get-url";
 
 /**
  * a client component that establishes the listener for payload's live preview feature.

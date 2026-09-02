@@ -1,8 +1,9 @@
-import { resolveIdentity } from "@/services/identity.service";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
 
 // allows admin and sa to update their own first and last name
 // email changes are not permitted

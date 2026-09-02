@@ -51,7 +51,9 @@ const VerificationQueue = ({ items }: VerificationQueueProps) => {
 					>
 						<div className="min-w-0">
 							<div className="flex flex-wrap items-center gap-2">
-								<p className="text-foreground text-sm font-semibold">{item.displayName}</p>
+								<p className="text-foreground text-sm font-semibold">
+									{item.displayName}
+								</p>
 								{attempts > 0 && (
 									<Badge variant="secondary">
 										{attempts === 1
@@ -68,7 +70,9 @@ const VerificationQueue = ({ items }: VerificationQueueProps) => {
 						</div>
 						<div className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
 							<Clock className="size-3.5" />
-							{item.submittedAt ? `Submitted ${formatDate(item.submittedAt)}` : "Submitted"}
+							{item.submittedAt
+								? `Submitted ${formatDate(item.submittedAt)}`
+								: "Submitted"}
 						</div>
 					</Link>
 				);

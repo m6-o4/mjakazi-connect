@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { FlaskConical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 // development-only component — never renders in production
 // simulates payment confirmation to move verification from

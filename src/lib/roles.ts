@@ -23,5 +23,11 @@ const isValidRole = (value: unknown): value is Role =>
 const isRegistrationRole = (value: unknown): value is Role =>
 	typeof value === "string" && REGISTRATION_ROLES.includes(value as Role);
 
-export { DASHBOARD_BY_ROLE, REGISTRATION_ROLES, VALID_ROLES, isRegistrationRole, isValidRole };
+export {
+	DASHBOARD_BY_ROLE,
+	REGISTRATION_ROLES,
+	VALID_ROLES,
+	isRegistrationRole,
+	isValidRole,
+};
 export type { Role };

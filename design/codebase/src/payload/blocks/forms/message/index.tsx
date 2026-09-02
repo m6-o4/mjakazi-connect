@@ -1,5 +1,6 @@
-import { RichText } from "@/components/rich-text";
 import type { DefaultTypedEditorState } from "@payloadcms/richtext-lexical";
+
+import { RichText } from "@/components/rich-text";
 
 // defines the single prop required: the serialized content from a lexical rich text editor
 type MessageProps = {

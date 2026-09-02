@@ -1,6 +1,5 @@
 "use client";
 
-import { formatSlug } from "@/payload/fields/slug/format-slug";
 import {
 	Button,
 	FieldLabel,
@@ -11,6 +10,8 @@ import {
 } from "@payloadcms/ui";
 import { TextFieldClientProps } from "payload";
 import React, { useCallback } from "react";
+
+import { formatSlug } from "@/payload/fields/slug/format-slug";
 
 import "@/payload/fields/slug/index.scss";
 

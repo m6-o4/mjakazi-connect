@@ -1,5 +1,6 @@
-import { isSA } from "@/payload/access/access-control";
 import type { GlobalConfig } from "payload";
+
+import { isSA } from "@/payload/access/access-control";
 
 // singleton global for platform-wide configuration that only super-admins
 // should be able to view or change — keeps business-critical values out of

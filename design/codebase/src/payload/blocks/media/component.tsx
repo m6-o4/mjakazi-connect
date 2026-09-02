@@ -1,7 +1,8 @@
+import type { StaticImageData } from "next/image";
+
 import { Media } from "@/components/media";
 import { cn } from "@/lib/utils";
 import type { MediaBlock as MediaBlockProps } from "@/payload-types";
-import type { StaticImageData } from "next/image";
 
 type Props = MediaBlockProps & {
 	breakout?: boolean;

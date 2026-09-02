@@ -110,7 +110,7 @@ const PostsArchiveBlock = async (props: PostsArchiveBlockProps) => {
 
 							return (
 								<Link key={post.id} href={`/posts/${post.slug}`}>
-									<Card className="group h-full cursor-pointer gap-0 py-0 transition-all duration-300 hover:shadow-lg hover:ring-primary/30">
+									<Card className="group hover:ring-primary/30 h-full cursor-pointer gap-0 py-0 transition-all duration-300 hover:shadow-lg">
 										<div className="bg-muted relative aspect-16/10 overflow-hidden">
 											{imageSrc ? (
 												<>

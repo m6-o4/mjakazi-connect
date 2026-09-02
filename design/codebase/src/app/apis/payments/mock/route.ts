@@ -1,9 +1,10 @@
-import { resolveIdentity } from "@/services/identity.service";
-import { markPaymentCompleted } from "@/services/verification.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
+import { markPaymentCompleted } from "@/services/verification.service";
 
 // provides a temporary endpoint for simulating successful payment confirmation in development
 const POST = async () => {

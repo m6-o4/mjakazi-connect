@@ -1,82 +1,71 @@
-# Memory — Phase 4.4 (verification payment) + Phase 10.3 admin settings
+# Memory — Phase 5 (Subscriptions) complete
 
-Last updated: 2026-09-01 21:29
+Last updated: 2026-09-02 04:08
 
 ## What was built
 
-Phase 4.4 (extended) — verification payment end to end:
-- `platform-settings` global with `verificationFee` (default 1500), later extended
-  with a `subscriptionTiers` array (`tierId`, `name`, `price`, `durationDays`,
-  `description`, `isActive`, `isConcierge`).
-- `src/services/settings.service.ts` — `getVerificationFee`,
-  `updateVerificationFee`, `updateSubscriptionTiers` (validates required fields,
-  unique `tierId`, price/duration >= 1; PUT-replaces the array).
-- `src/app/actions/payment.ts` — `initiateVerificationPaymentAction` (Server
-  Action: fee from settings, phone from profile, calls existing `initiatePayment`).
-- `src/components/dashboard/mjakazi/verification/pay-verification.tsx` — "Pay"
-  button + STK-push confirmation polling (`router.refresh` every 5s, ~2.5min cap).
-- Wire-up: `payment.service.handleCallback` calls `activateVerificationOnPayment`
-  (new, in `verification.service`) after a confirmed verification callback →
-  `pending_payment → pending_review`, stores `lastVerificationPaymentId`, resets
-  attempts. `advanceToReview` now takes an optional `paymentId`.
-- Document lock: `vault.service` refuses upload/delete while `pending_review`.
-- `payment_activation_failed` audit action (lib/audit.ts + audit-logs schema).
-- Server-side PostHog: `src/lib/posthog-server.ts` (posthog-node, `flushAt:1`,
-  `flushInterval:0`) — `payment_completed` on confirmed callback, `payment_failed`
-  on rejection/timeout; `capturePaymentEvent` resolves `users.clerkId` as
-  `distinctId`.
+Phase 5.2 — subscription purchase flow (this session built it; 5.1 was already done):
 
-Phase 10.3 (partial) — admin pricing UI:
-- `/dashboard/admin/settings` page + "Settings" nav item; two forms
-  (`PlatformSettingsForm` for fee, `SubscriptionTiersForm` for tiers) writing via
-  `src/app/actions/settings.ts`.
+- `/dashboard/mwajiri/subscription` page + new `src/app/(saas)/dashboard/mwajiri/layout.tsx`
+  role guard (mirrors the mjakazi layout). Added "Subscription" nav item in
+  `src/lib/dashboard-nav.ts`.
+- `src/app/actions/subscription.ts` — `initiateSubscriptionPaymentAction({ tierId, phone })`:
+  zod-validates, resolves tier + price server-side, normalizes phone, persists phone,
+  `beginPurchase`, then `initiatePayment` with `paymentType: "subscription"`.
+- `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — client
+  component: tier cards, M-Pesa phone input, pay/awaiting/timeout polling via
+  `router.refresh()`; fires `plan_selected` + `payment_initiated` PostHog events.
+- `src/services/payment.service.ts` — wired `activateSubscriptionOnPayment` into
+  `handleCallback` (subscription branch, `payment_activation_failed` audit on failure).
+- `src/services/profile.service.ts` — `getOwnWaajiriProfile`, `updateWaajiriPhone`.
+- `src/services/subscription.service.ts` — exported `getOwnSubscription`.
 
-Docs updated: progress-tracker, ui-registry, build-plan (4.4 + 10.3), architecture
-(env var fix), library-docs (PostHog distinctId rule).
+Phase 5.3 — subscription expiry job:
+
+- `src/jobs/subscription-expiry.ts` (hourly `0 * * * *`) + `expireExpiredSubscriptions` in
+  `subscription.service.ts` (polls active past `tierExpiry`, expires idempotently via the
+  5.1 `expireSubscription` transition). Registered in `src/payload.config.ts` `jobs.tasks`.
 
 ## Decisions made
 
-- **4.4 scope**: verification payment *initiation* (pay button + action) was pulled
-  forward into 4.4 (out of 5.2). Fee sourced from `platform-settings` (invariant
-  #12); initiate is a Server Action, not a route handler.
-- **Activation failure**: payment stays `confirmed` (immutable); log + write
-  `payment_activation_failed` audit; no admin alert/retry in 4.4.
-- **PostHog identity**: server events use the Clerk id as `distinctId` (resolved
-  from `users.clerkId`), not the Payload object id — otherwise they don't join the
-  browser-identified person. `payment_initiated` stays client-side; completed/
-  failed are server-side.
-- **10.3 tiers**: start empty (v1), form has a Remove button + Active checkbox
-  (diverges from the build-plan's "deactivated, never deleted" — the safety is the
-  "never change tierId after go-live" copy). `isConcierge` flag added per spec.
+- **Phone source**: the mwajiri has no profile form, so the purchase page collects the
+  M-Pesa phone (normalized `254…`), persisted best-effort to `waajiri-profiles.phone` for
+  future prefills. A failed phone save never blocks the payment.
+- **Trust boundary**: the client sends only `tierId` + `phone`; price and duration are
+  resolved server-side from `platform-settings` (invariant #12). Stacking (active → extend)
+  reuses the 5.1 `activateSubscriptionOnPayment`.
+- **5.3 scope**: "block new reveals" is NOT in 5.3 — that is `contact.service` (6.4) keying
+  on `subscriptionState === "active"`; existing unlocks stay visible by design. Expiry email
+  deferred to 12.1.
 
 ## Problems solved
 
-- posthog-node v5 API: `new PostHog(token, { host, flushAt, flushInterval })` +
-  `client.capture({ distinctId, event, properties })`.
-- Payload array `interfaceName` names the ARRAY type (e.g. `SubscriptionTier` =
-  `{...}[] | null`), not the item — removed it and use inline typing instead.
-- posthog-node v5 engines require Node >=20.20/22.22 — installed fine.
+- eslint `react-hooks/set-state-in-effect` rejected a `setStatus` reset inside a `useEffect`.
+  Replaced with a derived `awaiting = status === "awaiting" && state !== "active"`; the
+  polling effect keys on `awaiting`, so the callback flipping state to `active` stops
+  polling without an effect body setState.
+- Windows PowerShell blocks `pnpm.ps1` (execution policy). Use `pnpm.cmd` for every pnpm
+  command in this repo.
 
 ## Current state
 
-- **Phase 4 code-complete** (4.1–4.4). `pnpm lint` (0 errors, 2 pre-existing
-  warnings) and `pnpm build` green.
-- **Phase 10.3 partial**: admin settings UI done; the "Done when" also needs the
-  mwajiri pricing page (6.x) to read tiers at runtime — not built. Tiers are not
-  yet consumed by any flow (subscription purchase is 5.2).
-- **All manual sandbox verification deferred** (developer will test later, once a
-  UI is available): pay fee end-to-end, replay callback (no double-apply), document
-  lock, PostHog events landing on one person, admin fee/tier edits persisting.
+- **Phase 5 complete** (5.1 subscriptions collection/state machine, 5.2 purchase flow, 5.3
+  expiry job). Phase 4 complete. Phase 10.3 partial (admin pricing UI done; the mwajiri
+  pricing page that reads tiers at runtime is Phase 6.x).
+- `pnpm lint` 0 errors (3 warnings: 2 pre-existing + the `TaskConfig<any>` warning that
+  matches `payment-timeout.ts`), `pnpm build` green.
+- **All manual sandbox verification deferred** to a dedicated session: the developer wants
+  to finish the wajakazi-side tests first and will run the payment/expiry checks separately.
 
 ## Next session starts with
 
-Phase 5 (Subscriptions): 5.1 `subscriptions` collection (`subscriptionState`,
-`tierId`/`tierName` string snapshots from `platform-settings`, `lastPaymentId`);
-5.2 purchase flow (tier selection, initiate, status polling, `payment.confirmed` →
-activation); 5.3 `jobs/subscription-expiry.ts` hourly task. Re-check
-`context/build-plan.md` 5.x and `context/progress-tracker.md` before starting.
+Phase 6 (Directory + Contact Vault), starting at 6.1 — the public `/directory` +
+`/directory/[slug]` with filters and an explicit `select` omitting contact fields. Run
+`/architect` first (large phase touching marketing + the vault). Re-check
+`context/build-plan.md` 6.x and `context/progress-tracker.md` before starting.
 
 ## Open questions
 
-- Manual end-to-end testing (Phase 4 + 10.3) is outstanding and scheduled by the
-  developer later.
+- Manual end-to-end verification is outstanding and deferred to separate session(s): sandbox
+  STK push (verification + subscription), callback replay idempotency, document lock,
+  PostHog events on one person, admin fee/tier edits, and the 5.3 expiry job.

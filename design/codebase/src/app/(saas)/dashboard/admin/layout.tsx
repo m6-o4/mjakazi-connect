@@ -1,8 +1,9 @@
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import config from "@payload-config";
 import { getPayload } from "payload";
 import { ReactNode } from "react";
+
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 const AdminDashboardLayout = async ({ children }: { children: ReactNode }) => {
 	const payload = await getPayload({ config });

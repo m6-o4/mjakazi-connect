@@ -1,14 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
+import config from "@payload-config";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getPayload } from "payload";
+
 import { DocumentUploadCard } from "@/components/dashboard/document-upload-card";
 import { LegalNameForm } from "@/components/dashboard/mjakazi/legal-name-form";
 import { PaymentCard } from "@/components/dashboard/mjakazi/payment-card";
 import { SubmitVerificationCard } from "@/components/dashboard/submit-verification-card";
 import { DashboardTopbar } from "@/components/dashboard/topbar";
 import { resolveIdentity } from "@/services/identity.service";
-import { auth } from "@clerk/nextjs/server";
-import config from "@payload-config";
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getPayload } from "payload";
 
 export const metadata: Metadata = { title: "Verification" };
 

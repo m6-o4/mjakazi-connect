@@ -1,5 +1,23 @@
 "use client";
 
+import { SignOutButton, useUser } from "@clerk/nextjs";
+import {
+	ChevronUp,
+	CreditCard,
+	FileText,
+	Inbox,
+	LayoutDashboard,
+	LogOut,
+	LucideIcon,
+	Search,
+	Settings,
+	ShieldCheck,
+	User,
+	Users,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -20,23 +38,6 @@ import {
 	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { SignOutButton, useUser } from "@clerk/nextjs";
-import {
-	ChevronUp,
-	CreditCard,
-	FileText,
-	Inbox,
-	LayoutDashboard,
-	LogOut,
-	LucideIcon,
-	Search,
-	Settings,
-	ShieldCheck,
-	User,
-	Users,
-} from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 interface NavigationItem {
 	title: string;

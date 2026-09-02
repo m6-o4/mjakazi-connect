@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { cn } from "@/lib/utils";
 import { getNavItems } from "@/lib/dashboard-nav";
 import type { Role } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
 type SidebarProps = {
 	role: Role;
@@ -34,9 +34,7 @@ const Sidebar = ({ role }: SidebarProps) => {
 							href={item.href}
 							className={cn(
 								"rounded-lg px-3 py-2 text-sm font-medium",
-								active
-									? "bg-primary/10 text-primary"
-									: "text-foreground hover:bg-muted",
+								active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
 							)}
 						>
 							{item.label}

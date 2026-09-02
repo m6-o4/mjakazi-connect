@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
-import config from "@/payload-config";
 import { profileFormSchema, type ProfileFormValues } from "@/lib/profile-schema";
+import config from "@/payload-config";
 import { updateProfile } from "@/services/profile.service";
 
 type ActionResult = {

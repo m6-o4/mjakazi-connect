@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { ComponentProps } from "react";
+
+import { cn } from "@/lib/utils";
 
 // define the component's props by inheriting all standard attributes of a native <div> element.
 type ContainerProps = ComponentProps<"div">;

@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { Sidebar } from "@/components/dashboard/sidebar";

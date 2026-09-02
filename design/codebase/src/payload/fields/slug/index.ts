@@ -1,7 +1,11 @@
-import { formatSlugHook } from "@/payload/fields/slug/format-slug";
 import type { CheckboxField, TextField } from "payload";
 
-type Overrides = { slugOverrides?: Partial<TextField>; checkboxOverrides?: Partial<CheckboxField> };
+import { formatSlugHook } from "@/payload/fields/slug/format-slug";
+
+type Overrides = {
+	slugOverrides?: Partial<TextField>;
+	checkboxOverrides?: Partial<CheckboxField>;
+};
 
 type Slug = (fieldToUse?: string, overrides?: Overrides) => [TextField, CheckboxField];
 

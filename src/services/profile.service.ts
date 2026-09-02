@@ -1,16 +1,20 @@
 import type { Payload } from "payload";
 
+import { normalizeKenyanPhone } from "@/lib/phone";
 import {
 	PROFILE_REQUIRED_FIELDS,
 	type ProfileRequiredField,
 } from "@/lib/profile-constants";
-import { normalizeKenyanPhone } from "@/lib/phone";
 import type { ProfileFormValues } from "@/lib/profile-schema";
-import type { ProfilePhoto, User, WajakaziProfile } from "@/payload-types";
+import type {
+	ProfilePhoto,
+	User,
+	WaajiriProfile,
+	WajakaziProfile,
+} from "@/payload-types";
 
 type Result<T = void> =
-	| { success: true; data: T }
-	| { success: false; error: string; code?: string };
+	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 // a profile is complete only when every required field is populated. the rule is
 // a single source of truth — this and the dashboard checklist both read
@@ -91,6 +95,61 @@ const getOwnProfile = async (
 	});
 
 	return result.docs[0] ?? null;
+};
+
+// resolves the caller's own waajiri profile, respecting access control. only a
+// mwajiri has a waajiri profile to resolve
+const getOwnWaajiriProfile = async (
+	payload: Payload,
+	user: User,
+): Promise<WaajiriProfile | null> => {
+	if (user.role !== "mwajiri") return null;
+
+	const result = await payload.find({
+		collection: "waajiri-profiles",
+		where: { user: { equals: user.id } },
+		limit: 1,
+		overrideAccess: false,
+		req: { user },
+	});
+
+	return result.docs[0] ?? null;
+};
+
+// persists a mwajiri's phone number (already normalized) so future purchases
+// prefill it. best-effort — a failed write is reported but never blocks the
+// purchase, because the phone has already been used for the stk push by then
+const updateWaajiriPhone = async (
+	payload: Payload,
+	user: User,
+	phone: string,
+): Promise<Result> => {
+	if (user.role !== "mwajiri") {
+		return { success: false, error: "Forbidden", code: "forbidden" };
+	}
+
+	const profile = await getOwnWaajiriProfile(payload, user);
+	if (!profile) {
+		return { success: false, error: "Profile not found", code: "not_found" };
+	}
+
+	if (profile.phone === phone) {
+		return { success: true, data: undefined };
+	}
+
+	try {
+		await payload.update({
+			collection: "waajiri-profiles",
+			id: profile.id,
+			data: { phone },
+			overrideAccess: false,
+			req: { user },
+		});
+		return { success: true, data: undefined };
+	} catch (error) {
+		console.error("[services/profile] updateWaajiriPhone failed:", error);
+		return { success: false, error: "Could not save the phone number." };
+	}
 };
 
 // writes the computed profileComplete flag. the flag is field-locked to
@@ -214,6 +273,8 @@ export {
 	computeProfileComplete,
 	getMissingRequiredFields,
 	getOwnProfile,
+	getOwnWaajiriProfile,
 	updateProfile,
+	updateWaajiriPhone,
 	uploadProfilePhoto,
 };

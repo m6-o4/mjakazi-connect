@@ -3,8 +3,7 @@ import type { Payload } from "payload";
 import type { PlatformSetting, User } from "@/payload-types";
 
 type Result<T = void> =
-	| { success: true; data: T }
-	| { success: false; error: string; code?: string };
+	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 // the shape of a single tier as read from platform-settings, derived from the
 // generated global type rather than redeclared

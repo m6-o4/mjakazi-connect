@@ -16,7 +16,14 @@ const Payments: CollectionConfig = {
 	labels: { singular: "Payment", plural: "Payments" },
 	admin: {
 		useAsTitle: "mpesaReference",
-		defaultColumns: ["mpesaReference", "paymentType", "status", "amount", "user", "createdAt"],
+		defaultColumns: [
+			"mpesaReference",
+			"paymentType",
+			"status",
+			"amount",
+			"user",
+			"createdAt",
+		],
 		group: "SaaS",
 	},
 	access: {

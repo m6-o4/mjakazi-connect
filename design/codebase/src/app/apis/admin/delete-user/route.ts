@@ -1,9 +1,10 @@
-import { writeAuditLog } from "@/lib/audit";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
+import { resolveIdentity } from "@/services/identity.service";
 
 // removes a regular user account (mjakazi or mwajiri) — restricted to admin and sa roles.
 // cascades through profile and vault records before hitting Clerk so no orphaned

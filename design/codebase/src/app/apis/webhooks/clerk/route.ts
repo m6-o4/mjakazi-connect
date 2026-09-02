@@ -1,9 +1,10 @@
-import { deleteClerkUser, syncClerkUser } from "@/services/identity.service";
 import config from "@payload-config";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 import { Webhook } from "svix";
+
+import { deleteClerkUser, syncClerkUser } from "@/services/identity.service";
 
 const WEBHOOK_SIGNING_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET as string;
 

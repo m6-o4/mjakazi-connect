@@ -1,9 +1,10 @@
-import { retry } from "@/lib/retry";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { retry } from "@/lib/retry";
+import { resolveIdentity } from "@/services/identity.service";
 
 // handles role-based redirection after a successful authentication handshake
 const GET = async () => {

@@ -1,5 +1,6 @@
-import { link } from "@/payload/fields/link";
 import type { Block } from "payload";
+
+import { link } from "@/payload/fields/link";
 
 // defines the content structure for the main landing page hero section
 const HeroPrimary: Block = {

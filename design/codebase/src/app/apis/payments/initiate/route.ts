@@ -1,3 +1,8 @@
+import { auth } from "@clerk/nextjs/server";
+import config from "@payload-config";
+import { NextResponse } from "next/server";
+import { getPayload } from "payload";
+
 import { inngest } from "@/inngest/client";
 import { writeAuditLog } from "@/lib/audit";
 import {
@@ -5,10 +10,6 @@ import {
 	isValidKenyanMobileNumber,
 	normaliseMpesaPhone,
 } from "@/lib/mpesa";
-import { auth } from "@clerk/nextjs/server";
-import config from "@payload-config";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 
 // handles the initiation of m-pesa stk push payments for mjakazi registration fees
 export const POST = async (req: Request) => {

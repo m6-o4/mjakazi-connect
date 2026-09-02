@@ -1,9 +1,10 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { ComponentProps, useEffect, useRef } from "react";
 import posthog from "posthog-js";
+import { ComponentProps, useEffect, useRef } from "react";
+
+import { useUser } from "@clerk/nextjs";
 
 const ThemeProvider = ({
 	children,

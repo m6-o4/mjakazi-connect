@@ -1,9 +1,10 @@
-import { writeAuditLog } from "@/lib/audit";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
+import { resolveIdentity } from "@/services/identity.service";
 
 // removes a staff (admin) account from Clerk — restricted to sa-role users only.
 // deleting from Clerk triggers the user.deleted webhook which removes the

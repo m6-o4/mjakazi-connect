@@ -1,51 +1,42 @@
 ---
 name: tailwind
-description: "Tailwind CSS utility-first framework for rapid UI development with responsive design and dark mode"
+description:
+  "Tailwind CSS utility-first framework for rapid UI development with responsive design
+  and dark mode"
 user-invocable: false
 disable-model-invocation: true
 progressive_disclosure:
   entry_point:
-    summary: "Tailwind CSS utility-first framework for rapid UI development with responsive design and dark mode"
+    summary:
+      "Tailwind CSS utility-first framework for rapid UI development with responsive
+      design and dark mode"
     when_to_use: "When working with tailwind-css or related functionality."
-    quick_start: "1. Review the core concepts below. 2. Apply patterns to your use case. 3. Follow best practices for implementation."
+    quick_start:
+      "1. Review the core concepts below. 2. Apply patterns to your use case. 3. Follow
+      best practices for implementation."
 ---
+
 # Tailwind CSS Skill
 
 ---
-progressive_disclosure:
-  entry_point:
-    - summary
-    - when_to_use
-    - quick_start
-  sections:
-    core_concepts:
-      - utility_first_approach
-      - responsive_design
-      - configuration
-    advanced:
-      - dark_mode
-      - custom_utilities
-      - plugins
-      - performance_optimization
-    integration:
-      - framework_integration
-      - component_patterns
-    reference:
-      - common_utilities
-      - breakpoints
-      - color_system
-tokens:
-  entry: 75
-  full: 4500
+
+progressive_disclosure: entry_point: - summary - when_to_use - quick_start sections:
+core_concepts: - utility_first_approach - responsive_design - configuration advanced: -
+dark_mode - custom_utilities - plugins - performance_optimization integration: -
+framework_integration - component_patterns reference: - common_utilities - breakpoints -
+color_system tokens: entry: 75 full: 4500
 ---
 
 ## Summary
 
-Tailwind CSS is a utility-first CSS framework that provides low-level utility classes to build custom designs without writing CSS. It offers responsive design, dark mode, customization through configuration, and integrates seamlessly with modern frameworks.
+Tailwind CSS is a utility-first CSS framework that provides low-level utility classes to
+build custom designs without writing CSS. It offers responsive design, dark mode,
+customization through configuration, and integrates seamlessly with modern frameworks.
 
 ## When to Use
 
 **Best for:**
+
 - Rapid prototyping with consistent design systems
 - Component-based frameworks (React, Vue, Svelte)
 - Projects requiring responsive and dark mode support
@@ -53,6 +44,7 @@ Tailwind CSS is a utility-first CSS framework that provides low-level utility cl
 - Design systems with standardized spacing/colors
 
 **Consider alternatives when:**
+
 - Team unfamiliar with utility-first approach (learning curve)
 - Project requires extensive custom CSS animations
 - Legacy browser support needed (IE11)
@@ -79,23 +71,22 @@ npx tailwindcss init -p
 ### Configuration
 
 **tailwind.config.js:**
+
 ```javascript
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
+	content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
+	theme: {
+		extend: {},
+	},
+	plugins: [],
+};
 ```
 
 ### Basic CSS Setup
 
 **styles/globals.css:**
+
 ```css
 @tailwind base;
 @tailwind components;
@@ -106,19 +97,15 @@ module.exports = {
 
 ```jsx
 // Simple button with Tailwind utilities
-function Button({ children, variant = 'primary' }) {
-  const baseClasses = "px-4 py-2 rounded-lg font-medium transition-colors";
-  const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
-    danger: "bg-red-600 text-white hover:bg-red-700"
-  };
+function Button({ children, variant = "primary" }) {
+	const baseClasses = "px-4 py-2 rounded-lg font-medium transition-colors";
+	const variants = {
+		primary: "bg-blue-600 text-white hover:bg-blue-700",
+		secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+		danger: "bg-red-600 text-white hover:bg-red-700",
+	};
 
-  return (
-    <button className={`${baseClasses} ${variants[variant]}`}>
-      {children}
-    </button>
-  );
+	return <button className={`${baseClasses} ${variants[variant]}`}>{children}</button>;
 }
 ```
 
@@ -133,6 +120,7 @@ Tailwind provides single-purpose utility classes that map directly to CSS proper
 #### Layout Utilities
 
 **Flexbox:**
+
 ```jsx
 // Centered flex container
 <div className="flex items-center justify-center">
@@ -153,6 +141,7 @@ Tailwind provides single-purpose utility classes that map directly to CSS proper
 ```
 
 **Grid:**
+
 ```jsx
 // Basic grid
 <div className="grid grid-cols-3 gap-4">
@@ -178,6 +167,7 @@ Tailwind provides single-purpose utility classes that map directly to CSS proper
 #### Spacing System
 
 **Padding and Margin:**
+
 ```jsx
 // Uniform spacing
 <div className="p-4">Padding all sides</div>
@@ -195,6 +185,7 @@ Tailwind provides single-purpose utility classes that map directly to CSS proper
 ```
 
 **Space Between:**
+
 ```jsx
 // Gap between children
 <div className="flex gap-4">
@@ -320,83 +311,84 @@ Tailwind uses mobile-first breakpoint system.
 #### Theme Extension
 
 **tailwind.config.js:**
+
 ```javascript
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          500: '#0ea5e9',
-          900: '#0c4a6e',
-        },
-        accent: '#ff6b6b',
-      },
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Poppins', 'sans-serif'],
-        mono: ['Fira Code', 'monospace'],
-      },
-      fontSize: {
-        '2xs': '0.625rem',
-        '3xl': '2rem',
-      },
-      borderRadius: {
-        '4xl': '2rem',
-      },
-      boxShadow: {
-        'inner-lg': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.1)',
-      },
-      animation: {
-        'slide-in': 'slideIn 0.3s ease-out',
-        'fade-in': 'fadeIn 0.2s ease-in',
-      },
-      keyframes: {
-        slideIn: {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-      },
-    },
-  },
-  plugins: [],
-}
+	content: ["./src/**/*.{js,jsx,ts,tsx}"],
+	theme: {
+		extend: {
+			colors: {
+				brand: {
+					50: "#f0f9ff",
+					100: "#e0f2fe",
+					500: "#0ea5e9",
+					900: "#0c4a6e",
+				},
+				accent: "#ff6b6b",
+			},
+			spacing: {
+				18: "4.5rem",
+				88: "22rem",
+				128: "32rem",
+			},
+			fontFamily: {
+				sans: ["Inter", "system-ui", "sans-serif"],
+				display: ["Poppins", "sans-serif"],
+				mono: ["Fira Code", "monospace"],
+			},
+			fontSize: {
+				"2xs": "0.625rem",
+				"3xl": "2rem",
+			},
+			borderRadius: {
+				"4xl": "2rem",
+			},
+			boxShadow: {
+				"inner-lg": "inset 0 2px 4px 0 rgb(0 0 0 / 0.1)",
+			},
+			animation: {
+				"slide-in": "slideIn 0.3s ease-out",
+				"fade-in": "fadeIn 0.2s ease-in",
+			},
+			keyframes: {
+				slideIn: {
+					"0%": { transform: "translateX(-100%)" },
+					"100%": { transform: "translateX(0)" },
+				},
+				fadeIn: {
+					"0%": { opacity: "0" },
+					"100%": { opacity: "1" },
+				},
+			},
+		},
+	},
+	plugins: [],
+};
 ```
 
 #### Custom Breakpoints
 
 ```javascript
 module.exports = {
-  theme: {
-    screens: {
-      'xs': '475px',
-      'sm': '640px',
-      'md': '768px',
-      'lg': '1024px',
-      'xl': '1280px',
-      '2xl': '1536px',
-      '3xl': '1920px',
-      // Custom breakpoints
-      'tablet': '640px',
-      'laptop': '1024px',
-      'desktop': '1280px',
-      // Max-width breakpoints
-      'max-md': {'max': '767px'},
-    },
-  },
-}
+	theme: {
+		screens: {
+			xs: "475px",
+			sm: "640px",
+			md: "768px",
+			lg: "1024px",
+			xl: "1280px",
+			"2xl": "1536px",
+			"3xl": "1920px",
+			// Custom breakpoints
+			tablet: "640px",
+			laptop: "1024px",
+			desktop: "1280px",
+			// Max-width breakpoints
+			"max-md": { max: "767px" },
+		},
+	},
+};
 ```
 
 ---
@@ -408,52 +400,47 @@ module.exports = {
 #### Class Strategy (Recommended)
 
 **tailwind.config.js:**
+
 ```javascript
 module.exports = {
-  darkMode: 'class', // or 'media' for OS preference
-  // ...
-}
+	darkMode: "class", // or 'media' for OS preference
+	// ...
+};
 ```
 
 **Implementation:**
+
 ```jsx
 // Toggle component
 function DarkModeToggle() {
-  const [isDark, setIsDark] = useState(false);
+	const [isDark, setIsDark] = useState(false);
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+	useEffect(() => {
+		if (isDark) {
+			document.documentElement.classList.add("dark");
+		} else {
+			document.documentElement.classList.remove("dark");
+		}
+	}, [isDark]);
 
-  return (
-    <button
-      onClick={() => setIsDark(!isDark)}
-      className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700"
-    >
-      {isDark ? '🌞' : '🌙'}
-    </button>
-  );
+	return (
+		<button
+			onClick={() => setIsDark(!isDark)}
+			className="rounded-lg bg-gray-200 p-2 dark:bg-gray-700"
+		>
+			{isDark ? "🌞" : "🌙"}
+		</button>
+	);
 }
 
 // Dark mode styles
 function Card() {
-  return (
-    <div className="
-      bg-white dark:bg-gray-800
-      text-gray-900 dark:text-gray-100
-      border border-gray-200 dark:border-gray-700
-      shadow-lg dark:shadow-none
-    ">
-      <h2 className="text-xl font-bold mb-2">Card Title</h2>
-      <p className="text-gray-600 dark:text-gray-400">
-        Card content adapts to dark mode
-      </p>
-    </div>
-  );
+	return (
+		<div className="border border-gray-200 bg-white text-gray-900 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:shadow-none">
+			<h2 className="mb-2 text-xl font-bold">Card Title</h2>
+			<p className="text-gray-600 dark:text-gray-400">Card content adapts to dark mode</p>
+		</div>
+	);
 }
 ```
 
@@ -462,15 +449,13 @@ function Card() {
 ```javascript
 // tailwind.config.js
 module.exports = {
-  darkMode: 'media', // Uses OS preference
-}
+	darkMode: "media", // Uses OS preference
+};
 ```
 
 ```jsx
 // Automatically adapts to system preference
-<div className="bg-white dark:bg-gray-900">
-  Content adapts automatically
-</div>
+<div className="bg-white dark:bg-gray-900">Content adapts automatically</div>
 ```
 
 ### Custom Utilities
@@ -478,46 +463,47 @@ module.exports = {
 #### Adding Custom Utilities
 
 **tailwind.config.js:**
+
 ```javascript
-const plugin = require('tailwindcss/plugin');
+const plugin = require("tailwindcss/plugin");
 
 module.exports = {
-  plugins: [
-    plugin(function({ addUtilities, addComponents, theme }) {
-      // Custom utilities
-      addUtilities({
-        '.scrollbar-hide': {
-          '-ms-overflow-style': 'none',
-          'scrollbar-width': 'none',
-          '&::-webkit-scrollbar': {
-            display: 'none',
-          },
-        },
-        '.text-balance': {
-          'text-wrap': 'balance',
-        },
-      });
+	plugins: [
+		plugin(function ({ addUtilities, addComponents, theme }) {
+			// Custom utilities
+			addUtilities({
+				".scrollbar-hide": {
+					"-ms-overflow-style": "none",
+					"scrollbar-width": "none",
+					"&::-webkit-scrollbar": {
+						display: "none",
+					},
+				},
+				".text-balance": {
+					"text-wrap": "balance",
+				},
+			});
 
-      // Custom components
-      addComponents({
-        '.btn': {
-          padding: theme('spacing.4'),
-          borderRadius: theme('borderRadius.lg'),
-          fontWeight: theme('fontWeight.medium'),
-          '&:hover': {
-            opacity: 0.9,
-          },
-        },
-        '.card': {
-          backgroundColor: theme('colors.white'),
-          borderRadius: theme('borderRadius.lg'),
-          padding: theme('spacing.6'),
-          boxShadow: theme('boxShadow.lg'),
-        },
-      });
-    }),
-  ],
-}
+			// Custom components
+			addComponents({
+				".btn": {
+					padding: theme("spacing.4"),
+					borderRadius: theme("borderRadius.lg"),
+					fontWeight: theme("fontWeight.medium"),
+					"&:hover": {
+						opacity: 0.9,
+					},
+				},
+				".card": {
+					backgroundColor: theme("colors.white"),
+					borderRadius: theme("borderRadius.lg"),
+					padding: theme("spacing.6"),
+					boxShadow: theme("boxShadow.lg"),
+				},
+			});
+		}),
+	],
+};
 ```
 
 #### Custom Variants
@@ -555,14 +541,15 @@ npm install -D @tailwindcss/forms @tailwindcss/typography @tailwindcss/aspect-ra
 ```
 
 **tailwind.config.js:**
+
 ```javascript
 module.exports = {
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-    require('@tailwindcss/aspect-ratio'),
-  ],
-}
+	plugins: [
+		require("@tailwindcss/forms"),
+		require("@tailwindcss/typography"),
+		require("@tailwindcss/aspect-ratio"),
+	],
+};
 ```
 
 #### Forms Plugin
@@ -570,27 +557,21 @@ module.exports = {
 ```jsx
 // Automatic form styling
 <form className="space-y-4">
-  <input
-    type="text"
-    className="
-      form-input
-      rounded-lg
-      border-gray-300
-      focus:border-blue-500
-      focus:ring-blue-500
-    "
-    placeholder="Name"
-  />
+	<input
+		type="text"
+		className="form-input rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+		placeholder="Name"
+	/>
 
-  <select className="form-select rounded-lg">
-    <option>Option 1</option>
-    <option>Option 2</option>
-  </select>
+	<select className="form-select rounded-lg">
+		<option>Option 1</option>
+		<option>Option 2</option>
+	</select>
 
-  <label className="flex items-center">
-    <input type="checkbox" className="form-checkbox text-blue-600" />
-    <span className="ml-2">Agree to terms</span>
-  </label>
+	<label className="flex items-center">
+		<input type="checkbox" className="form-checkbox text-blue-600" />
+		<span className="ml-2">Agree to terms</span>
+	</label>
 </form>
 ```
 
@@ -598,19 +579,13 @@ module.exports = {
 
 ```jsx
 // Beautiful prose styling
-<article className="
-  prose
-  prose-lg
-  prose-slate
-  dark:prose-invert
-  max-w-none
-">
-  <h1>Article Title</h1>
-  <p>Automatic typography styles for markdown content...</p>
-  <ul>
-    <li>Styled lists</li>
-    <li>Proper spacing</li>
-  </ul>
+<article className="prose prose-lg prose-slate dark:prose-invert max-w-none">
+	<h1>Article Title</h1>
+	<p>Automatic typography styles for markdown content...</p>
+	<ul>
+		<li>Styled lists</li>
+		<li>Proper spacing</li>
+	</ul>
 </article>
 ```
 
@@ -634,22 +609,22 @@ module.exports = {
 ```javascript
 // Optimize purge paths
 module.exports = {
-  content: [
-    './src/**/*.{js,jsx,ts,tsx}',
-    './public/index.html',
-    // Include component libraries
-    './node_modules/@my-ui/**/*.js',
-  ],
-  // Safelist dynamic classes
-  safelist: [
-    'bg-red-500',
-    'bg-green-500',
-    {
-      pattern: /bg-(red|green|blue)-(400|500|600)/,
-      variants: ['hover', 'focus'],
-    },
-  ],
-}
+	content: [
+		"./src/**/*.{js,jsx,ts,tsx}",
+		"./public/index.html",
+		// Include component libraries
+		"./node_modules/@my-ui/**/*.js",
+	],
+	// Safelist dynamic classes
+	safelist: [
+		"bg-red-500",
+		"bg-green-500",
+		{
+			pattern: /bg-(red|green|blue)-(400|500|600)/,
+			variants: ["hover", "focus"],
+		},
+	],
+};
 ```
 
 #### JIT Mode (Default in v3+)
@@ -671,15 +646,13 @@ Just-In-Time compilation generates styles on-demand:
 ```javascript
 // postcss.config.js
 module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-    // Production minification
-    ...(process.env.NODE_ENV === 'production'
-      ? { cssnano: {} }
-      : {}),
-  },
-}
+	plugins: {
+		tailwindcss: {},
+		autoprefixer: {},
+		// Production minification
+		...(process.env.NODE_ENV === "production" ? { cssnano: {} } : {}),
+	},
+};
 ```
 
 ---
@@ -689,6 +662,7 @@ module.exports = {
 ### React / Next.js
 
 **Installation:**
+
 ```bash
 npx create-next-app@latest my-app --tailwind
 # or add to existing project
@@ -697,14 +671,16 @@ npx tailwindcss init -p
 ```
 
 **next.config.js:**
+
 ```javascript
 /** @type {import('next').NextConfig} */
 module.exports = {
-  // Tailwind works out of box with Next.js
-}
+	// Tailwind works out of box with Next.js
+};
 ```
 
-**_app.tsx:**
+**\_app.tsx:**
+
 ```typescript
 import '@/styles/globals.css'
 import type { AppProps } from 'next/app'
@@ -715,55 +691,56 @@ export default function App({ Component, pageProps }: AppProps) {
 ```
 
 **Component Example:**
+
 ```tsx
 // components/Button.tsx
-import { ButtonHTMLAttributes, forwardRef } from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
+import { cva, type VariantProps } from "class-variance-authority";
+import { ButtonHTMLAttributes, forwardRef } from "react";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
-  {
-    variants: {
-      variant: {
-        default: "bg-blue-600 text-white hover:bg-blue-700",
-        outline: "border border-gray-300 hover:bg-gray-100",
-        ghost: "hover:bg-gray-100",
-      },
-      size: {
-        sm: "px-3 py-1.5 text-sm",
-        md: "px-4 py-2",
-        lg: "px-6 py-3 text-lg",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "md",
-    },
-  }
-)
+	"inline-flex items-center justify-center rounded-lg font-medium transition-colors",
+	{
+		variants: {
+			variant: {
+				default: "bg-blue-600 text-white hover:bg-blue-700",
+				outline: "border border-gray-300 hover:bg-gray-100",
+				ghost: "hover:bg-gray-100",
+			},
+			size: {
+				sm: "px-3 py-1.5 text-sm",
+				md: "px-4 py-2",
+				lg: "px-6 py-3 text-lg",
+			},
+		},
+		defaultVariants: {
+			variant: "default",
+			size: "md",
+		},
+	},
+);
 
 interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+	extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {}
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={buttonVariants({ variant, size, className })}
-        {...props}
-      />
-    )
-  }
-)
+	({ className, variant, size, ...props }, ref) => {
+		return (
+			<button
+				ref={ref}
+				className={buttonVariants({ variant, size, className })}
+				{...props}
+			/>
+		);
+	},
+);
 
-export default Button
+export default Button;
 ```
 
 ### SvelteKit
 
 **Installation:**
+
 ```bash
 npx sv create my-app
 # Select Tailwind CSS option
@@ -773,19 +750,21 @@ npx tailwindcss init -p
 ```
 
 **svelte.config.js:**
+
 ```javascript
-import adapter from '@sveltejs/adapter-auto';
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import adapter from "@sveltejs/adapter-auto";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 export default {
-  preprocess: vitePreprocess(),
-  kit: {
-    adapter: adapter()
-  }
+	preprocess: vitePreprocess(),
+	kit: {
+		adapter: adapter(),
+	},
 };
 ```
 
 **Component Example:**
+
 ```svelte
 <!-- Button.svelte -->
 <script lang="ts">
@@ -815,6 +794,7 @@ export default {
 ### Vue 3
 
 **Installation:**
+
 ```bash
 npm create vue@latest my-app
 # Select Tailwind CSS
@@ -824,50 +804,54 @@ npx tailwindcss init -p
 ```
 
 **main.ts:**
-```typescript
-import { createApp } from 'vue'
-import App from './App.vue'
-import './assets/main.css'
 
-createApp(App).mount('#app')
+```typescript
+import { createApp } from "vue";
+
+import App from "./App.vue";
+
+import "./assets/main.css";
+
+createApp(App).mount("#app");
 ```
 
 **Component Example:**
+
 ```vue
 <!-- Button.vue -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
 interface Props {
-  variant?: 'primary' | 'secondary'
-  size?: 'sm' | 'md' | 'lg'
+	variant?: "primary" | "secondary";
+	size?: "sm" | "md" | "lg";
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  variant: 'primary',
-  size: 'md'
-})
+	variant: "primary",
+	size: "md",
+});
 
 const classes = computed(() => {
-  const base = 'rounded-lg font-medium transition-colors'
-  const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-  }
-  const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2',
-    lg: 'px-6 py-3 text-lg'
-  }
+	const base = "rounded-lg font-medium transition-colors";
+	const variants = {
+		primary: "bg-blue-600 text-white hover:bg-blue-700",
+		secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+	};
+	const sizes = {
+		sm: "px-3 py-1.5 text-sm",
+		md: "px-4 py-2",
+		lg: "px-6 py-3 text-lg",
+	};
 
-  return `${base} ${variants[props.variant]} ${sizes[props.size]}`
-})
+	return `${base} ${variants[props.variant]} ${sizes[props.size]}`;
+});
 </script>
 
 <template>
-  <button :class="classes">
-    <slot />
-  </button>
+	<button :class="classes">
+		<slot />
+	</button>
 </template>
 ```
 
@@ -880,18 +864,18 @@ const classes = computed(() => {
 #### Container
 
 ```jsx
-function Container({ children, size = 'default' }) {
-  const sizes = {
-    sm: 'max-w-3xl',
-    default: 'max-w-7xl',
-    full: 'max-w-full'
-  };
+function Container({ children, size = "default" }) {
+	const sizes = {
+		sm: "max-w-3xl",
+		default: "max-w-7xl",
+		full: "max-w-full",
+	};
 
-  return (
-    <div className={`container mx-auto px-4 sm:px-6 lg:px-8 ${sizes[size]}`}>
-      {children}
-    </div>
-  );
+	return (
+		<div className={`container mx-auto px-4 sm:px-6 lg:px-8 ${sizes[size]}`}>
+			{children}
+		</div>
+	);
 }
 ```
 
@@ -899,17 +883,13 @@ function Container({ children, size = 'default' }) {
 
 ```jsx
 function GridLayout({ children, cols = { default: 1, md: 2, lg: 3 } }) {
-  return (
-    <div className={`
-      grid
-      grid-cols-${cols.default}
-      md:grid-cols-${cols.md}
-      lg:grid-cols-${cols.lg}
-      gap-6
-    `}>
-      {children}
-    </div>
-  );
+	return (
+		<div
+			className={`grid grid-cols-${cols.default} md:grid-cols-${cols.md} lg:grid-cols-${cols.lg} gap-6`}
+		>
+			{children}
+		</div>
+	);
 }
 ```
 
@@ -917,11 +897,7 @@ function GridLayout({ children, cols = { default: 1, md: 2, lg: 3 } }) {
 
 ```jsx
 function Stack({ children, spacing = 4 }) {
-  return (
-    <div className={`flex flex-col gap-${spacing}`}>
-      {children}
-    </div>
-  );
+	return <div className={`flex flex-col gap-${spacing}`}>{children}</div>;
 }
 ```
 
@@ -931,35 +907,20 @@ function Stack({ children, spacing = 4 }) {
 
 ```jsx
 function Card({ title, description, image, footer }) {
-  return (
-    <div className="
-      bg-white dark:bg-gray-800
-      rounded-lg shadow-lg
-      overflow-hidden
-      transition-transform hover:scale-105
-    ">
-      {image && (
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-48 object-cover"
-        />
-      )}
-      <div className="p-6">
-        <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
-          {title}
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400">
-          {description}
-        </p>
-      </div>
-      {footer && (
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-          {footer}
-        </div>
-      )}
-    </div>
-  );
+	return (
+		<div className="overflow-hidden rounded-lg bg-white shadow-lg transition-transform hover:scale-105 dark:bg-gray-800">
+			{image && <img src={image} alt={title} className="h-48 w-full object-cover" />}
+			<div className="p-6">
+				<h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
+				<p className="text-gray-600 dark:text-gray-400">{description}</p>
+			</div>
+			{footer && (
+				<div className="border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-600 dark:bg-gray-700">
+					{footer}
+				</div>
+			)}
+		</div>
+	);
 }
 ```
 
@@ -967,39 +928,28 @@ function Card({ title, description, image, footer }) {
 
 ```jsx
 function Modal({ isOpen, onClose, title, children }) {
-  if (!isOpen) return null;
+	if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+	return (
+		<div className="fixed inset-0 z-50 overflow-y-auto">
+			{/* Backdrop */}
+			<div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="
-          relative bg-white dark:bg-gray-800
-          rounded-lg shadow-xl
-          max-w-md w-full
-          p-6
-          animate-fade-in
-        ">
-          <h2 className="text-2xl font-bold mb-4">
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
+			{/* Modal */}
+			<div className="flex min-h-full items-center justify-center p-4">
+				<div className="animate-fade-in relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+					<h2 className="mb-4 text-2xl font-bold">{title}</h2>
+					<button
+						onClick={onClose}
+						className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+					>
+						✕
+					</button>
+					{children}
+				</div>
+			</div>
+		</div>
+	);
 }
 ```
 
@@ -1007,61 +957,48 @@ function Modal({ isOpen, onClose, title, children }) {
 
 ```jsx
 function Input({ label, error, ...props }) {
-  return (
-    <div className="mb-4">
-      {label && (
-        <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-          {label}
-        </label>
-      )}
-      <input
-        className={`
-          w-full px-4 py-2 rounded-lg
-          border ${error ? 'border-red-500' : 'border-gray-300'}
-          focus:outline-none focus:ring-2
-          ${error ? 'focus:ring-red-500' : 'focus:ring-blue-500'}
-          bg-white dark:bg-gray-700
-          text-gray-900 dark:text-white
-          placeholder-gray-400
-        `}
-        {...props}
-      />
-      {error && (
-        <p className="mt-1 text-sm text-red-500">{error}</p>
-      )}
-    </div>
-  );
+	return (
+		<div className="mb-4">
+			{label && (
+				<label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+					{label}
+				</label>
+			)}
+			<input
+				className={`w-full rounded-lg border px-4 py-2 ${error ? "border-red-500" : "border-gray-300"} focus:ring-2 focus:outline-none ${error ? "focus:ring-red-500" : "focus:ring-blue-500"} bg-white text-gray-900 placeholder-gray-400 dark:bg-gray-700 dark:text-white`}
+				{...props}
+			/>
+			{error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+		</div>
+	);
 }
 ```
 
 #### Badge
 
 ```jsx
-function Badge({ children, variant = 'default', size = 'md' }) {
-  const variants = {
-    default: 'bg-gray-100 text-gray-800',
-    primary: 'bg-blue-100 text-blue-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    danger: 'bg-red-100 text-red-800',
-  };
+function Badge({ children, variant = "default", size = "md" }) {
+	const variants = {
+		default: "bg-gray-100 text-gray-800",
+		primary: "bg-blue-100 text-blue-800",
+		success: "bg-green-100 text-green-800",
+		warning: "bg-yellow-100 text-yellow-800",
+		danger: "bg-red-100 text-red-800",
+	};
 
-  const sizes = {
-    sm: 'text-xs px-2 py-0.5',
-    md: 'text-sm px-2.5 py-1',
-    lg: 'text-base px-3 py-1.5',
-  };
+	const sizes = {
+		sm: "text-xs px-2 py-0.5",
+		md: "text-sm px-2.5 py-1",
+		lg: "text-base px-3 py-1.5",
+	};
 
-  return (
-    <span className={`
-      inline-flex items-center
-      rounded-full font-medium
-      ${variants[variant]}
-      ${sizes[size]}
-    `}>
-      {children}
-    </span>
-  );
+	return (
+		<span
+			className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]} `}
+		>
+			{children}
+		</span>
+	);
 }
 ```
 
@@ -1197,25 +1134,10 @@ dark:focus: .dark &:focus
 
 ```jsx
 // Group classes logically
-<div className={`
-  // Layout
-  flex items-center justify-between
-  // Spacing
-  px-4 py-2 gap-2
-  // Typography
-  text-lg font-medium
-  // Colors
-  bg-white text-gray-900
-  // Borders & Effects
-  border border-gray-200 rounded-lg shadow-sm
-  // States
-  hover:bg-gray-50 focus:ring-2 focus:ring-blue-500
-  // Responsive
-  md:px-6 md:py-3
-  // Dark mode
-  dark:bg-gray-800 dark:text-white
-`}>
-  Content
+<div
+	className={`// Layout // Spacing // Typography // Colors // Borders & Effects // States // Responsive // Dark mode flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-lg font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 md:px-6 md:py-3 dark:bg-gray-800 dark:text-white`}
+>
+	Content
 </div>
 ```
 
@@ -1245,35 +1167,33 @@ function Button({ children }) {
 ```javascript
 // tailwind.config.js
 module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        primary: 'rgb(var(--color-primary) / <alpha-value>)',
-        secondary: 'rgb(var(--color-secondary) / <alpha-value>)',
-      },
-    },
-  },
-}
+	theme: {
+		extend: {
+			colors: {
+				primary: "rgb(var(--color-primary) / <alpha-value>)",
+				secondary: "rgb(var(--color-secondary) / <alpha-value>)",
+			},
+		},
+	},
+};
 ```
 
 ```css
 /* globals.css */
 :root {
-  --color-primary: 59 130 246; /* RGB values for blue-500 */
-  --color-secondary: 139 92 246; /* RGB values for purple-500 */
+	--color-primary: 59 130 246; /* RGB values for blue-500 */
+	--color-secondary: 139 92 246; /* RGB values for purple-500 */
 }
 
 .dark {
-  --color-primary: 96 165 250; /* Lighter blue for dark mode */
-  --color-secondary: 167 139 250; /* Lighter purple for dark mode */
+	--color-primary: 96 165 250; /* Lighter blue for dark mode */
+	--color-secondary: 167 139 250; /* Lighter purple for dark mode */
 }
 ```
 
 ```jsx
 // Usage with opacity
-<div className="bg-primary/50 text-primary">
-  50% opacity primary color
-</div>
+<div className="bg-primary/50 text-primary">50% opacity primary color</div>
 ```
 
 ### Avoiding Class Conflicts
@@ -1306,11 +1226,13 @@ function cn(...inputs) {
 ### Styles Not Applying
 
 1. **Check content paths in config:**
+
    ```javascript
-   content: ['./src/**/*.{js,jsx,ts,tsx}']
+   content: ["./src/**/*.{js,jsx,ts,tsx}"];
    ```
 
 2. **Verify CSS imports:**
+
    ```css
    @tailwind base;
    @tailwind components;

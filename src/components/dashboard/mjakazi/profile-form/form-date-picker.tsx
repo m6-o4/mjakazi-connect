@@ -13,8 +13,8 @@ import {
 	PopoverTitle,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import type { ProfileFormValues } from "@/lib/profile-schema";
+import { cn } from "@/lib/utils";
 
 type FormDatePickerProps = {
 	name: "dateOfBirth" | "availableFrom";
@@ -26,7 +26,11 @@ const DATE_FORMAT = "yyyy-MM-dd";
 
 // a shadcn calendar date picker bridged to react-hook-form. stores the value as
 // a YYYY-MM-DD string to match the payload date field, and shows a clear button
-const FormDatePicker = ({ name, label, placeholder = "Pick a date" }: FormDatePickerProps) => {
+const FormDatePicker = ({
+	name,
+	label,
+	placeholder = "Pick a date",
+}: FormDatePickerProps) => {
 	const { control, formState } = useFormContext<ProfileFormValues>();
 	const errorMessage = formState.errors[name]?.message;
 

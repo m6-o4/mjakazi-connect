@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Briefcase, CheckCircle2, XCircle } from "lucide-react";
+import { useState } from "react";
 
 interface EoiEntry {
 	id: string;

@@ -1,8 +1,9 @@
+import { Lock, ShieldCheck, Users } from "lucide-react";
+import { ElementType } from "react";
+
 import { Container } from "@/components/container";
 import { cn } from "@/lib/utils";
 import { Features } from "@/payload-types";
-import { Lock, ShieldCheck, Users } from "lucide-react";
-import { ElementType } from "react";
 
 // maps theme-specific background variants to tailwind utility classes
 const bgMap: Record<string, string> = { subtle: "bg-bg-subtle", white: "bg-bg-white" };

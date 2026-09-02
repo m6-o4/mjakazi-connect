@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { CheckCircle2, Send } from "lucide-react";
+import { useState } from "react";
 
 interface EoiButtonProps {
 	wajakaziProfileId: string;

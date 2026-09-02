@@ -1,12 +1,13 @@
-import { WorkerProfile } from "@/components/dashboard/mwajiri/worker-profile";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { JOB_OPTIONS, LANGUAGE_OPTIONS, LOCATION_OPTIONS } from "@/lib/profile-constants";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { WorkerProfile } from "@/components/dashboard/mwajiri/worker-profile";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { JOB_OPTIONS, LANGUAGE_OPTIONS, LOCATION_OPTIONS } from "@/lib/profile-constants";
+import { resolveIdentity } from "@/services/identity.service";
 
 export const metadata: Metadata = { title: "Worker Profile" };
 export const dynamic = "force-dynamic";

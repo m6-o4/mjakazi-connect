@@ -1,12 +1,13 @@
-import { AvailabilityToggle } from "@/components/dashboard/mjakazi/availability-toggle";
-import { EoiInbox } from "@/components/dashboard/mjakazi/eoi-inbox";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { AvailabilityToggle } from "@/components/dashboard/mjakazi/availability-toggle";
+import { EoiInbox } from "@/components/dashboard/mjakazi/eoi-inbox";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { resolveIdentity } from "@/services/identity.service";
 
 export const metadata: Metadata = { title: "Opportunities" };
 export const dynamic = "force-dynamic";

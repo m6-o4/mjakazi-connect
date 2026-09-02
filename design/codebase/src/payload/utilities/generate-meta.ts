@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
+
 import type { Config, Media, Page, Post } from "@/payload-types";
 import { getServerSideURL } from "@/payload/utilities/get-url";
 import { mergeOpenGraph } from "@/payload/utilities/merge-opengraph";
-import type { Metadata } from "next";
 
 // builds the absolute url for an open graph image using either
 // the document's provided meta image or a default template image

@@ -1,5 +1,6 @@
-import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrSA, isRestricted } from "@/payload/access/access-control";
 
 const ExpressionsOfInterest: CollectionConfig = {
 	slug: "expressions-of-interest",

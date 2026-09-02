@@ -1,10 +1,11 @@
 // src/app/apis/payments/callback/route.ts
 
-import { writeAuditLog } from "@/lib/audit";
-import { sendPaymentConfirmedEmail, sendSubscriptionActivatedEmail } from "@/lib/email";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { writeAuditLog } from "@/lib/audit";
+import { sendPaymentConfirmedEmail, sendSubscriptionActivatedEmail } from "@/lib/email";
 
 interface CallbackMetadataItem {
 	Name: string;
@@ -153,8 +154,7 @@ const handleRegistrationCallback = async (
 	if (ResultCode === 0) {
 		const items = (stkCallback as STKCallbackSuccess).CallbackMetadata?.Item ?? [];
 		const mpesaReceiptNumber = getMetadataValue(items, "MpesaReceiptNumber") as
-			| string
-			| undefined;
+			string | undefined;
 
 		await payload.update({
 			collection: "payments",
@@ -264,8 +264,7 @@ const handleSubscriptionCallback = async (
 	if (ResultCode === 0) {
 		const items = (stkCallback as STKCallbackSuccess).CallbackMetadata?.Item ?? [];
 		const mpesaReceiptNumber = getMetadataValue(items, "MpesaReceiptNumber") as
-			| string
-			| undefined;
+			string | undefined;
 
 		const startDate = new Date();
 		const durationDays =

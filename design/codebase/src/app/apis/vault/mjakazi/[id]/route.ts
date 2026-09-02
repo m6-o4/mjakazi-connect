@@ -1,10 +1,11 @@
-import { resolveIdentity } from "@/services/identity.service";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { resolveIdentity } from "@/services/identity.service";
 
 // generates a short-lived presigned URL for a vault document owned by the requesting mjakazi,
 // then redirects the client directly to the object in S3-compatible storage

@@ -74,10 +74,13 @@ const getAccessToken = async (): Promise<string | null> => {
 		`${MPESA_CONSUMER_KEY ?? ""}:${MPESA_CONSUMER_SECRET ?? ""}`,
 	).toString("base64");
 
-	const response = await fetch(`${getBaseUrl()}/oauth/v1/generate?grant_type=client_credentials`, {
-		method: "GET",
-		headers: { Authorization: `Basic ${credentials}` },
-	});
+	const response = await fetch(
+		`${getBaseUrl()}/oauth/v1/generate?grant_type=client_credentials`,
+		{
+			method: "GET",
+			headers: { Authorization: `Basic ${credentials}` },
+		},
+	);
 
 	if (!response.ok) return null;
 
@@ -177,7 +180,8 @@ const initiateStkPush = async ({
 	if (!response.ok || raw.ResponseCode !== "0" || !raw.CheckoutRequestID) {
 		return {
 			success: false,
-			error: raw.ResponseDescription ?? raw.CustomerMessage ?? "M-Pesa rejected the request.",
+			error:
+				raw.ResponseDescription ?? raw.CustomerMessage ?? "M-Pesa rejected the request.",
 			raw,
 		};
 	}

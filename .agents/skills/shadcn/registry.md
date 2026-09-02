@@ -1,48 +1,47 @@
 # Registry Authoring and Addresses
 
-Use this reference when the user wants to create, fix, publish, or reason about
-a shadcn registry.
+Use this reference when the user wants to create, fix, publish, or reason about a shadcn
+registry.
 
 ## Mental Model
 
 A registry has two forms:
 
-- **Source registry**: an authored `registry.json` in a project or repository.
-  It may use `include` and file paths that point at source files.
-- **Built registry**: generated JSON files served to CLI consumers, usually
-  from `public/r`. Use `npx shadcn@latest build` to create this form.
+- **Source registry**: an authored `registry.json` in a project or repository. It may use
+  `include` and file paths that point at source files.
+- **Built registry**: generated JSON files served to CLI consumers, usually from
+  `public/r`. Use `npx shadcn@latest build` to create this form.
 
-The CLI installer consumes registry item payloads. A source registry is a way to
-author those payloads from real files.
+The CLI installer consumes registry item payloads. A source registry is a way to author
+those payloads from real files.
 
-Registry items are not limited to React components. They can distribute
-components, hooks, utilities, design tokens, pages, config files, docs, rules,
-workflows, templates, MCP files, and other project files.
+Registry items are not limited to React components. They can distribute components, hooks,
+utilities, design tokens, pages, config files, docs, rules, workflows, templates, MCP
+files, and other project files.
 
 ## Root `registry.json`
 
-The root registry file should define registry metadata and either `items` or
-`include`.
+The root registry file should define registry metadata and either `items` or `include`.
 
 ```json
 {
-  "$schema": "https://ui.shadcn.com/schema/registry.json",
-  "name": "acme",
-  "homepage": "https://acme.com",
-  "items": [
-    {
-      "name": "absolute-url",
-      "type": "registry:lib",
-      "title": "Absolute URL",
-      "description": "A utility to turn any path into an absolute URL.",
-      "files": [
-        {
-          "path": "lib/absolute-url.ts",
-          "type": "registry:lib"
-        }
-      ]
-    }
-  ]
+	"$schema": "https://ui.shadcn.com/schema/registry.json",
+	"name": "acme",
+	"homepage": "https://acme.com",
+	"items": [
+		{
+			"name": "absolute-url",
+			"type": "registry:lib",
+			"title": "Absolute URL",
+			"description": "A utility to turn any path into an absolute URL.",
+			"files": [
+				{
+					"path": "lib/absolute-url.ts",
+					"type": "registry:lib"
+				}
+			]
+		}
+	]
 }
 ```
 
@@ -59,10 +58,10 @@ Use `include` to keep large registries modular.
 
 ```json
 {
-  "$schema": "https://ui.shadcn.com/schema/registry.json",
-  "name": "acme",
-  "homepage": "https://acme.com",
-  "include": ["registry/ui/registry.json", "registry/blocks/registry.json"]
+	"$schema": "https://ui.shadcn.com/schema/registry.json",
+	"name": "acme",
+	"homepage": "https://acme.com",
+	"include": ["registry/ui/registry.json", "registry/blocks/registry.json"]
 }
 ```
 
@@ -78,24 +77,24 @@ Example included file:
 
 ```json
 {
-  "items": [
-    {
-      "name": "button",
-      "type": "registry:ui",
-      "files": [
-        {
-          "path": "button.tsx",
-          "type": "registry:ui"
-        }
-      ]
-    }
-  ]
+	"items": [
+		{
+			"name": "button",
+			"type": "registry:ui",
+			"files": [
+				{
+					"path": "button.tsx",
+					"type": "registry:ui"
+				}
+			]
+		}
+	]
 }
 ```
 
 If this file is at `registry/ui/registry.json`, then `button.tsx` is read from
-`registry/ui/button.tsx`, and the built item path is emitted relative to the
-root registry.
+`registry/ui/button.tsx`, and the built item path is emitted relative to the root
+registry.
 
 ## Item Definitions
 
@@ -103,42 +102,40 @@ Common item fields:
 
 ```json
 {
-  "name": "login-form",
-  "type": "registry:block",
-  "title": "Login Form",
-  "description": "A login form with email and password fields.",
-  "dependencies": ["zod"],
-  "registryDependencies": ["button", "input", "label"],
-  "files": [
-    {
-      "path": "blocks/login-form.tsx",
-      "type": "registry:block"
-    }
-  ],
-  "cssVars": {
-    "light": {
-      "brand": "oklch(0.62 0.18 250)"
-    },
-    "dark": {
-      "brand": "oklch(0.72 0.16 250)"
-    }
-  }
+	"name": "login-form",
+	"type": "registry:block",
+	"title": "Login Form",
+	"description": "A login form with email and password fields.",
+	"dependencies": ["zod"],
+	"registryDependencies": ["button", "input", "label"],
+	"files": [
+		{
+			"path": "blocks/login-form.tsx",
+			"type": "registry:block"
+		}
+	],
+	"cssVars": {
+		"light": {
+			"brand": "oklch(0.62 0.18 250)"
+		},
+		"dark": {
+			"brand": "oklch(0.72 0.16 250)"
+		}
+	}
 }
 ```
 
 Important fields:
 
 - `name`: the installable item name. It is not necessarily a file path.
-- `type`: one of the registry item types, such as `registry:ui`,
-  `registry:block`, `registry:lib`, `registry:hook`, `registry:file`,
-  `registry:page`, `registry:theme`, `registry:style`, `registry:font`, or
-  `registry:item`.
+- `type`: one of the registry item types, such as `registry:ui`, `registry:block`,
+  `registry:lib`, `registry:hook`, `registry:file`, `registry:page`, `registry:theme`,
+  `registry:style`, `registry:font`, or `registry:item`.
 - `files`: source files copied or generated by the item.
 - `dependencies`: npm runtime dependencies.
 - `devDependencies`: npm development dependencies.
 - `registryDependencies`: other registry items required by this item.
-- `cssVars`, `css`, `tailwind`, `envVars`, and `docs`: optional install-time
-  additions.
+- `cssVars`, `css`, `tailwind`, `envVars`, and `docs`: optional install-time additions.
 
 File rules:
 
@@ -153,15 +150,15 @@ File rules:
 
 ```json
 {
-  "name": "login-form",
-  "type": "registry:block",
-  "registryDependencies": ["button", "@acme/input", "acme/ui/card#v1.2.0"],
-  "files": [
-    {
-      "path": "blocks/login-form.tsx",
-      "type": "registry:block"
-    }
-  ]
+	"name": "login-form",
+	"type": "registry:block",
+	"registryDependencies": ["button", "@acme/input", "acme/ui/card#v1.2.0"],
+	"files": [
+		{
+			"path": "blocks/login-form.tsx",
+			"type": "registry:block"
+		}
+	]
 }
 ```
 
@@ -172,8 +169,8 @@ Dependency rules:
 - Namespaced dependencies use `@namespace/item-name`.
 - GitHub dependencies use `owner/repo/item-name`.
 - Pin GitHub dependencies with `owner/repo/item-name#ref` when needed.
-- Refs are not inherited. If `owner/repo/foo#v2` depends on `bar` from the same
-  repo at `v2`, write `owner/repo/bar#v2`.
+- Refs are not inherited. If `owner/repo/foo#v2` depends on `bar` from the same repo at
+  `v2`, write `owner/repo/bar#v2`.
 - Do not use relative dependencies such as `"./bar"`.
 
 ## Address Schemes
@@ -190,10 +187,9 @@ When reasoning about a registry item string, classify it first.
 | `acme/ui/button`                    | github    | Item `button` from GitHub repo `acme/ui`.                    |
 | `acme/ui/forms/login#main`          | github    | Item `forms/login` from GitHub repo `acme/ui` at ref `main`. |
 
-For namespace and GitHub addresses, slashful item names are allowed and are item
-names, not file paths. Addresses ending in `.json` keep file-address
-precedence, so `acme/ui/data/schema.json` is treated as a file path, not a
-GitHub item address.
+For namespace and GitHub addresses, slashful item names are allowed and are item names,
+not file paths. Addresses ending in `.json` keep file-address precedence, so
+`acme/ui/data/schema.json` is treated as a file path, not a GitHub item address.
 
 ## GitHub Registries
 
@@ -209,16 +205,15 @@ Rules:
 - The first two path segments are GitHub owner and repo.
 - All remaining path segments are the registry item name.
 - The source entrypoint is always root `registry.json`.
-- GitHub registries are source registries consumed directly by the CLI. They do
-  not require `shadcn build` or generated item JSON files.
+- GitHub registries are source registries consumed directly by the CLI. They do not
+  require `shadcn build` or generated item JSON files.
 - `include` follows the same source-registry rules as local registries.
 - Currently, GitHub addresses support public `github.com` repositories only.
 - Private repos and GitHub Enterprise require explicit product decisions.
 
-When implementing GitHub registry fetching, resolve refs to a commit SHA before
-reading source files. Do not read moving refs directly from
-`raw.githubusercontent.com`, because branch-like refs can be cached for several
-minutes.
+When implementing GitHub registry fetching, resolve refs to a commit SHA before reading
+source files. Do not read moving refs directly from `raw.githubusercontent.com`, because
+branch-like refs can be cached for several minutes.
 
 Preferred flow:
 
@@ -232,9 +227,8 @@ owner/repo[#ref]
 
 This keeps a command on one consistent repository snapshot.
 
-Full 40-character commit SHAs are already stable and can be used directly.
-Branches, tags, and short refs require Git so the CLI can resolve them to a
-commit SHA first.
+Full 40-character commit SHAs are already stable and can be used directly. Branches, tags,
+and short refs require Git so the CLI can resolve them to a commit SHA first.
 
 ## Build and Verify
 
@@ -269,9 +263,8 @@ When working on registry implementation in the shadcn/ui codebase:
 
 - Keep address parsing pure and testable.
 - Do not add side effects to validators.
-- Preserve existing behavior for official shadcn, namespace, URL, and file
-  schemes.
-- Add tests for address parsing, source loading, dependency resolution, list,
-  search, view, and add paths.
-- Prefer small source-reader abstractions over a plugin system until there are
-  multiple real providers.
+- Preserve existing behavior for official shadcn, namespace, URL, and file schemes.
+- Add tests for address parsing, source loading, dependency resolution, list, search,
+  view, and add paths.
+- Prefer small source-reader abstractions over a plugin system until there are multiple
+  real providers.

@@ -1,12 +1,13 @@
+import config from "@payload-config";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { getPayload } from "payload";
+
 import { Container } from "@/components/container";
 import { WajakaziTeaserCard } from "@/components/web/wajakazi-teaser-card";
 import { JOB_OPTIONS, LOCATION_OPTIONS } from "@/lib/profile-constants";
 import { cn } from "@/lib/utils";
 import type { WajakaziArchive } from "@/payload-types";
-import config from "@payload-config";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-import { getPayload } from "payload";
 
 // map background variants to class names
 const bgMap: Record<string, string> = { subtle: "bg-bg-subtle", white: "bg-bg-white" };

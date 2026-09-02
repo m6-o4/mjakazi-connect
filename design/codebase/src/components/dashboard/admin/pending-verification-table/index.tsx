@@ -1,6 +1,7 @@
+import { FileText } from "lucide-react";
+
 import { VerificationRowActions } from "@/components/dashboard/admin/verification-row-actions";
 import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
 
 interface VaultDocument {
 	id: string;

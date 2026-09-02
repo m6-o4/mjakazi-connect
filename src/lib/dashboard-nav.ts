@@ -21,7 +21,10 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 		{ href: "/dashboard/accounts/waajiri", label: "Waajiri" },
 		{ href: "/dashboard/audit-logs", label: "Audit Logs" },
 	],
-	mwajiri: [{ href: "/dashboard/mwajiri", label: "Overview" }],
+	mwajiri: [
+		{ href: "/dashboard/mwajiri", label: "Overview" },
+		{ href: "/dashboard/mwajiri/subscription", label: "Subscription" },
+	],
 	mjakazi: [
 		{ href: "/dashboard/mjakazi", label: "Overview" },
 		{ href: "/dashboard/mjakazi/profile", label: "Profile" },

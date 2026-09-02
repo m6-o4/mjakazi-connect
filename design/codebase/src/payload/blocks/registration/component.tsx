@@ -1,9 +1,10 @@
+import Image from "next/image";
+import Link from "next/link";
+
 import { Container } from "@/components/container";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Registration } from "@/payload-types";
-import Image from "next/image";
-import Link from "next/link";
 
 // defines visual themes for the block background
 const bgMap: Record<string, string> = { subtle: "bg-bg-subtle", white: "bg-bg-white" };

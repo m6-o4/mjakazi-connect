@@ -1,12 +1,13 @@
-import { CreateStaffForm } from "@/components/dashboard/sa/create-staff-form";
-import { StaffTable } from "@/components/dashboard/sa/staff-table";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+
+import { CreateStaffForm } from "@/components/dashboard/sa/create-staff-form";
+import { StaffTable } from "@/components/dashboard/sa/staff-table";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { resolveIdentity } from "@/services/identity.service";
 
 // force server-side render on every request so router.refresh() always
 // receives fresh data after create and delete operations.

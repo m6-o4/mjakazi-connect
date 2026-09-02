@@ -2,7 +2,13 @@ import { Check } from "lucide-react";
 
 import { Container } from "@/components/container";
 import { CMSLink } from "@/components/payload/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Pricing } from "@/payload-types";
 
@@ -40,7 +46,7 @@ const PricingBlock = ({
 								className={cn(
 									"relative gap-0 overflow-visible p-8 transition-all duration-300",
 									isPopular
-										? "ring-primary ring-2 shadow-xl md:-translate-y-4"
+										? "ring-primary shadow-xl ring-2 md:-translate-y-4"
 										: "hover:ring-primary/30 hover:shadow-lg",
 								)}
 							>
@@ -53,9 +59,7 @@ const PricingBlock = ({
 								)}
 
 								<CardHeader className="mb-6 gap-2 p-0">
-									<CardTitle className="text-lg">
-										{plan.planName}
-									</CardTitle>
+									<CardTitle className="text-lg">{plan.planName}</CardTitle>
 									<CardDescription>{plan.planDescription}</CardDescription>
 								</CardHeader>
 

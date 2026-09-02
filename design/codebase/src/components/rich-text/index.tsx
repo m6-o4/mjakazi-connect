@@ -1,10 +1,3 @@
-import { cn } from "@/lib/utils";
-import type {
-	BannerBlock as BannerBlockProps,
-	MediaBlock as MediaBlockProps,
-} from "@/payload-types";
-import { BannerBlock } from "@/payload/blocks/banner/component";
-import { MediaBlock } from "@/payload/blocks/media/component";
 import {
 	DefaultNodeTypes,
 	SerializedBlockNode,
@@ -18,10 +11,17 @@ import {
 } from "@payloadcms/richtext-lexical/react";
 import { HTMLAttributes } from "react";
 
+import { cn } from "@/lib/utils";
+import type {
+	BannerBlock as BannerBlockProps,
+	MediaBlock as MediaBlockProps,
+} from "@/payload-types";
+import { BannerBlock } from "@/payload/blocks/banner/component";
+import { MediaBlock } from "@/payload/blocks/media/component";
+
 // defines the custom structure of block nodes expected within the lexical data.
 type NodeTypes =
-	| DefaultNodeTypes
-	| SerializedBlockNode<MediaBlockProps | BannerBlockProps>;
+	DefaultNodeTypes | SerializedBlockNode<MediaBlockProps | BannerBlockProps>;
 
 // custom function to translate internal document link data (from payload)
 // into a usable frontend url path (e.g., converting a 'post' relationship slug to '/posts/[slug]').

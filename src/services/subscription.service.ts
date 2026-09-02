@@ -6,8 +6,7 @@ import type { Payment, Subscription, User } from "@/payload-types";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
 
 type Result<T = void> =
-	| { success: true; data: T }
-	| { success: false; error: string; code?: string };
+	{ success: true; data: T } | { success: false; error: string; code?: string };
 
 type SubscriptionState = NonNullable<Subscription["subscriptionState"]>;
 
@@ -81,6 +80,25 @@ const getSubscriptionByUser = async (
 	} catch {
 		return null;
 	}
+};
+
+// resolves the caller's own subscription, respecting access control. returns null
+// when no record exists yet — the page renders that as `none`
+const getOwnSubscription = async (
+	payload: Payload,
+	user: User,
+): Promise<Subscription | null> => {
+	if (user.role !== "mwajiri") return null;
+
+	const result = await payload.find({
+		collection: "subscriptions",
+		where: { user: { equals: user.id } },
+		limit: 1,
+		overrideAccess: false,
+		req: { user },
+	});
+
+	return result.docs[0] ?? null;
 };
 
 const loadSubscriptionById = async (
@@ -182,7 +200,10 @@ const applyTransition = async ({
 	const previousState = subscription.subscriptionState;
 
 	if (!isLegalTransition(previousState, nextState)) {
-		return fail(`Invalid transition: ${previousState} → ${nextState}.`, "illegal_transition");
+		return fail(
+			`Invalid transition: ${previousState} → ${nextState}.`,
+			"illegal_transition",
+		);
 	}
 
 	try {
@@ -268,7 +289,8 @@ const beginPurchase = async (
 			action: "subscription_purchase_started",
 			actor: user,
 			metadata: {
-				reason: subscription.subscriptionState === "expired" ? "renewal" : "first purchase",
+				reason:
+					subscription.subscriptionState === "expired" ? "renewal" : "first purchase",
 			},
 		});
 	}
@@ -396,7 +418,8 @@ const activateSubscriptionOnPayment = async (
 	return fail(`Invalid state: ${subscription.subscriptionState}.`, "illegal_transition");
 };
 
-// active → expired. driven by the expiry job in Phase 5.3; no caller in this phase
+// active → expired. the single-record transition, re-reads and compare-and-swaps
+// so it is idempotent. called by the 5.3 expiry job through the bulk helper below
 const expireSubscription = async (
 	payload: Payload,
 	subscriptionId: string,
@@ -420,6 +443,43 @@ const expireSubscription = async (
 	});
 };
 
+// polled hourly by the 5.3 expiry job. finds active subscriptions past their
+// tierExpiry and expires each idempotently, reusing expireSubscription so the
+// transition and audit entry live in exactly one place. a missed window
+// self-corrects on the next run because the query polls for eligible records
+const expireExpiredSubscriptions = async (
+	payload: Payload,
+): Promise<{ expired: number }> => {
+	const now = new Date();
+
+	let candidates: Subscription[];
+	try {
+		// `subscriptionState` is indexed; the expiry window is applied in JS so the
+		// query stays on the index and the result set stays bounded
+		const result = await payload.find({
+			collection: "subscriptions",
+			where: { subscriptionState: { equals: "active" } },
+			limit: 200,
+			overrideAccess: true,
+		});
+		candidates = result.docs;
+	} catch (error) {
+		console.error("[services/subscription] expiry lookup failed:", error);
+		return { expired: 0 };
+	}
+
+	let expired = 0;
+
+	for (const subscription of candidates) {
+		if (!subscription.tierExpiry || new Date(subscription.tierExpiry) > now) continue;
+
+		const result = await expireSubscription(payload, subscription.id);
+		if (result.success) expired += 1;
+	}
+
+	return { expired };
+};
+
 // any live state → suspended. staff or admin, mandatory reason. caller lands in
 // Phase 10.1 (moderation)
 const suspendSubscription = async (
@@ -428,7 +488,8 @@ const suspendSubscription = async (
 	subscriptionId: string,
 	reason: string,
 ): Promise<Result<Subscription>> => {
-	if (actor.role !== "admin" && actor.role !== "staff") return fail("Forbidden", "forbidden");
+	if (actor.role !== "admin" && actor.role !== "staff")
+		return fail("Forbidden", "forbidden");
 	if (!reason.trim()) return fail("A suspension reason is required.", "reason_required");
 
 	const subscription = await loadSubscriptionById(payload, subscriptionId);
@@ -483,6 +544,8 @@ export {
 	beginPurchase,
 	blacklistSubscription,
 	ensureSubscription,
+	expireExpiredSubscriptions,
 	expireSubscription,
+	getOwnSubscription,
 	suspendSubscription,
 };

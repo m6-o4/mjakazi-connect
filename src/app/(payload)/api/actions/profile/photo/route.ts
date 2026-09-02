@@ -30,7 +30,10 @@ const POST = async (req: NextRequest) => {
 		const { user } = await payload.auth({ headers: req.headers });
 
 		if (!user) {
-			return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+			return NextResponse.json(
+				{ success: false, error: "Unauthorized" },
+				{ status: 401 },
+			);
 		}
 		if (user.role !== "mjakazi") {
 			return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });

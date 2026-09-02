@@ -1,5 +1,9 @@
 "use client";
 
+import { CheckCircle2, Clock, Loader2, PhoneCall, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -11,9 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Clock, Loader2, PhoneCall, XCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 
 // models the full M-Pesa STK push lifecycle as discrete states so each phase
 // renders a dedicated panel — avoids boolean flag combinations that could

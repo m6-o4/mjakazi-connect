@@ -1,4 +1,13 @@
 import {
+	MetaDescriptionField,
+	MetaImageField,
+	MetaTitleField,
+	OverviewField,
+	PreviewField,
+} from "@payloadcms/plugin-seo/fields";
+import type { CollectionConfig } from "payload";
+
+import {
 	isAuthenticated,
 	isAuthenticatedOrPublished,
 } from "@/payload/access/access-control";
@@ -20,14 +29,6 @@ import {
 import { slugField } from "@/payload/fields/slug";
 import { populatePublishedAt } from "@/payload/hooks/populate-published-at";
 import { generatePreviewPath } from "@/payload/utilities/generate-preview-path";
-import {
-	MetaDescriptionField,
-	MetaImageField,
-	MetaTitleField,
-	OverviewField,
-	PreviewField,
-} from "@payloadcms/plugin-seo/fields";
-import type { CollectionConfig } from "payload";
 
 /**
  * payload cms configuration for the 'pages' collection.

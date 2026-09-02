@@ -1,7 +1,13 @@
 import { ArrowRight, CheckCircle2, Circle } from "lucide-react";
 import Link from "next/link";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type CompletenessItem = {
@@ -18,7 +24,8 @@ type ProfileCompletenessCardProps = {
 // links straight to the profile form so a worker can close the gap in one tap
 const ProfileCompletenessCard = ({ items }: ProfileCompletenessCardProps) => {
 	const completedCount = items.filter((item) => item.complete).length;
-	const percentage = items.length === 0 ? 0 : Math.round((completedCount / items.length) * 100);
+	const percentage =
+		items.length === 0 ? 0 : Math.round((completedCount / items.length) * 100);
 
 	return (
 		<Card>
@@ -57,7 +64,9 @@ const ProfileCompletenessCard = ({ items }: ProfileCompletenessCardProps) => {
 								)}
 								<span
 									className={cn(
-										item.complete ? "text-muted-foreground line-through" : "text-foreground",
+										item.complete
+											? "text-muted-foreground line-through"
+											: "text-foreground",
 									)}
 								>
 									{item.label}

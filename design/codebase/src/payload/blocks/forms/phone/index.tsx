@@ -1,6 +1,7 @@
+import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
+
 import { Input } from "@/payload/blocks/forms/input";
 import { Width } from "@/payload/blocks/forms/width";
-import type { FieldErrorsImpl, FieldValues, UseFormRegister } from "react-hook-form";
 
 // defines the structure of props accepted by the phone input component
 type PhoneProps = {

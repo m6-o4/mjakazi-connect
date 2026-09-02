@@ -1,9 +1,10 @@
-import { generateUniqueFilename } from "@/lib/generate-unique-filename";
-import { resolveIdentity } from "@/services/identity.service";
 import { auth } from "@clerk/nextjs/server";
 import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
+
+import { generateUniqueFilename } from "@/lib/generate-unique-filename";
+import { resolveIdentity } from "@/services/identity.service";
 
 // some browsers and http clients omit the mime type on the File object;
 // inferring from the extension ensures payload always receives a valid value

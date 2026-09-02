@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import type { Props as MediaProps } from "@/components/media/types";
 import { cn } from "@/lib/utils";
 import { getMediaUrl } from "@/payload/utilities/get-media-url";
-import { useEffect, useRef } from "react";
 
 /**
  * renders a video element using payload cms media data.

@@ -1,10 +1,11 @@
 "use client";
 
+import { CheckCircle2, UserPlus } from "lucide-react";
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, UserPlus } from "lucide-react";
-import { useState } from "react";
 
 const CreateAdminForm = () => {
 	const [firstName, setFirstName] = useState("");

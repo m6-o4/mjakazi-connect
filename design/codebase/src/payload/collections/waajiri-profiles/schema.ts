@@ -1,5 +1,6 @@
-import { isAdminOrProfileOwner, isRestricted } from "@/payload/access/access-control";
 import type { CollectionConfig } from "payload";
+
+import { isAdminOrProfileOwner, isRestricted } from "@/payload/access/access-control";
 
 // defines employer profiles linked to user accounts
 const WaajiriProfiles: CollectionConfig = {
