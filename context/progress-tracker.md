@@ -664,6 +664,30 @@ finished.
   at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase 12.1
   notifications sweep. Not started.
 
+### 2026-09-04 — Account self-deletion (settings) + dev fixes
+
+- **What was built**: (1) Self-service "Delete Account" for wajakazi and waajiri, ported
+  from v1 (`delete-account-card` + `/apis/profile/delete-account`). Added `deleteOwnAccount`
+  + a shared `deleteAccountData` cascade in `src/services/accounts.service.ts`,
+  `deleteOwnAccountAction` (`src/app/actions/account.ts`), `DeleteAccountCard`
+  (`src/components/dashboard/settings/delete-account-card.tsx`), `Settings` pages for both
+  roles, and nav entries. The cascade also removes subscriptions and payments — the old
+  admin-only `deleteAccount` missed those and now shares the same helper. (2) Broke a
+  `profile.service ↔ verification.service` circular import (dynamic import for
+  `revertToReview`) that was making the Next dev "compiling" indicator stick.
+- **Manual verification (done)**: deletion confirmed working for a newly registered and an
+  approved mjakazi — profile photo and vault documents removed too, checked via the Payload
+  admin. "Stuck at compiling" resolved after the cycle fix + dev restart.
+- **Files touched**: `src/services/accounts.service.ts`, `src/app/actions/account.ts` (new),
+  `src/components/dashboard/settings/delete-account-card.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/settings/page.tsx` (new), `src/lib/dashboard-nav.ts`,
+  `src/services/profile.service.ts` (cycle fix).
+- **Notes**: approval/rejection email still unverified end-to-end — `loadWorkerEmail` has the
+  `overrideAccess` fix, but the mjakazi reported no approval email; re-check with a fresh dev
+  restart and watch for `[services/verification] notification email failed:`. Mwajiri
+  deletion (with an active subscription) not yet exercised.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

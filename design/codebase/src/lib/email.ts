@@ -48,9 +48,13 @@ const getResend = () => {
 	return new Resend(apiKey);
 };
 
+// retrieve values from the environment variables
+const resendFromEmail = process.env.RESEND_FROM_EMAIL!;
+const resendReplyToEmail = process.env.RESEND_REPLY_TO!;
+
 // define sender and reply-to brand configuration
-const FROM_ADDRESS = "Mjakazi Connect <noreply@updates.m6o4solutions.com>";
-const REPLY_TO = "hello@mjakaziconnect.co.ke";
+const FROM_ADDRESS = `Mjakazi Connect <${resendFromEmail}>`;
+const REPLY_TO = resendReplyToEmail;
 
 // create layout wrapper for email templates
 const baseTemplate = (content: string) => `

@@ -44,6 +44,9 @@ const infoBox = (content: string) =>
 // it is not set the template falls back to the text-only header
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL?.replace(/\/+$/, "");
 const LOGO_URL = SERVER_URL ? `${SERVER_URL}/mjakazi-connect-logo.png` : null;
+// reply-to address for every transactional email — recipients can hit reply and
+// it lands in the shared support inbox rather than the no-reply sender
+const REPLY_TO = process.env.RESEND_REPLY_TO?.trim() || null;
 
 const baseTemplate = (content: string) => `
 <!DOCTYPE html>
@@ -75,7 +78,7 @@ const baseTemplate = (content: string) => `
           </tr>
           <tr>
             <td style="background-color:${PAGE_BACKGROUND};border-radius:0 0 12px 12px;padding:20px 32px;border:1px solid ${BORDER_COLOR};border-top:none;">
-              <p style="margin:0;font-size:12px;color:${MUTED_COLOR};line-height:1.5;">This is an automated message from Mjakazi Connect. To get in touch, reply to this email.</p>
+              <p style="margin:0;font-size:12px;color:${MUTED_COLOR};line-height:1.5;">This is an automated message from Mjakazi Connect. To get in touch, reply to this email${REPLY_TO ? ` or contact us at <a href="mailto:${REPLY_TO}" style="color:${TEXT_COLOR};">${escapeHtml(REPLY_TO)}</a>` : ""}.</p>
             </td>
           </tr>
         </table>
@@ -85,6 +88,18 @@ const baseTemplate = (content: string) => `
 </body>
 </html>
 `;
+
+// wraps payload.sendEmail so every message carries the shared reply-to address
+// and the callers stay focused on content. reply-to is omitted when unset
+const sendEmail = async (
+	payload: Payload,
+	options: { to: string; subject: string; html: string },
+): Promise<void> => {
+	await payload.sendEmail({
+		...options,
+		...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+	});
+};
 
 type SendVerificationApprovedEmailArgs = {
 	payload: Payload;
@@ -120,7 +135,7 @@ const sendVerificationApprovedEmail = async ({
     ${muted("The Verified badge is valid for 12 months.")}
   `;
 
-	await payload.sendEmail({
+	await sendEmail(payload, {
 		to,
 		subject: "Verification approved — you're verified",
 		html: baseTemplate(content),
@@ -153,7 +168,7 @@ const sendVerificationRejectedEmail = async ({
     ${muted("Log in to your dashboard to view the details and take action.")}
   `;
 
-	await payload.sendEmail({
+	await sendEmail(payload, {
 		to,
 		subject: "Action required — verification submission unsuccessful",
 		html: baseTemplate(content),
@@ -188,7 +203,7 @@ const sendPaymentConfirmedEmail = async ({
     ${muted("This usually takes 1–2 business days.")}
   `;
 
-	await payload.sendEmail({
+	await sendEmail(payload, {
 		to,
 		subject: "Payment received — your profile is under review",
 		html: baseTemplate(content),
@@ -236,7 +251,7 @@ const sendSubscriptionActivatedEmail = async ({
     ${muted("You will need to renew your subscription before it expires to maintain uninterrupted access.")}
   `;
 
-	await payload.sendEmail({
+	await sendEmail(payload, {
 		to,
 		subject: "Your subscription is active",
 		html: baseTemplate(content),

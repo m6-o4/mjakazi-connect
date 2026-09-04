@@ -19,6 +19,15 @@ type ActionResult = {
 	code?: string;
 };
 
+// surfaces the underlying message of an unexpected throw so a failed server
+// action shows the real cause rather than a generic phrase. the full error is
+// still logged server-side
+const errorMessage = (error: unknown, fallback: string): string => {
+	if (error instanceof Error && error.message) return error.message;
+	if (typeof error === "string" && error.trim()) return error;
+	return fallback;
+};
+
 // stages a complete profile for verification (draft → pending_payment). the
 // readiness guard (complete profile + both documents) lives in the service; this
 // action only authenticates, authorizes and delegates
@@ -45,7 +54,10 @@ const submitForVerificationAction = async (): Promise<ActionResult> => {
 		return { success: true };
 	} catch (error) {
 		console.error("[actions/verification] submitForVerification failed:", error);
-		return { success: false, error: "Could not submit your profile." };
+		return {
+			success: false,
+			error: errorMessage(error, "Could not submit your profile."),
+		};
 	}
 };
 
@@ -75,7 +87,10 @@ const resubmitForVerificationAction = async (): Promise<ActionResult> => {
 		return { success: true };
 	} catch (error) {
 		console.error("[actions/verification] resubmitForVerification failed:", error);
-		return { success: false, error: "Could not resubmit your profile." };
+		return {
+			success: false,
+			error: errorMessage(error, "Could not resubmit your profile."),
+		};
 	}
 };
 
@@ -107,7 +122,10 @@ const approveVerificationAction = async (profileId: string): Promise<ActionResul
 		return { success: true };
 	} catch (error) {
 		console.error("[actions/verification] approveVerification failed:", error);
-		return { success: false, error: "Could not approve the verification." };
+		return {
+			success: false,
+			error: errorMessage(error, "Could not approve the verification."),
+		};
 	}
 };
 
@@ -142,7 +160,10 @@ const rejectVerificationAction = async (
 		return { success: true };
 	} catch (error) {
 		console.error("[actions/verification] rejectVerification failed:", error);
-		return { success: false, error: "Could not reject the verification." };
+		return {
+			success: false,
+			error: errorMessage(error, "Could not reject the verification."),
+		};
 	}
 };
 

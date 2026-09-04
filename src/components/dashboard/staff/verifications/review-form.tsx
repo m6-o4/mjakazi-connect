@@ -60,7 +60,8 @@ const ReviewForm = ({
 			}
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
-		} catch {
+		} catch (error) {
+			console.error("[review-form] approve failed:", error);
 			setError("Could not approve.");
 		} finally {
 			setBusy(null);
@@ -85,7 +86,8 @@ const ReviewForm = ({
 			});
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
-		} catch {
+		} catch (error) {
+			console.error("[review-form] reject failed:", error);
 			setError("Could not reject.");
 		} finally {
 			setBusy(null);
