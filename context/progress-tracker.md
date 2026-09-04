@@ -593,3 +593,176 @@ finished.
   warning matches `payment-timeout.ts`) and `pnpm build` pass. **Manual verification
   pending**: backdate an active subscription's `tierExpiry`, run the job, confirm the
   state becomes `expired` with a `subscription_expired` audit entry.
+
+### 2026-09-02 — End-to-end pipeline verification (sign-up → verified) + fixes
+
+- **What was built/verified**: Ran the mjakazi pipeline end to end for the first time —
+  register → complete profile → upload both documents → submit → pay (sandbox) →
+  `pending_review` → staff approve → `verified`. Confirmed the payment callback handler,
+  `activateVerificationOnPayment` → `advanceToReview`, and the
+  `pending_payment → pending_review → verified` transitions all work against real code.
+- **Fixes**: (1) Integer-only pricing — `updateVerificationFee`/`updateSubscriptionTiers`
+  now require `Number.isInteger`, plus `validate` functions on the `platform-settings`
+  fields and `step={1}` + client checks on the admin forms (a fractional fee like `1.50`
+  previously saved but then failed the payment path with "Invalid amount"). (2) Relaxed
+  the STK callback parser in `src/lib/mpesa.ts` (`ResultCode` coerced to number, IDs
+  coerced to string, `ResultDesc`/`CallbackMetadata` nullish) — the strict zod schema was
+  dropping the sandbox callback as "unrecognized". (3) Added raw-body logging to the
+  payment callback route on parse failure. (4) Fixed the mjakazi overview
+  (`dashboard/mjakazi/page.tsx`) which always showed "ready for verification" because
+  `VerificationStatusCard` only looked at documents; it now branches on
+  `verificationState` (draft → documents card, pending_payment → awaiting-payment card,
+  other states → `VerificationStateCard`).
+- **Key finding — Daraja 3.0 sandbox**: The sandbox (Daraja 3.0, launched 2025-11-25) no
+  longer completes STK pushes or fires the callback after PIN entry; v1 was tested
+  against the old Daraja 2.0 sandbox, which auto-completed and reversed ~10 min later.
+  The callback pipeline itself is proven working (Daraja → Cloudflare tunnel → route). To complete
+  sandbox payments, `_scratch_fire_callback.ts` (repo root, untracked, NOT part of the
+  app) reads the latest `stk_sent` payment and POSTs a correctly-matched callback to the
+  live route — the same message Daraja sends in production. Production is unaffected: PIN
+  entry fires the callback automatically there.
+- **Files touched**: `src/services/settings.service.ts`,
+  `src/payload/blocks/globals/platform-settings/schema.ts`,
+  `src/components/dashboard/admin/settings/{platform-settings-form,subscription-tiers-form}.tsx`,
+  `src/lib/mpesa.ts`, `src/app/(payload)/api/webhooks/payments/callback/route.ts`,
+  `src/app/(saas)/dashboard/mjakazi/page.tsx`, `_scratch_fire_callback.ts` (scratch).
+- **Notes**: `_scratch_fire_callback.ts` is a throwaway test helper — delete before
+  commit. Next: test 2 more wajakazi — rejection (staff rejects with a reason, email
+  sent, attempts increment) and approve/reject email delivery (Phase 3.3). Then the
+  mwajiri subscription purchase flow (5.2), which needs the same callback helper. No
+  `generate:types` needed (no schema shape change).
+
+### 2026-09-04 — Verification resubmit, fee policy, and transactional emails
+
+- **What was built/fixed**: (1) Wired the missing resubmit flow — `resubmitForVerification`
+  existed in the service but had no caller, so a rejected mjakazi was stuck at
+  "Not approved". Added `resubmitVerificationAction` (`src/app/actions/verification.ts`)
+  and `ResubmitVerification` (`src/components/dashboard/mjakazi/verification/resubmit-verification.tsx`),
+  rendered on the verification page when `rejected`. (2) Changed `FREE_REJECTIONS` from 3
+  to 2 — two free resubmissions per fee, the third rejection requires a fresh fee; also
+  fixed the rejection email's "resubmissions remaining" off-by-one
+  (`FREE_REJECTIONS - attempts + 1`). (3) Restored the two missing transactional emails
+  from v1: `sendPaymentConfirmedEmail` (mjakazi, wired into `activateVerificationOnPayment`)
+  and `sendSubscriptionActivatedEmail` (mwajiri, wired into `activateSubscriptionOnPayment`),
+  both fire-and-forget via `notifyPaymentReceived`/`notifySubscriptionActivated`. (4) Added
+  the brand logo to the email template header (`mjakazi-connect-logo.png` served from
+  `NEXT_PUBLIC_SERVER_URL`; falls back to text-only header when unset). (5) Switched the
+  dev-only payment simulator gating from `NODE_ENV` to `MPESA_ENVIRONMENT !== "production"`.
+  (6) Fixed the staff queue "Legal name not set" false label (it showed that whenever legal
+  name === display name).
+- **Files touched**: `src/app/actions/verification.ts`,
+  `src/components/dashboard/mjakazi/verification/resubmit-verification.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/services/verification.service.ts`, `src/services/subscription.service.ts`,
+  `src/lib/email.ts`, `src/app/actions/dev.ts`,
+  `src/components/dashboard/dev/dev-payment-simulate.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
+  `src/components/dashboard/staff/verifications/verification-queue.tsx`,
+  `context/architecture.md` (dev-simulator exception note).
+- **Follow-up (flagged)**: verification expiry email — send a reminder before and a notice
+  at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase 12.1
+  notifications sweep. Not started.
+
+### 2026-09-04 — Account self-deletion (settings) + dev fixes
+
+- **What was built**: (1) Self-service "Delete Account" for wajakazi and waajiri, ported
+  from v1 (`delete-account-card` + `/apis/profile/delete-account`). Added `deleteOwnAccount`
+  + a shared `deleteAccountData` cascade in `src/services/accounts.service.ts`,
+  `deleteOwnAccountAction` (`src/app/actions/account.ts`), `DeleteAccountCard`
+  (`src/components/dashboard/settings/delete-account-card.tsx`), `Settings` pages for both
+  roles, and nav entries. The cascade also removes subscriptions and payments — the old
+  admin-only `deleteAccount` missed those and now shares the same helper. (2) Broke a
+  `profile.service ↔ verification.service` circular import (dynamic import for
+  `revertToReview`) that was making the Next dev "compiling" indicator stick.
+- **Manual verification (done)**: deletion confirmed working for a newly registered and an
+  approved mjakazi — profile photo and vault documents removed too, checked via the Payload
+  admin. "Stuck at compiling" resolved after the cycle fix + dev restart.
+- **Files touched**: `src/services/accounts.service.ts`, `src/app/actions/account.ts` (new),
+  `src/components/dashboard/settings/delete-account-card.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/settings/page.tsx` (new), `src/lib/dashboard-nav.ts`,
+  `src/services/profile.service.ts` (cycle fix).
+- **Notes**: email delivery resolved — two blockers existed: `loadWorkerEmail` missing
+  `overrideAccess` (recipient never resolved) and `RESEND_FROM_EMAIL` on an unverified domain
+  (Resend rejected every send). Payment-received, rejection and approval emails are now
+  confirmed working. Mwajiri deletion (with an active subscription) not yet exercised.
+
+### 2026-09-04 — Mjakazi flow verified end-to-end
+
+- **What was verified (manual)**: the full mjakazi path — register → complete profile →
+  upload documents → submit → pay (sandbox) → `pending_review` → staff reject (rejection
+  email) / approve (approval email) → `verified`. Payment-received email confirmed. Account
+  self-deletion confirmed for both a newly registered and an approved mjakazi.
+- **Follow-up (flagged)**: (1) free-resubmissions-exhausted path — after the 2nd rejection the
+  next resubmission must route to `pending_payment` (fresh fee), not straight to review.
+  (2) Re-verification on identity change — editing legal name / photo / document while
+  `verified` must drop to `pending_review`. Neither has been manually exercised yet.
+
+### 2026-09-04 — Wajakazi archive block + availability toggle
+
+- **What was built**: (1) `wajakazi-archive` Payload block
+  (`src/payload/blocks/wajakazi-archive/`) showcasing verified, available wajakazi as teaser
+  cards on marketing pages, plus a reusable `WajakaziTeaserCard`
+  (`src/components/web/wajakazi-teaser-card.tsx`). The filter mirrors `DIRECTORY_VISIBLE`
+  (`verified` AND `available`), so the marketing page and the Phase 6 directory stay
+  consistent; the card matches the `posts-archive` cards (same image aspect, hover zoom,
+  shadcn components, spacing). Registered in `render-blocks.tsx` + `pages/schema.ts`; types
+  regenerated. (2) Self-service availability toggle in mjakazi settings — `updateAvailability`
+  (`profile.service.ts`), `updateAvailabilityAction` (`actions/profile.ts`), `AvailabilityCard`
+  (`src/components/dashboard/settings/availability-card.tsx`), rendered on
+  `/dashboard/mjakazi/settings`. `available` shows in directory/archive; `hired`/`on_break`
+  hide the profile.
+- **Decisions**: revalidation hook deferred — the `(web)` route renders per-request
+  (`draftMode()` in `[slug]/page.tsx`), so the archive re-fetches on every render and stays
+  fresh without a hook. "View all" links to `/directory` (404s until Phase 6.1); the block's
+  `showViewAllLink` toggle can hide it meanwhile. Reverted the ngrok-era `EMAIL_LOGO_URL`
+  override (logo resolves from `NEXT_PUBLIC_SERVER_URL`, now Cloudflare); removed the ngrok
+  entry from `next.config.ts` remotePatterns and updated the context docs to Cloudflare.
+- **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx` (new),
+  `src/components/web/wajakazi-teaser-card.tsx` (new),
+  `src/components/dashboard/settings/availability-card.tsx` (new),
+  `src/services/profile.service.ts`, `src/app/actions/profile.ts`,
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx`,
+  `src/payload/blocks/render-blocks.tsx`, `src/payload/collections/pages/schema.ts`,
+  `src/payload-types.ts` (regenerated), `src/lib/email.ts`, `next.config.ts`,
+  `context/library-docs.md`.
+- **Notes**: removed a stray `import { features } from "process"` from `pages/schema.ts`.
+  Email `replyTo` + footer contact now read `RESEND_REPLY_TO`.
+
+---
+
+## Backlog — Dashboard Overview Fixtures
+
+Agreed 2026-09-04. Permanent at-a-glance fixtures for each role's overview. Add real
+`page.tsx` files (admin/staff/mwajiri currently fall through to the `dashboard/[role]`
+placeholder) as each is built. Data is already available unless marked "later phase".
+
+### Admin (`/dashboard/admin`)
+- [x] Pending verifications (`pending_review` count) → links to queue
+- [x] Verified wajakazi count
+- [x] Active subscriptions count
+- [x] Waajiri accounts count
+- [ ] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
+- [ ] Platform totals (wajakazi accounts, total profiles)
+- [ ] Recent activity feed (latest `audit-logs` entries)
+- [ ] Quick actions (queue / settings / staff)
+
+### Staff (`/dashboard/staff`)
+- [x] Pending verifications (`pending_review` count) → links to queue
+- [x] Awaiting payment (`pending_payment` count)
+- [x] Verified wajakazi count
+- [ ] Today's activity (approvals + rejections today) — `audit-logs`
+- [ ] Queue preview (next 5 oldest submissions)
+
+### Wajakazi (`/dashboard/mjakazi`) — already has completeness + status
+- [ ] Verification expiry countdown (N days left when `verified`)
+- [ ] Expressions of interest received — later (Phase 6.x)
+- [ ] Directory visibility toggle — later (Phase 6.x)
+
+### Waajiri (`/dashboard/mwajiri`) — currently placeholder
+- [ ] Subscription status + days remaining → links to subscription
+- [ ] Renew/upgrade CTA when expiring
+- [ ] Directory CTA ("browse verified wajakazi") — later (Phase 6.1)
+- [ ] Saved wajakazi / EOIs sent — later (Phase 6.x)
+

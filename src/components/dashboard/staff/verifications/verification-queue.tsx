@@ -63,9 +63,7 @@ const VerificationQueue = ({ items }: VerificationQueueProps) => {
 								)}
 							</div>
 							<p className="text-muted-foreground truncate text-xs">
-								{item.legalName && item.legalName !== item.displayName
-									? `Legal name: ${item.legalName}`
-									: "Legal name not set"}
+								{item.legalName ? `Legal name: ${item.legalName}` : "Legal name not set"}
 							</p>
 						</div>
 						<div className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">

@@ -178,6 +178,104 @@ const updateAccountName = async (
 	}
 };
 
+// removes every record owned by a SaaS account — profile, identity documents,
+// photo, subscription and payments — so deletion leaves no dangling relations.
+// the caller has already authorized the deletion (admin, or the account owner)
+const deleteAccountData = async (payload: Payload, user: User): Promise<void> => {
+	if (user.role === "mjakazi") {
+		const profileResult = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { user: { equals: user.id } },
+			depth: 0,
+			limit: 1,
+			overrideAccess: true,
+		});
+		const profile = profileResult.docs[0];
+
+		if (profile) {
+			// identity documents are the most sensitive — remove them first
+			await payload.delete({
+				collection: "vault-documents",
+				where: { profile: { equals: profile.id } },
+				overrideAccess: true,
+			});
+		}
+
+		// every photo the account uploaded, not just the current one
+		const photoResult = await payload.find({
+			collection: "profile-photos",
+			where: { user: { equals: user.id } },
+			limit: 100,
+			overrideAccess: true,
+		});
+		await Promise.all(
+			photoResult.docs.map((photo) =>
+				payload.delete({
+					collection: "profile-photos",
+					id: photo.id,
+					overrideAccess: true,
+				}),
+			),
+		);
+
+		if (profile) {
+			await payload.delete({
+				collection: "wajakazi-profiles",
+				id: profile.id,
+				overrideAccess: true,
+			});
+		}
+	} else {
+		const subscriptionResult = await payload.find({
+			collection: "subscriptions",
+			where: { user: { equals: user.id } },
+			limit: 10,
+			overrideAccess: true,
+		});
+		await Promise.all(
+			subscriptionResult.docs.map((sub) =>
+				payload.delete({
+					collection: "subscriptions",
+					id: sub.id,
+					overrideAccess: true,
+				}),
+			),
+		);
+
+		const profileResult = await payload.find({
+			collection: "waajiri-profiles",
+			where: { user: { equals: user.id } },
+			depth: 0,
+			limit: 1,
+			overrideAccess: true,
+		});
+		const profile = profileResult.docs[0];
+		if (profile) {
+			await payload.delete({
+				collection: "waajiri-profiles",
+				id: profile.id,
+				overrideAccess: true,
+			});
+		}
+	}
+
+	const paymentResult = await payload.find({
+		collection: "payments",
+		where: { user: { equals: user.id } },
+		limit: 100,
+		overrideAccess: true,
+	});
+	await Promise.all(
+		paymentResult.docs.map((payment) =>
+			payload.delete({
+				collection: "payments",
+				id: payment.id,
+				overrideAccess: true,
+			}),
+		),
+	);
+};
+
 // deletes a SaaS account, cascading through profile, documents and clerk. admin
 // only — staff never delete
 const deleteAccount = async (
@@ -204,70 +302,7 @@ const deleteAccount = async (
 			return { success: false, error: "Not a SaaS account.", code: "invalid_target" };
 		}
 
-		if (target.role === "mjakazi") {
-			const profileResult = await payload.find({
-				collection: "wajakazi-profiles",
-				where: { user: { equals: userId } },
-				depth: 0,
-				limit: 1,
-				overrideAccess: false,
-				req: { user: actor },
-			});
-			const profile = profileResult.docs[0];
-
-			if (profile) {
-				// identity documents are the most sensitive — remove them first
-				await payload.delete({
-					collection: "vault-documents",
-					where: { profile: { equals: profile.id } },
-					overrideAccess: true,
-				});
-
-				const photoId =
-					typeof profile.photo === "string" ? profile.photo : profile.photo?.id;
-				if (photoId) {
-					await payload.delete({
-						collection: "profile-photos",
-						id: photoId,
-						overrideAccess: false,
-						req: { user: actor },
-					});
-				}
-
-				await payload.delete({
-					collection: "wajakazi-profiles",
-					id: profile.id,
-					overrideAccess: false,
-					req: { user: actor },
-				});
-			}
-		} else {
-			const profileResult = await payload.find({
-				collection: "waajiri-profiles",
-				where: { user: { equals: userId } },
-				depth: 0,
-				limit: 1,
-				overrideAccess: false,
-				req: { user: actor },
-			});
-			const profile = profileResult.docs[0];
-
-			if (profile) {
-				await payload.delete({
-					collection: "waajiri-profiles",
-					id: profile.id,
-					overrideAccess: false,
-					req: { user: actor },
-				});
-			}
-		}
-
-		await payload.delete({
-			collection: "users",
-			id: userId,
-			overrideAccess: false,
-			req: { user: actor },
-		});
+		await deleteAccountData(payload, target);
 
 		await writeAuditLog({
 			action: "account_deleted",
@@ -278,6 +313,12 @@ const deleteAccount = async (
 			metadata: { role: target.role, email: target.email },
 		});
 
+		await payload.delete({
+			collection: "users",
+			id: userId,
+			overrideAccess: true,
+		});
+
 		return { success: true, data: undefined };
 	} catch (error) {
 		console.error("[services/accounts] deleteAccount failed:", error);
@@ -285,5 +326,47 @@ const deleteAccount = async (
 	}
 };
 
-export { deleteAccount, listWaajiriAccounts, listWajakaziAccounts, updateAccountName };
+// lets a mjakazi or mwajiri delete their own account and all associated data.
+// the audit entry is written before the user record is removed so the actor id
+// is still resolvable; deleting the user then triggers the deleteClerkUser hook
+const deleteOwnAccount = async (payload: Payload, user: User): Promise<Result> => {
+	if (user.role !== "mjakazi" && user.role !== "mwajiri") {
+		return { success: false, error: "Forbidden", code: "forbidden" };
+	}
+
+	const label = userLabel(user);
+
+	try {
+		await deleteAccountData(payload, user);
+
+		await writeAuditLog({
+			action: "account_deleted",
+			actorId: user.id,
+			actorLabel: label,
+			targetId: user.id,
+			targetLabel: label,
+			metadata: { role: user.role, email: user.email, selfDeleted: true },
+			source: "user",
+		});
+
+		await payload.delete({
+			collection: "users",
+			id: user.id,
+			overrideAccess: true,
+		});
+
+		return { success: true, data: undefined };
+	} catch (error) {
+		console.error("[services/accounts] deleteOwnAccount failed:", error);
+		return { success: false, error: "Could not delete your account." };
+	}
+};
+
+export {
+	deleteAccount,
+	deleteOwnAccount,
+	listWaajiriAccounts,
+	listWajakaziAccounts,
+	updateAccountName,
+};
 export type { WaajiriAccount, WajakaziAccount };

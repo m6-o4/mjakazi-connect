@@ -269,13 +269,6 @@ const WajakaziProfiles: CollectionConfig = {
 			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
 			admin: { readOnly: true },
 		},
-		{
-			name: "verificationNotes",
-			type: "textarea",
-			label: "Verification Notes",
-			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
-			admin: { readOnly: true },
-		},
 	],
 	timestamps: true,
 };

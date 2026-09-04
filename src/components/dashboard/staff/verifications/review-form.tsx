@@ -25,17 +25,15 @@ type ReviewFormProps = {
 	verificationAttempts: number | null;
 };
 
-// the staff decision form. approve takes an optional internal note; reject
-// requires a reason (which is surfaced to the worker). on success the reviewer is
-// returned to the queue, which no longer shows the profile. the service re-checks
-// role, state and reason, so this is a courtesy
+// the staff decision form. reject requires a reason (which is surfaced to the
+// worker). on success the reviewer is returned to the queue, which no longer shows
+// the profile. the service re-checks role, state and reason, so this is a courtesy
 const ReviewForm = ({
 	profileId,
 	verificationSubmittedAt,
 	verificationAttempts,
 }: ReviewFormProps) => {
 	const router = useRouter();
-	const [note, setNote] = useState("");
 	const [reason, setReason] = useState("");
 	const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -44,7 +42,7 @@ const ReviewForm = ({
 		setBusy("approve");
 		setError(null);
 		try {
-			const result = await approveVerificationAction(profileId, note.trim() || undefined);
+			const result = await approveVerificationAction(profileId);
 			if (!result.success) {
 				setError(result.error ?? "Could not approve.");
 				return;
@@ -62,7 +60,8 @@ const ReviewForm = ({
 			}
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
-		} catch {
+		} catch (error) {
+			console.error("[review-form] approve failed:", error);
 			setError("Could not approve.");
 		} finally {
 			setBusy(null);
@@ -87,7 +86,8 @@ const ReviewForm = ({
 			});
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
-		} catch {
+		} catch (error) {
+			console.error("[review-form] reject failed:", error);
 			setError("Could not reject.");
 		} finally {
 			setBusy(null);
@@ -103,17 +103,6 @@ const ReviewForm = ({
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
-				<div className="flex flex-col gap-1.5">
-					<Label htmlFor="verification-note">Note (optional)</Label>
-					<Textarea
-						id="verification-note"
-						value={note}
-						onChange={(event) => setNote(event.target.value)}
-						placeholder="Internal note attached when you approve"
-						rows={2}
-					/>
-				</div>
-
 				<div className="flex flex-col gap-1.5">
 					<Label htmlFor="rejection-reason">Rejection reason</Label>
 					<Textarea

@@ -24,12 +24,14 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 	mwajiri: [
 		{ href: "/dashboard/mwajiri", label: "Overview" },
 		{ href: "/dashboard/mwajiri/subscription", label: "Subscription" },
+		{ href: "/dashboard/mwajiri/settings", label: "Settings" },
 	],
 	mjakazi: [
 		{ href: "/dashboard/mjakazi", label: "Overview" },
 		{ href: "/dashboard/mjakazi/profile", label: "Profile" },
 		{ href: "/dashboard/mjakazi/documents", label: "Documents" },
 		{ href: "/dashboard/mjakazi/verification", label: "Verification" },
+		{ href: "/dashboard/mjakazi/settings", label: "Settings" },
 	],
 };
 

@@ -4,6 +4,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { documentTypeSchema } from "@/lib/vault";
 import type { User, VaultDocument } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
+import { revertToReview } from "@/services/verification.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -61,6 +62,7 @@ const uploadVaultDocument = async (
 			code: "documents_locked",
 		};
 	}
+	const wasVerified = profile.verificationState === "verified";
 
 	try {
 		// read access scopes this to the owner, so only their own existing document
@@ -114,6 +116,15 @@ const uploadVaultDocument = async (
 			targetLabel: userLabel(user),
 			metadata: { documentType, profileId: profile.id, replaced: Boolean(previousId) },
 		});
+
+		// a verified worker's documents are the reviewed evidence — replacing one
+		// sends the profile back for a free re-review
+		if (wasVerified) {
+			const reverted = await revertToReview(payload, profile.id);
+			if (!reverted.success) {
+				console.warn("[services/vault] reverification trigger failed:", reverted.error);
+			}
+		}
 
 		return { success: true, data: { document, replaced: Boolean(previousId) } };
 	} catch (error) {
@@ -187,13 +198,17 @@ const deleteVaultDocument = async (
 		}
 
 		// same review lock as upload — the owning profile must not be under
-		// review when a document is removed
+		// review when a document is removed. a trusted read: the caller is already
+		// authorized by the document read above, and the verification state is used
+		// only for the lock + reverification decision
 		const profileId = toId(document.profile);
+		let wasVerified = false;
 		if (profileId) {
 			const profile = await payload.findByID({
 				collection: "wajakazi-profiles",
 				id: profileId,
 				depth: 0,
+				overrideAccess: true,
 			});
 			if (profile?.verificationState === "pending_review") {
 				return {
@@ -202,6 +217,7 @@ const deleteVaultDocument = async (
 					code: "documents_locked",
 				};
 			}
+			wasVerified = profile?.verificationState === "verified";
 		}
 
 		await payload.delete({
@@ -221,6 +237,15 @@ const deleteVaultDocument = async (
 				profileId: toId(document.profile),
 			},
 		});
+
+		// a verified worker's documents are the reviewed evidence — removing one
+		// sends the profile back for a free re-review
+		if (wasVerified && profileId) {
+			const reverted = await revertToReview(payload, profileId);
+			if (!reverted.success) {
+				console.warn("[services/vault] reverification trigger failed:", reverted.error);
+			}
+		}
 
 		return { success: true, data: undefined };
 	} catch (error) {

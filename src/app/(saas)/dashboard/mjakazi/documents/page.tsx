@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
+import { Info } from "lucide-react";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { DocumentVault } from "@/components/dashboard/mjakazi/document-vault";
@@ -50,6 +51,16 @@ const MjakaziDocumentsPage = async () => {
 					you.
 				</p>
 			</div>
+
+			{profile.verificationState === "verified" ? (
+				<div className="bg-muted text-muted-foreground border-border flex items-start gap-2 rounded-lg border p-4 text-sm">
+					<Info className="text-accent mt-0.5 size-4 shrink-0" />
+					<p>
+						You&apos;re verified. Replacing a document will require re-verification and
+						send your profile back to our team for review.
+					</p>
+				</div>
+			) : null}
 
 			<DocumentVault documents={documents} />
 		</div>

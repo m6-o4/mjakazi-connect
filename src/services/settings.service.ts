@@ -48,8 +48,8 @@ const updateVerificationFee = async (
 	amount: number,
 ): Promise<Result> => {
 	if (actor.role !== "admin") return fail("Forbidden.", "forbidden");
-	if (!Number.isFinite(amount) || amount < 1) {
-		return fail("The fee must be at least KSh 1.", "invalid_fee");
+	if (!Number.isInteger(amount) || amount < 1) {
+		return fail("The fee must be a whole number of KSh, at least KSh 1.", "invalid_fee");
 	}
 
 	try {
@@ -92,11 +92,11 @@ const updateSubscriptionTiers = async (
 		if (!tier.name?.trim()) {
 			return fail("Each tier needs a display name.", "missing_name");
 		}
-		if (!Number.isFinite(tier.price) || tier.price < 1) {
-			return fail("Each tier price must be at least KSh 1.", "invalid_price");
+		if (!Number.isInteger(tier.price) || tier.price < 1) {
+			return fail("Each tier price must be a whole number of KSh, at least KSh 1.", "invalid_price");
 		}
-		if (!Number.isFinite(tier.durationDays) || tier.durationDays < 1) {
-			return fail("Each tier duration must be at least 1 day.", "invalid_duration");
+		if (!Number.isInteger(tier.durationDays) || tier.durationDays < 1) {
+			return fail("Each tier duration must be a whole number of days, at least 1 day.", "invalid_duration");
 		}
 	}
 

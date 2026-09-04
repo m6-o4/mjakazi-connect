@@ -10,6 +10,7 @@ import { PostsArchiveBlock } from "@/payload/blocks/posts-archive/component";
 import { PricingBlock } from "@/payload/blocks/pricing/component";
 import { RegistrationBlock } from "@/payload/blocks/registration/component";
 import { TestimonialsBlock } from "@/payload/blocks/testimonials/component";
+import { WajakaziArchiveBlock } from "@/payload/blocks/wajakazi-archive/component";
 
 // defines which payload block types map to which react components.
 // this acts as a registry that drives dynamic page rendering.
@@ -23,6 +24,7 @@ const blockComponents = {
 	pricing: PricingBlock,
 	registration: RegistrationBlock,
 	testimonials: TestimonialsBlock,
+	wajakaziArchive: WajakaziArchiveBlock,
 } as const;
 
 type BlockKey = keyof typeof blockComponents;

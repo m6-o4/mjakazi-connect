@@ -26,6 +26,7 @@ type VerificationStateCardProps = {
 	state: StatusState;
 	verificationExpiry?: string | null;
 	rejectionReason?: string | null;
+	freeResubmissionsRemaining?: number | null;
 };
 
 // correct, no-action status copy for every verification state that is not the
@@ -81,6 +82,7 @@ const VerificationStateCard = ({
 	state,
 	verificationExpiry,
 	rejectionReason,
+	freeResubmissionsRemaining,
 }: VerificationStateCardProps) => {
 	const { icon: Icon, title, description } = STATE_CONFIG[state];
 
@@ -93,14 +95,20 @@ const VerificationStateCard = ({
 				</CardTitle>
 				<CardDescription>{description}</CardDescription>
 			</CardHeader>
-			{(state === "verified" && verificationExpiry) ||
-			(state === "rejected" && rejectionReason) ? (
+			{state === "verified" && verificationExpiry ? (
 				<CardContent className="text-muted-foreground flex flex-col gap-2 text-sm">
-					{state === "verified" && verificationExpiry ? (
-						<p>Valid until {formatDate(verificationExpiry)}.</p>
-					) : null}
-					{state === "rejected" && rejectionReason ? (
-						<p>Reason: {rejectionReason}</p>
+					<p>Valid until {formatDate(verificationExpiry)}.</p>
+				</CardContent>
+			) : null}
+			{state === "rejected" ? (
+				<CardContent className="text-muted-foreground flex flex-col gap-2 text-sm">
+					{rejectionReason ? <p>Reason: {rejectionReason}</p> : null}
+					{freeResubmissionsRemaining != null ? (
+						<p>
+							{freeResubmissionsRemaining > 0
+								? `You have ${freeResubmissionsRemaining} free resubmission${freeResubmissionsRemaining === 1 ? "" : "s"} remaining.`
+								: "You have no free resubmissions remaining — a new fee is required."}
+						</p>
 					) : null}
 				</CardContent>
 			) : null}

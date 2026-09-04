@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { DevPaymentSimulate } from "@/components/dashboard/dev/dev-payment-simulate";
 import { PurchaseSubscription } from "@/components/dashboard/mwajiri/subscription/purchase-subscription";
 import config from "@/payload-config";
 import { getOwnWaajiriProfile } from "@/services/profile.service";
@@ -47,6 +48,11 @@ const MwajiriSubscriptionPage = async () => {
 				expiry={subscription?.tierExpiry ?? null}
 				phone={profile?.phone ?? null}
 			/>
+
+			{process.env.MPESA_ENVIRONMENT !== "production" &&
+			subscription?.subscriptionState === "pending_payment" ? (
+				<DevPaymentSimulate />
+			) : null}
 		</div>
 	);
 };

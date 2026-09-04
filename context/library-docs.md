@@ -60,9 +60,9 @@ Omitting it leaves the app open to session tokens issued for other origins. Its 
 match the browsing origin exactly. This project pushes both the bare and `www.` variants
 because Traefik routes both to the same app — if you change the domain, change both.
 
-When tunnelling through ngrok, `NEXT_PUBLIC_SERVER_URL` must be the ngrok host, not
-localhost, or every session is rejected. Free ngrok hosts change on restart, and both the
-registered webhook endpoint and the env var must be updated together.
+When tunnelling through Cloudflare, `NEXT_PUBLIC_SERVER_URL` must be the tunnel host, not
+localhost, or every session is rejected. Keep the tunnel hostname, the env var and the
+registered webhook endpoint in sync whenever they change.
 
 ### The password validator must exempt Clerk-originated creates
 

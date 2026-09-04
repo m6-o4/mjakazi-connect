@@ -188,6 +188,12 @@ const updateProfile = async (
 	}
 
 	const data = toProfileData(input);
+	const wasVerified = profile.verificationState === "verified";
+	// changing a verified worker's legal name invalidates the verification — the
+	// name no longer matches the reviewed documents, so send it back for review
+	const legalNameChanged =
+		(data.legalFirstName ?? null) !== (profile.legalFirstName ?? null) ||
+		(data.legalLastName ?? null) !== (profile.legalLastName ?? null);
 
 	try {
 		const updated = await payload.update({
@@ -199,6 +205,19 @@ const updateProfile = async (
 		});
 
 		const profileComplete = await writeCompleteness(payload, updated);
+
+		if (wasVerified && legalNameChanged) {
+			// dynamic import keeps this module out of a static cycle with
+			// verification.service, which imports getOwnProfile from here
+			const { revertToReview } = await import("@/services/verification.service");
+			const reverted = await revertToReview(payload, profile.id);
+			if (!reverted.success) {
+				console.warn(
+					"[services/profile] reverification trigger failed:",
+					reverted.error,
+				);
+			}
+		}
 
 		return {
 			success: true,
@@ -225,6 +244,7 @@ const uploadProfilePhoto = async (
 	if (!profile) {
 		return { success: false, error: "Profile not found", code: "not_found" };
 	}
+	const wasVerified = profile.verificationState === "verified";
 
 	try {
 		const photo = await payload.create({
@@ -262,10 +282,59 @@ const uploadProfilePhoto = async (
 
 		const profileComplete = await writeCompleteness(payload, updated);
 
+		// a verified worker's photo is part of the reviewed evidence — replacing
+		// it sends the profile back for a free re-review
+		if (wasVerified) {
+			// dynamic import keeps this module out of a static cycle with
+			// verification.service, which imports getOwnProfile from here
+			const { revertToReview } = await import("@/services/verification.service");
+			const reverted = await revertToReview(payload, profile.id);
+			if (!reverted.success) {
+				console.warn(
+					"[services/profile] reverification trigger failed:",
+					reverted.error,
+				);
+			}
+		}
+
 		return { success: true, data: { photo, profileComplete } };
 	} catch (error) {
 		console.error("[services/profile] uploadProfilePhoto failed:", error);
 		return { success: false, error: "Could not upload the photo." };
+	}
+};
+
+type AvailabilityStatus = "available" | "hired" | "on_break";
+
+// flips the worker's directory visibility. available is the only state shown in
+// the directory and archive; hired and on_break hide the profile
+const updateAvailability = async (
+	payload: Payload,
+	user: User,
+	status: AvailabilityStatus,
+): Promise<Result<WajakaziProfile>> => {
+	if (user.role !== "mjakazi") {
+		return { success: false, error: "Forbidden", code: "forbidden" };
+	}
+
+	const profile = await getOwnProfile(payload, user);
+	if (!profile) {
+		return { success: false, error: "Profile not found", code: "not_found" };
+	}
+
+	try {
+		const updated = await payload.update({
+			collection: "wajakazi-profiles",
+			id: profile.id,
+			data: { availabilityStatus: status },
+			overrideAccess: false,
+			req: { user },
+		});
+
+		return { success: true, data: updated };
+	} catch (error) {
+		console.error("[services/profile] updateAvailability failed:", error);
+		return { success: false, error: "Could not update your availability." };
 	}
 };
 
@@ -274,6 +343,7 @@ export {
 	getMissingRequiredFields,
 	getOwnProfile,
 	getOwnWaajiriProfile,
+	updateAvailability,
 	updateProfile,
 	updateWaajiriPhone,
 	uploadProfilePhoto,

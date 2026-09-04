@@ -25,6 +25,10 @@ const PlatformSettings: GlobalConfig = {
 			required: true,
 			min: 1,
 			defaultValue: 1500,
+			validate: (value: unknown) =>
+				typeof value === "number" && Number.isInteger(value) && value >= 1
+					? true
+					: "The fee must be a whole number of KSh, at least KSh 1.",
 			admin: {
 				description:
 					"The one-time fee a mjakazi pays for document review. Integer KSh only.",
@@ -64,6 +68,10 @@ const PlatformSettings: GlobalConfig = {
 					label: "Price (KSh)",
 					required: true,
 					min: 1,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "Price must be a whole number of KSh, at least KSh 1.",
 				},
 				{
 					// duration in days keeps the logic simple — 30 = monthly, 365 = annual
@@ -73,6 +81,10 @@ const PlatformSettings: GlobalConfig = {
 					required: true,
 					min: 1,
 					defaultValue: 30,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "Duration must be a whole number of days, at least 1 day.",
 				},
 				{
 					name: "description",
