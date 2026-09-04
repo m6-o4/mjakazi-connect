@@ -9,6 +9,7 @@ import config from "@/payload-config";
 import {
 	approveVerification,
 	rejectVerification,
+	resubmitForVerification,
 	submitForVerification,
 } from "@/services/verification.service";
 
@@ -48,20 +49,44 @@ const submitForVerificationAction = async (): Promise<ActionResult> => {
 	}
 };
 
+// rejected → pending_review (free resubmissions remaining) or pending_payment
+// (attempts exhausted). the service decides the destination and re-checks
+// readiness; this action only authenticates and delegates
+const resubmitForVerificationAction = async (): Promise<ActionResult> => {
+	try {
+		const user = await getCurrentUser();
+		if (!user) {
+			return { success: false, error: "You must be signed in." };
+		}
+		if (user.role !== "mjakazi") {
+			return { success: false, error: "Forbidden." };
+		}
+
+		const payload = await getPayload({ config });
+		const result = await resubmitForVerification(payload, user);
+
+		if (!result.success) {
+			return { success: false, error: result.error, code: result.code };
+		}
+
+		revalidatePath("/dashboard/mjakazi");
+		revalidatePath("/dashboard/mjakazi/verification");
+
+		return { success: true };
+	} catch (error) {
+		console.error("[actions/verification] resubmitForVerification failed:", error);
+		return { success: false, error: "Could not resubmit your profile." };
+	}
+};
+
 const isBackOffice = (user: { role: string }): boolean =>
 	user.role === "admin" || user.role === "staff";
 
 const rejectionReasonSchema = z.string().trim().min(1, "A rejection reason is required.");
 
-const noteSchema = z.string().trim().max(1000, "Note must be under 1000 characters.");
-
 // pending_review → verified. staff/admin only; the service sets the 12-month
-// expiry and writes the audit entry. an optional internal note is stored on the
-// profile for the staff record
-const approveVerificationAction = async (
-	profileId: string,
-	notes?: string,
-): Promise<ActionResult> => {
+// expiry and writes the audit entry
+const approveVerificationAction = async (profileId: string): Promise<ActionResult> => {
 	try {
 		const user = await getCurrentUser();
 		if (!user) {
@@ -71,24 +96,8 @@ const approveVerificationAction = async (
 			return { success: false, error: "Forbidden." };
 		}
 
-		const trimmed = notes?.trim() ?? "";
-		if (trimmed) {
-			const parsed = noteSchema.safeParse(trimmed);
-			if (!parsed.success) {
-				return {
-					success: false,
-					error: parsed.error.issues[0]?.message ?? "Note is too long.",
-				};
-			}
-		}
-
 		const payload = await getPayload({ config });
-		const result = await approveVerification(
-			payload,
-			user,
-			profileId,
-			trimmed || undefined,
-		);
+		const result = await approveVerification(payload, user, profileId);
 
 		if (!result.success) {
 			return { success: false, error: result.error, code: result.code };
@@ -140,5 +149,6 @@ const rejectVerificationAction = async (
 export {
 	approveVerificationAction,
 	rejectVerificationAction,
+	resubmitForVerificationAction,
 	submitForVerificationAction,
 };

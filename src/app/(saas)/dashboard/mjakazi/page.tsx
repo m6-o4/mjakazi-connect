@@ -1,9 +1,20 @@
+import { Wallet } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { ProfileCompletenessCard } from "@/components/dashboard/mjakazi/profile-completeness-card";
+import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { VerificationStatusCard } from "@/components/dashboard/mjakazi/verification-status-card";
+import { buttonVariants } from "@/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import {
 	PROFILE_REQUIRED_FIELDS,
 	PROFILE_REQUIRED_LABELS,
@@ -11,6 +22,7 @@ import {
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import config from "@/payload-config";
 import { getMissingRequiredFields, getOwnProfile } from "@/services/profile.service";
+import { getFreeResubmissionsRemaining } from "@/services/verification.service";
 
 export const metadata = { title: "Dashboard" };
 
@@ -22,6 +34,7 @@ const MjakaziDashboardPage = async () => {
 	const profile = await getOwnProfile(payload, user);
 
 	const profileComplete = profile?.profileComplete ?? false;
+	const verificationState = profile?.verificationState ?? "draft";
 	const missingFields = profile ? new Set(getMissingRequiredFields(profile)) : new Set();
 
 	const checklistItems = PROFILE_REQUIRED_FIELDS.map((field) => ({
@@ -62,7 +75,35 @@ const MjakaziDashboardPage = async () => {
 			</div>
 
 			{profileComplete ? (
-				<VerificationStatusCard documents={documents} />
+				verificationState === "draft" ? (
+					<VerificationStatusCard documents={documents} />
+				) : verificationState === "pending_payment" ? (
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<Wallet className="text-accent size-5 shrink-0" />
+								Awaiting payment
+							</CardTitle>
+							<CardDescription>
+								Pay the verification fee so our team can review your documents.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<Link href="/dashboard/mjakazi/verification" className={buttonVariants()}>
+								Continue to payment
+							</Link>
+						</CardContent>
+					</Card>
+				) : (
+					<VerificationStateCard
+						state={verificationState}
+						verificationExpiry={profile?.verificationExpiry ?? null}
+						rejectionReason={profile?.rejectionReason ?? null}
+						freeResubmissionsRemaining={getFreeResubmissionsRemaining(
+							profile?.verificationAttempts,
+						)}
+					/>
+				)
 			) : (
 				<ProfileCompletenessCard items={checklistItems} />
 			)}

@@ -12,6 +12,7 @@ import type {
 	WaajiriProfile,
 	WajakaziProfile,
 } from "@/payload-types";
+import { revertToReview } from "@/services/verification.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -188,6 +189,12 @@ const updateProfile = async (
 	}
 
 	const data = toProfileData(input);
+	const wasVerified = profile.verificationState === "verified";
+	// changing a verified worker's legal name invalidates the verification — the
+	// name no longer matches the reviewed documents, so send it back for review
+	const legalNameChanged =
+		(data.legalFirstName ?? null) !== (profile.legalFirstName ?? null) ||
+		(data.legalLastName ?? null) !== (profile.legalLastName ?? null);
 
 	try {
 		const updated = await payload.update({
@@ -199,6 +206,16 @@ const updateProfile = async (
 		});
 
 		const profileComplete = await writeCompleteness(payload, updated);
+
+		if (wasVerified && legalNameChanged) {
+			const reverted = await revertToReview(payload, profile.id);
+			if (!reverted.success) {
+				console.warn(
+					"[services/profile] reverification trigger failed:",
+					reverted.error,
+				);
+			}
+		}
 
 		return {
 			success: true,
@@ -225,6 +242,7 @@ const uploadProfilePhoto = async (
 	if (!profile) {
 		return { success: false, error: "Profile not found", code: "not_found" };
 	}
+	const wasVerified = profile.verificationState === "verified";
 
 	try {
 		const photo = await payload.create({
@@ -261,6 +279,18 @@ const uploadProfilePhoto = async (
 		});
 
 		const profileComplete = await writeCompleteness(payload, updated);
+
+		// a verified worker's photo is part of the reviewed evidence — replacing
+		// it sends the profile back for a free re-review
+		if (wasVerified) {
+			const reverted = await revertToReview(payload, profile.id);
+			if (!reverted.success) {
+				console.warn(
+					"[services/profile] reverification trigger failed:",
+					reverted.error,
+				);
+			}
+		}
 
 		return { success: true, data: { photo, profileComplete } };
 	} catch (error) {

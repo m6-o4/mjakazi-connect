@@ -174,6 +174,7 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 											id={`tier-price-${index}`}
 											type="number"
 											min={1}
+											step={1}
 											value={tier.price}
 											onChange={(event) =>
 												updateTier(index, "price", Number(event.target.value))
@@ -189,6 +190,7 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 										id={`tier-duration-${index}`}
 										type="number"
 										min={1}
+										step={1}
 										value={tier.durationDays}
 										onChange={(event) =>
 											updateTier(index, "durationDays", Number(event.target.value))

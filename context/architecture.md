@@ -646,6 +646,18 @@ into a client component.
 payment route. Neither exists in this build. Testing against Daraja uses the sandbox
 environment.
 
+**Development-only callback simulator.** The Daraja sandbox accepts an STK push but never
+fires the confirmation callback, so the confirmed-payment path cannot be exercised end to
+end in development without feeding a callback back in. A single dev-only Server Action,
+`simulatePaymentCallbackAction` (`src/app/actions/dev.ts`), exists for that purpose. It is
+gated on `process.env.MPESA_ENVIRONMENT === "production"` and returns "Not available"
+there, so it cannot run against the production M-Pesa environment. In development it resolves the caller's latest `stk_sent` payment
+and runs a correctly-shaped synthetic callback through the real `handleCallback` handler —
+the same correlation checks, audit entries and activation transitions as a genuine
+callback. It never sets state directly and never grants access without a confirmed
+payment. This is a deliberate, documented exception to invariant #13, not a reintroduction
+of v1's mock route.
+
 ---
 
 ## Background Jobs
@@ -744,7 +756,9 @@ ask.
 10. A duplicate transaction ID never activates anything twice.
 11. All money is integer KSh. No floats in the money path.
 12. Prices come from `platform-settings`, never from a literal in application code.
-13. No payment bypass, mock route or dev shortcut exists in the codebase.
+13. No payment bypass, mock route or dev shortcut exists in the codebase. The one
+    exception is the development-only callback simulator described in the Payments
+    section (`src/app/actions/dev.ts`), which is inert in production.
 
 ### Access
 

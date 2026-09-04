@@ -39,6 +39,12 @@ const divider = () =>
 const infoBox = (content: string) =>
 	`<div style="background-color:${INFO_BACKGROUND};border:1px solid ${BORDER_COLOR};border-radius:8px;padding:16px 20px;margin-bottom:16px;">${content}</div>`;
 
+// the logo is served from public/ at the server origin. email clients need an
+// absolute url, and the server url is the only public origin the app has. when
+// it is not set the template falls back to the text-only header
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL?.replace(/\/+$/, "");
+const LOGO_URL = SERVER_URL ? `${SERVER_URL}/mjakazi-connect-logo.png` : null;
+
 const baseTemplate = (content: string) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -52,8 +58,13 @@ const baseTemplate = (content: string) => `
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+          ${LOGO_URL ? `<tr>
+            <td style="background-color:${BODY_BACKGROUND};border-radius:12px 12px 0 0;padding:24px 32px 16px;text-align:center;">
+              <img src="${LOGO_URL}" alt="Mjakazi Connect" style="display:block;width:160px;max-width:100%;height:auto;margin:0 auto;" />
+            </td>
+          </tr>` : ""}
           <tr>
-            <td style="background-color:${HEADER_BACKGROUND};border-radius:12px 12px 0 0;padding:24px 32px;">
+            <td style="background-color:${HEADER_BACKGROUND};border-radius:${LOGO_URL ? "0" : "12px 12px 0 0"};padding:24px 32px;">
               <p style="margin:0;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Mjakazi Connect</p>
             </td>
           </tr>
@@ -149,4 +160,92 @@ const sendVerificationRejectedEmail = async ({
 	});
 };
 
-export { sendVerificationApprovedEmail, sendVerificationRejectedEmail };
+type SendPaymentConfirmedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mpesaReceiptNumber: string;
+	amount: number;
+};
+
+const sendPaymentConfirmedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mpesaReceiptNumber,
+	amount,
+}: SendPaymentConfirmedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Payment Received")}
+    ${p(`Hi ${escapeHtml(firstName)}, your verification payment has been received and your profile is now in the review queue.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">Payment Details</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Amount:</strong> KSh ${amount.toLocaleString()}</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>M-Pesa Receipt:</strong> ${escapeHtml(mpesaReceiptNumber)}</p>
+    `)}
+    ${p("Our team will review your documents and verify your profile. You will receive another email once the review is complete.")}
+    ${muted("This usually takes 1–2 business days.")}
+  `;
+
+	await payload.sendEmail({
+		to,
+		subject: "Payment received — your profile is under review",
+		html: baseTemplate(content),
+	});
+};
+
+type SendSubscriptionActivatedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	tierName: string;
+	endDate: string;
+	mpesaReceiptNumber: string;
+	amount: number;
+};
+
+const sendSubscriptionActivatedEmail = async ({
+	payload,
+	to,
+	firstName,
+	tierName,
+	endDate,
+	mpesaReceiptNumber,
+	amount,
+}: SendSubscriptionActivatedEmailArgs): Promise<void> => {
+	const formattedEndDate = new Date(endDate).toLocaleDateString("en-GB", {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+		timeZone: "Africa/Nairobi",
+	});
+
+	const content = `
+    ${h1("Subscription Activated")}
+    ${p(`Hi ${escapeHtml(firstName)}, your ${escapeHtml(tierName)} subscription is now active. You can browse and connect with verified wajakazi on Mjakazi Connect.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">Subscription Details</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Plan:</strong> ${escapeHtml(tierName)}</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Amount Paid:</strong> KSh ${amount.toLocaleString()}</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>M-Pesa Receipt:</strong> ${escapeHtml(mpesaReceiptNumber)}</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Access Until:</strong> ${formattedEndDate}</p>
+    `)}
+    ${p("Log in to your dashboard to start browsing verified domestic workers.")}
+    ${muted("You will need to renew your subscription before it expires to maintain uninterrupted access.")}
+  `;
+
+	await payload.sendEmail({
+		to,
+		subject: "Your subscription is active",
+		html: baseTemplate(content),
+	});
+};
+
+export {
+	sendPaymentConfirmedEmail,
+	sendSubscriptionActivatedEmail,
+	sendVerificationApprovedEmail,
+	sendVerificationRejectedEmail,
+};

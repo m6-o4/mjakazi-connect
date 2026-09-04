@@ -30,8 +30,8 @@ const PlatformSettingsForm = ({ currentVerificationFee }: PlatformSettingsFormPr
 		setStatus("saving");
 
 		const parsed = Number(fee);
-		if (!Number.isFinite(parsed) || parsed < 1) {
-			setError("Enter a fee of at least KSh 1.");
+		if (!Number.isInteger(parsed) || parsed < 1) {
+			setError("Enter a whole number of KSh, at least KSh 1.");
 			setStatus("error");
 			return;
 		}
@@ -67,6 +67,7 @@ const PlatformSettingsForm = ({ currentVerificationFee }: PlatformSettingsFormPr
 							id="verification-fee"
 							type="number"
 							min={1}
+							step={1}
 							value={fee}
 							onChange={(event) => {
 								setFee(event.target.value);

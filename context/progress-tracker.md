@@ -593,3 +593,74 @@ finished.
   warning matches `payment-timeout.ts`) and `pnpm build` pass. **Manual verification
   pending**: backdate an active subscription's `tierExpiry`, run the job, confirm the
   state becomes `expired` with a `subscription_expired` audit entry.
+
+### 2026-09-02 — End-to-end pipeline verification (sign-up → verified) + fixes
+
+- **What was built/verified**: Ran the mjakazi pipeline end to end for the first time —
+  register → complete profile → upload both documents → submit → pay (sandbox) →
+  `pending_review` → staff approve → `verified`. Confirmed the payment callback handler,
+  `activateVerificationOnPayment` → `advanceToReview`, and the
+  `pending_payment → pending_review → verified` transitions all work against real code.
+- **Fixes**: (1) Integer-only pricing — `updateVerificationFee`/`updateSubscriptionTiers`
+  now require `Number.isInteger`, plus `validate` functions on the `platform-settings`
+  fields and `step={1}` + client checks on the admin forms (a fractional fee like `1.50`
+  previously saved but then failed the payment path with "Invalid amount"). (2) Relaxed
+  the STK callback parser in `src/lib/mpesa.ts` (`ResultCode` coerced to number, IDs
+  coerced to string, `ResultDesc`/`CallbackMetadata` nullish) — the strict zod schema was
+  dropping the sandbox callback as "unrecognized". (3) Added raw-body logging to the
+  payment callback route on parse failure. (4) Fixed the mjakazi overview
+  (`dashboard/mjakazi/page.tsx`) which always showed "ready for verification" because
+  `VerificationStatusCard` only looked at documents; it now branches on
+  `verificationState` (draft → documents card, pending_payment → awaiting-payment card,
+  other states → `VerificationStateCard`).
+- **Key finding — Daraja 3.0 sandbox**: The sandbox (Daraja 3.0, launched 2025-11-25) no
+  longer completes STK pushes or fires the callback after PIN entry; v1 was tested
+  against the old Daraja 2.0 sandbox, which auto-completed and reversed ~10 min later.
+  The callback pipeline itself is proven working (Daraja → ngrok → route). To complete
+  sandbox payments, `_scratch_fire_callback.ts` (repo root, untracked, NOT part of the
+  app) reads the latest `stk_sent` payment and POSTs a correctly-matched callback to the
+  live route — the same message Daraja sends in production. Production is unaffected: PIN
+  entry fires the callback automatically there.
+- **Files touched**: `src/services/settings.service.ts`,
+  `src/payload/blocks/globals/platform-settings/schema.ts`,
+  `src/components/dashboard/admin/settings/{platform-settings-form,subscription-tiers-form}.tsx`,
+  `src/lib/mpesa.ts`, `src/app/(payload)/api/webhooks/payments/callback/route.ts`,
+  `src/app/(saas)/dashboard/mjakazi/page.tsx`, `_scratch_fire_callback.ts` (scratch).
+- **Notes**: `_scratch_fire_callback.ts` is a throwaway test helper — delete before
+  commit. Next: test 2 more wajakazi — rejection (staff rejects with a reason, email
+  sent, attempts increment) and approve/reject email delivery (Phase 3.3). Then the
+  mwajiri subscription purchase flow (5.2), which needs the same callback helper. No
+  `generate:types` needed (no schema shape change).
+
+### 2026-09-04 — Verification resubmit, fee policy, and transactional emails
+
+- **What was built/fixed**: (1) Wired the missing resubmit flow — `resubmitForVerification`
+  existed in the service but had no caller, so a rejected mjakazi was stuck at
+  "Not approved". Added `resubmitVerificationAction` (`src/app/actions/verification.ts`)
+  and `ResubmitVerification` (`src/components/dashboard/mjakazi/verification/resubmit-verification.tsx`),
+  rendered on the verification page when `rejected`. (2) Changed `FREE_REJECTIONS` from 3
+  to 2 — two free resubmissions per fee, the third rejection requires a fresh fee; also
+  fixed the rejection email's "resubmissions remaining" off-by-one
+  (`FREE_REJECTIONS - attempts + 1`). (3) Restored the two missing transactional emails
+  from v1: `sendPaymentConfirmedEmail` (mjakazi, wired into `activateVerificationOnPayment`)
+  and `sendSubscriptionActivatedEmail` (mwajiri, wired into `activateSubscriptionOnPayment`),
+  both fire-and-forget via `notifyPaymentReceived`/`notifySubscriptionActivated`. (4) Added
+  the brand logo to the email template header (`mjakazi-connect-logo.png` served from
+  `NEXT_PUBLIC_SERVER_URL`; falls back to text-only header when unset). (5) Switched the
+  dev-only payment simulator gating from `NODE_ENV` to `MPESA_ENVIRONMENT !== "production"`.
+  (6) Fixed the staff queue "Legal name not set" false label (it showed that whenever legal
+  name === display name).
+- **Files touched**: `src/app/actions/verification.ts`,
+  `src/components/dashboard/mjakazi/verification/resubmit-verification.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/services/verification.service.ts`, `src/services/subscription.service.ts`,
+  `src/lib/email.ts`, `src/app/actions/dev.ts`,
+  `src/components/dashboard/dev/dev-payment-simulate.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
+  `src/components/dashboard/staff/verifications/verification-queue.tsx`,
+  `context/architecture.md` (dev-simulator exception note).
+- **Follow-up (flagged)**: verification expiry email — send a reminder before and a notice
+  at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase 12.1
+  notifications sweep. Not started.
+

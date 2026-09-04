@@ -3,13 +3,16 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { DevPaymentSimulate } from "@/components/dashboard/dev/dev-payment-simulate";
 import { PayVerification } from "@/components/dashboard/mjakazi/verification/pay-verification";
+import { ResubmitVerification } from "@/components/dashboard/mjakazi/verification/resubmit-verification";
 import { SubmitVerification } from "@/components/dashboard/mjakazi/verification/submit-verification";
 import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import config from "@/payload-config";
 import { getOwnProfile } from "@/services/profile.service";
 import { getVerificationFee } from "@/services/settings.service";
+import { getFreeResubmissionsRemaining } from "@/services/verification.service";
 
 export const metadata: Metadata = { title: "Verification" };
 
@@ -59,13 +62,24 @@ const MjakaziVerificationPage = async () => {
 					hasBothDocuments={hasBothDocuments}
 				/>
 			) : profile.verificationState === "pending_payment" ? (
-				<PayVerification fee={verificationFee} />
+				<>
+					<PayVerification fee={verificationFee} />
+					{process.env.MPESA_ENVIRONMENT !== "production" ? (
+						<DevPaymentSimulate />
+					) : null}
+				</>
 			) : (
-				<VerificationStateCard
-					state={profile.verificationState}
-					verificationExpiry={profile.verificationExpiry}
-					rejectionReason={profile.rejectionReason}
-				/>
+				<>
+					<VerificationStateCard
+						state={profile.verificationState}
+						verificationExpiry={profile.verificationExpiry}
+						rejectionReason={profile.rejectionReason}
+						freeResubmissionsRemaining={getFreeResubmissionsRemaining(
+							profile.verificationAttempts,
+						)}
+					/>
+					{profile.verificationState === "rejected" ? <ResubmitVerification /> : null}
+				</>
 			)}
 		</div>
 	);

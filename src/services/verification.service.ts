@@ -3,9 +3,11 @@ import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
 import {
+	sendPaymentConfirmedEmail,
 	sendVerificationApprovedEmail,
 	sendVerificationRejectedEmail,
 } from "@/lib/email";
+import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
@@ -16,9 +18,15 @@ type Result<T = void> =
 type VerificationState = NonNullable<WajakaziProfile["verificationState"]>;
 
 // rejections covered by a single verification fee before the worker must pay
-// again. the product spec is "up to 3 resubmissions included" — three rejections
-// are retried for free, the fourth requires a fresh fee
-const FREE_REJECTIONS = 3;
+// again. the product spec is "up to 2 resubmissions included" — two rejections
+// are retried for free, the third requires a fresh fee
+const FREE_REJECTIONS = 2;
+
+// free resubmissions a rejected worker has left before the next resubmission
+// requires a fresh fee. attempts is the number of rejections so far
+const getFreeResubmissionsRemaining = (
+	attempts: number | null | undefined,
+): number => Math.max(0, FREE_REJECTIONS - (attempts ?? 0) + 1);
 
 // a verified badge is valid for 12 months from approval
 const VERIFICATION_VALIDITY_MONTHS = 12;
@@ -50,7 +58,6 @@ type VerificationData = Partial<
 		| "blacklistedAt"
 		| "deactivatedAt"
 		| "rejectionReason"
-		| "verificationNotes"
 	>
 >;
 
@@ -156,6 +163,7 @@ const loadWorkerEmail = async (
 			collection: "users",
 			id: userId,
 			depth: 0,
+			overrideAccess: true,
 		});
 		if (!user?.email) return null;
 		return { email: user.email, firstName: user.firstName ?? "there" };
@@ -194,6 +202,36 @@ const notifyWorker = async (
 		}
 	} catch (error) {
 		console.error("[services/verification] notification email failed:", error);
+	}
+};
+
+// fire-and-forget payment confirmation. a confirmed verification payment moves
+// the profile into review; this emails the receipt + amount. runs after the
+// transition commits, so a failed send never blocks the state change
+const notifyPaymentReceived = async (
+	payload: Payload,
+	profile: WajakaziProfile,
+	payment: Payment,
+): Promise<void> => {
+	try {
+		const recipient = await loadWorkerEmail(payload, profile);
+		if (!recipient) return;
+
+		const callback = payment.callbackPayload as unknown as StkCallback | null | undefined;
+		const receiptValue = callback
+			? getCallbackMetadataValue(callback, "MpesaReceiptNumber")
+			: undefined;
+		const receiptNumber = receiptValue == null ? "N/A" : String(receiptValue);
+
+		await sendPaymentConfirmedEmail({
+			payload,
+			to: recipient.email,
+			firstName: recipient.firstName,
+			mpesaReceiptNumber: receiptNumber,
+			amount: payment.amount,
+		});
+	} catch (error) {
+		console.error("[services/verification] payment notification email failed:", error);
 	}
 };
 
@@ -499,7 +537,13 @@ const activateVerificationOnPayment = async (
 	const profile = await loadProfileByUserId(payload, userId);
 	if (!profile) return fail("Profile not found.", "not_found");
 
-	return advanceToReview(payload, profile.id, payment.id);
+	const result = await advanceToReview(payload, profile.id, payment.id);
+
+	if (result.success) {
+		await notifyPaymentReceived(payload, result.data, payment);
+	}
+
+	return result;
 };
 
 // pending_review → verified. sets the 12-month expiry and records the reviewer
@@ -507,7 +551,6 @@ const approveVerification = async (
 	payload: Payload,
 	actor: User,
 	profileId: string,
-	notes?: string,
 ): Promise<Result<WajakaziProfile>> => {
 	if (!isStaff(actor)) return fail("Forbidden", "forbidden");
 
@@ -528,7 +571,6 @@ const approveVerification = async (
 				VERIFICATION_VALIDITY_MONTHS,
 			).toISOString(),
 			rejectionReason: null,
-			verificationNotes: notes ?? null,
 		},
 		action: "verification_approved",
 		actor,
@@ -581,7 +623,7 @@ const rejectVerification = async (
 		await notifyWorker(payload, result.data, {
 			type: "rejected",
 			reason: reason.trim(),
-			attemptsRemaining: Math.max(0, FREE_REJECTIONS - attempts),
+			attemptsRemaining: Math.max(0, FREE_REJECTIONS - attempts + 1),
 		});
 	}
 
@@ -746,6 +788,7 @@ export {
 	blacklistProfile,
 	deactivateProfile,
 	expireVerification,
+	getFreeResubmissionsRemaining,
 	listPendingReviews,
 	rejectVerification,
 	renewVerification,

@@ -203,19 +203,22 @@ const callbackMetadataItemSchema = z.object({
 
 // the shape daraja posts back once the handset responds. result code 0 means the
 // user paid; any other code is a cancellation or failure, in which case
-// CallbackMetadata is absent
+// CallbackMetadata is absent. parsing is deliberately tolerant — daraja is
+// inconsistent about whether it sends numeric fields as numbers or strings, and
+// drops `ResultDesc`/`CallbackMetadata` on failure callbacks — so a callback is
+// coerced rather than rejected outright
 const stkCallbackSchema = z.object({
 	Body: z.object({
 		stkCallback: z.object({
-			MerchantRequestID: z.string(),
-			CheckoutRequestID: z.string(),
-			ResultCode: z.number().int(),
-			ResultDesc: z.string().optional(),
+			MerchantRequestID: z.coerce.string(),
+			CheckoutRequestID: z.coerce.string(),
+			ResultCode: z.coerce.number().int(),
+			ResultDesc: z.string().nullish(),
 			CallbackMetadata: z
 				.object({
 					Item: z.array(callbackMetadataItemSchema),
 				})
-				.optional(),
+				.nullish(),
 		}),
 	}),
 });
