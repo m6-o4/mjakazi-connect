@@ -12,7 +12,6 @@ import type {
 	WaajiriProfile,
 	WajakaziProfile,
 } from "@/payload-types";
-import { revertToReview } from "@/services/verification.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -208,6 +207,9 @@ const updateProfile = async (
 		const profileComplete = await writeCompleteness(payload, updated);
 
 		if (wasVerified && legalNameChanged) {
+			// dynamic import keeps this module out of a static cycle with
+			// verification.service, which imports getOwnProfile from here
+			const { revertToReview } = await import("@/services/verification.service");
 			const reverted = await revertToReview(payload, profile.id);
 			if (!reverted.success) {
 				console.warn(
@@ -283,6 +285,9 @@ const uploadProfilePhoto = async (
 		// a verified worker's photo is part of the reviewed evidence — replacing
 		// it sends the profile back for a free re-review
 		if (wasVerified) {
+			// dynamic import keeps this module out of a static cycle with
+			// verification.service, which imports getOwnProfile from here
+			const { revertToReview } = await import("@/services/verification.service");
 			const reverted = await revertToReview(payload, profile.id);
 			if (!reverted.success) {
 				console.warn(

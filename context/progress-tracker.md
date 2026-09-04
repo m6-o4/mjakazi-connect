@@ -664,3 +664,39 @@ finished.
   at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase 12.1
   notifications sweep. Not started.
 
+---
+
+## Backlog — Dashboard Overview Fixtures
+
+Agreed 2026-09-04. Permanent at-a-glance fixtures for each role's overview. Add real
+`page.tsx` files (admin/staff/mwajiri currently fall through to the `dashboard/[role]`
+placeholder) as each is built. Data is already available unless marked "later phase".
+
+### Admin (`/dashboard/admin`)
+- [x] Pending verifications (`pending_review` count) → links to queue
+- [x] Verified wajakazi count
+- [x] Active subscriptions count
+- [x] Waajiri accounts count
+- [ ] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
+- [ ] Platform totals (wajakazi accounts, total profiles)
+- [ ] Recent activity feed (latest `audit-logs` entries)
+- [ ] Quick actions (queue / settings / staff)
+
+### Staff (`/dashboard/staff`)
+- [x] Pending verifications (`pending_review` count) → links to queue
+- [x] Awaiting payment (`pending_payment` count)
+- [x] Verified wajakazi count
+- [ ] Today's activity (approvals + rejections today) — `audit-logs`
+- [ ] Queue preview (next 5 oldest submissions)
+
+### Wajakazi (`/dashboard/mjakazi`) — already has completeness + status
+- [ ] Verification expiry countdown (N days left when `verified`)
+- [ ] Expressions of interest received — later (Phase 6.x)
+- [ ] Directory visibility toggle — later (Phase 6.x)
+
+### Waajiri (`/dashboard/mwajiri`) — currently placeholder
+- [ ] Subscription status + days remaining → links to subscription
+- [ ] Renew/upgrade CTA when expiring
+- [ ] Directory CTA ("browse verified wajakazi") — later (Phase 6.1)
+- [ ] Saved wajakazi / EOIs sent — later (Phase 6.x)
+
