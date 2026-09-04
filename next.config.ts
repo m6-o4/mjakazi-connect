@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
-	allowedDevOrigins: ["fidelity-acorn-charbroil.ngrok-free.dev"],
+	allowedDevOrigins: ["app-development.s3.co.ke"],
 	images: {
 		qualities: [25, 50, 75, 100],
 		remotePatterns: [
@@ -24,10 +24,6 @@ const nextConfig: NextConfig = {
 				protocol: "http",
 				hostname: "localhost",
 				port: "3000",
-			},
-			{
-				protocol: "https",
-				hostname: "*.ngrok-free.dev",
 			},
 			{
 				protocol: "https",

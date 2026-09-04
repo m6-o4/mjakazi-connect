@@ -616,7 +616,7 @@ finished.
 - **Key finding — Daraja 3.0 sandbox**: The sandbox (Daraja 3.0, launched 2025-11-25) no
   longer completes STK pushes or fires the callback after PIN entry; v1 was tested
   against the old Daraja 2.0 sandbox, which auto-completed and reversed ~10 min later.
-  The callback pipeline itself is proven working (Daraja → ngrok → route). To complete
+  The callback pipeline itself is proven working (Daraja → Cloudflare tunnel → route). To complete
   sandbox payments, `_scratch_fire_callback.ts` (repo root, untracked, NOT part of the
   app) reads the latest `stk_sent` payment and POSTs a correctly-matched callback to the
   live route — the same message Daraja sends in production. Production is unaffected: PIN
@@ -683,10 +683,21 @@ finished.
   `src/app/(saas)/dashboard/mjakazi/settings/page.tsx` (new),
   `src/app/(saas)/dashboard/mwajiri/settings/page.tsx` (new), `src/lib/dashboard-nav.ts`,
   `src/services/profile.service.ts` (cycle fix).
-- **Notes**: approval/rejection email still unverified end-to-end — `loadWorkerEmail` has the
-  `overrideAccess` fix, but the mjakazi reported no approval email; re-check with a fresh dev
-  restart and watch for `[services/verification] notification email failed:`. Mwajiri
-  deletion (with an active subscription) not yet exercised.
+- **Notes**: email delivery resolved — two blockers existed: `loadWorkerEmail` missing
+  `overrideAccess` (recipient never resolved) and `RESEND_FROM_EMAIL` on an unverified domain
+  (Resend rejected every send). Payment-received, rejection and approval emails are now
+  confirmed working. Mwajiri deletion (with an active subscription) not yet exercised.
+
+### 2026-09-04 — Mjakazi flow verified end-to-end
+
+- **What was verified (manual)**: the full mjakazi path — register → complete profile →
+  upload documents → submit → pay (sandbox) → `pending_review` → staff reject (rejection
+  email) / approve (approval email) → `verified`. Payment-received email confirmed. Account
+  self-deletion confirmed for both a newly registered and an approved mjakazi.
+- **Follow-up (flagged)**: (1) free-resubmissions-exhausted path — after the 2nd rejection the
+  next resubmission must route to `pending_payment` (fresh fee), not straight to review.
+  (2) Re-verification on identity change — editing legal name / photo / document while
+  `verified` must drop to `pending_review`. Neither has been manually exercised yet.
 
 ---
 
