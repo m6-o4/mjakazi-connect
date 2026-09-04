@@ -225,7 +225,16 @@ export interface Page {
   id: string;
   title: string;
   layout: (
-    Hero | ContentEditor | Features | PostsArchive | CallToAction | HowItWorks | Pricing | Registration | Testimonials
+    | Hero
+    | ContentEditor
+    | Features
+    | PostsArchive
+    | CallToAction
+    | HowItWorks
+    | Pricing
+    | Registration
+    | Testimonials
+    | WajakaziArchive
   )[];
   meta?: {
     title?: string | null;
@@ -621,6 +630,22 @@ export interface Testimonials {
   id?: string | null;
   blockName?: string | null;
   blockType: 'testimonials';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WajakaziArchive".
+ */
+export interface WajakaziArchive {
+  headline?: string | null;
+  headlineDescription?: string | null;
+  limit?: number | null;
+  showViewAllLink?: boolean | null;
+  buttonLink: string;
+  buttonText: string;
+  backgroundVariant: 'muted' | 'background';
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'wajakaziArchive';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1279,6 +1304,7 @@ export interface PagesSelect<T extends boolean = true> {
         pricing?: T | PricingSelect<T>;
         registration?: T | RegistrationSelect<T>;
         testimonials?: T | TestimonialsSelect<T>;
+        wajakaziArchive?: T | WajakaziArchiveSelect<T>;
       };
   meta?:
     | T
@@ -1509,6 +1535,21 @@ export interface TestimonialsSelect<T extends boolean = true> {
         testimony?: T;
         id?: T;
       };
+  backgroundVariant?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WajakaziArchive_select".
+ */
+export interface WajakaziArchiveSelect<T extends boolean = true> {
+  headline?: T;
+  headlineDescription?: T;
+  limit?: T;
+  showViewAllLink?: T;
+  buttonLink?: T;
+  buttonText?: T;
   backgroundVariant?: T;
   id?: T;
   blockName?: T;

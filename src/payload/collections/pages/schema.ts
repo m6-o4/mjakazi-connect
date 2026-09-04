@@ -1,4 +1,3 @@
-import { features } from "process";
 import type { CollectionConfig } from "payload";
 
 import {
@@ -14,6 +13,7 @@ import { PostsArchive } from "@/payload/blocks/posts-archive/schema";
 import { Pricing } from "@/payload/blocks/pricing/schema";
 import { Registration } from "@/payload/blocks/registration/schema";
 import { Testimonials } from "@/payload/blocks/testimonials/schema";
+import { WajakaziArchive } from "@/payload/blocks/wajakazi-archive/schema";
 import {
 	revalidateDelete,
 	revalidatePage,
@@ -85,6 +85,7 @@ const Pages: CollectionConfig<"pages"> = {
 								Pricing,
 								Registration,
 								Testimonials,
+								WajakaziArchive,
 							],
 						},
 					],

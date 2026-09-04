@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
-	allowedDevOrigins: ["app-development.s3.co.ke"],
+	allowedDevOrigins: ["app-dev.s3.co.ke"],
 	images: {
 		qualities: [25, 50, 75, 100],
 		remotePatterns: [
