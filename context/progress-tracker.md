@@ -699,6 +699,37 @@ finished.
   (2) Re-verification on identity change — editing legal name / photo / document while
   `verified` must drop to `pending_review`. Neither has been manually exercised yet.
 
+### 2026-09-04 — Wajakazi archive block + availability toggle
+
+- **What was built**: (1) `wajakazi-archive` Payload block
+  (`src/payload/blocks/wajakazi-archive/`) showcasing verified, available wajakazi as teaser
+  cards on marketing pages, plus a reusable `WajakaziTeaserCard`
+  (`src/components/web/wajakazi-teaser-card.tsx`). The filter mirrors `DIRECTORY_VISIBLE`
+  (`verified` AND `available`), so the marketing page and the Phase 6 directory stay
+  consistent; the card matches the `posts-archive` cards (same image aspect, hover zoom,
+  shadcn components, spacing). Registered in `render-blocks.tsx` + `pages/schema.ts`; types
+  regenerated. (2) Self-service availability toggle in mjakazi settings — `updateAvailability`
+  (`profile.service.ts`), `updateAvailabilityAction` (`actions/profile.ts`), `AvailabilityCard`
+  (`src/components/dashboard/settings/availability-card.tsx`), rendered on
+  `/dashboard/mjakazi/settings`. `available` shows in directory/archive; `hired`/`on_break`
+  hide the profile.
+- **Decisions**: revalidation hook deferred — the `(web)` route renders per-request
+  (`draftMode()` in `[slug]/page.tsx`), so the archive re-fetches on every render and stays
+  fresh without a hook. "View all" links to `/directory` (404s until Phase 6.1); the block's
+  `showViewAllLink` toggle can hide it meanwhile. Reverted the ngrok-era `EMAIL_LOGO_URL`
+  override (logo resolves from `NEXT_PUBLIC_SERVER_URL`, now Cloudflare); removed the ngrok
+  entry from `next.config.ts` remotePatterns and updated the context docs to Cloudflare.
+- **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx` (new),
+  `src/components/web/wajakazi-teaser-card.tsx` (new),
+  `src/components/dashboard/settings/availability-card.tsx` (new),
+  `src/services/profile.service.ts`, `src/app/actions/profile.ts`,
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx`,
+  `src/payload/blocks/render-blocks.tsx`, `src/payload/collections/pages/schema.ts`,
+  `src/payload-types.ts` (regenerated), `src/lib/email.ts`, `next.config.ts`,
+  `context/library-docs.md`.
+- **Notes**: removed a stray `import { features } from "process"` from `pages/schema.ts`.
+  Email `replyTo` + footer contact now read `RESEND_REPLY_TO`.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

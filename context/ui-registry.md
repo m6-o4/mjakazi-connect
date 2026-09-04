@@ -172,10 +172,12 @@ codebase.
 - **Purpose**: Status copy for every status-only verification state (pending_review,
   verified, rejected, verification_expired, blacklisted, deactivated)
 - **Props**:
-  `{ state: StatusState; verificationExpiry?: string | null; rejectionReason?: string | null }`
+  `{ state: StatusState; verificationExpiry?: string | null; rejectionReason?: string | null; freeResubmissionsRemaining?: number | null }`
 - **Visual pattern**: shadcn `Card`; per-state lucide icon in `text-accent`; shows "Valid
-  until" date (verified) or "Reason" (rejected); no action buttons yet
-- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+  until" date (verified), "Reason" (rejected) and the free-resubmissions-remaining note
+  (rejected)
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `(saas)/dashboard/mjakazi/page.tsx`
 
 ### `PayVerification`
 
@@ -236,9 +238,8 @@ codebase.
   reason
 - **Props**:
   `{ profileId: string; verificationSubmittedAt: string | null; verificationAttempts: number | null }`
-- **Visual pattern**: shadcn `Card`; a `Label` + `Textarea` for an optional internal
-  approve note (`verificationNotes`) and a second for the required rejection reason
-  (`rejectionReason`, shown to the worker); `Button` (default) "Approve" +
+- **Visual pattern**: shadcn `Card`; a `Label` + `Textarea` for the required rejection
+  reason (`rejectionReason`, shown to the worker); `Button` (default) "Approve" +
   `Button variant="destructive"` "Reject"; fires `verification_approved` (`daysToVerify`)
   / `verification_rejected` (`attempt`) PostHog events, then redirects back to the queue
 - **Used in**: `(saas)/dashboard/staff/verifications/[id]/page.tsx`
@@ -329,3 +330,72 @@ codebase.
 - **Visual pattern**: centered `Loader2` spinner + one-line message + muted "This will
   only take a moment." subtitle
 - **Used in**: `(auth)/authenticating/page.tsx`
+
+### `ResubmitVerification`
+
+- **Location**: `src/components/dashboard/mjakazi/verification/resubmit-verification.tsx`
+- **Purpose**: The rejected-state resubmit flow — delegates to
+  `resubmitForVerificationAction`, which routes the profile back to review (free) or to
+  payment (attempts exhausted)
+- **Props**: none
+- **Visual pattern**: shadcn `Card`; "Resubmit for review" `Button` (default); fires
+  `verification_resubmitted` PostHog event on success then `router.refresh()`
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+
+### `DevPaymentSimulate`
+
+- **Location**: `src/components/dashboard/dev/dev-payment-simulate.tsx`
+- **Purpose**: Dev-only control (gated on `MPESA_ENVIRONMENT !== "production"`) that fires a
+  synthetic Daraja callback through the real handler so a sandbox payment can complete
+- **Props**: none
+- **Visual pattern**: shadcn `Card` with a `FlaskConical` icon in `text-accent`; outline
+  `Button` "Simulate payment confirmation"; calls `simulatePaymentCallbackAction` then
+  `router.refresh()`
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `(saas)/dashboard/mwajiri/subscription/page.tsx`
+
+### `StatCard`
+
+- **Location**: `src/components/dashboard/overview/stat-card.tsx`
+- **Purpose**: A single at-a-glance metric on a role's overview, optionally linking to the
+  screen it describes
+- **Props**: `{ label: string; value: number; description?: string; href?: string }`
+- **Visual pattern**: shadcn `Card`; `text-heading` 3xl value; wraps in `Link` when `href`
+  is set
+- **Used in**: `(saas)/dashboard/admin/page.tsx`, `(saas)/dashboard/staff/page.tsx`
+
+### `DeleteAccountCard`
+
+- **Location**: `src/components/dashboard/settings/delete-account-card.tsx`
+- **Purpose**: Type-to-confirm self-deletion of a wajakazi/waajiri account and all data
+- **Props**: `{ role: "mjakazi" | "mwajiri" }`
+- **Visual pattern**: `border-destructive/30` bordered panel; `text-destructive` warning;
+  `Input` requiring the phrase "delete my account"; `Button variant="destructive"` confirm;
+  on success `useClerk().signOut()` → `/`
+- **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`,
+  `(saas)/dashboard/mwajiri/settings/page.tsx`
+
+### `AvailabilityCard`
+
+- **Location**: `src/components/dashboard/settings/availability-card.tsx`
+- **Purpose**: Controls whether a wajakazi appears in the directory/archive (available /
+  hired / on_break)
+- **Props**: `{ currentStatus: "available" | "hired" | "on_break" }`
+- **Visual pattern**: shadcn `Card`; current-status indicator (icon in `text-success` for
+  available, `text-muted-foreground` otherwise); three `Button` options (selected =
+  `default`, others = `outline`); calls `updateAvailabilityAction` then `router.refresh()`
+- **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`
+
+### `WajakaziTeaserCard`
+
+- **Location**: `src/components/web/wajakazi-teaser-card.tsx`
+- **Purpose**: A verified-wajakazi teaser on marketing pages (formatted to match the
+  `posts-archive` cards); the CTA drives mwajiri sign-ups
+- **Props**:
+  `{ firstName; photoUrl: string | null; jobLabels: string[]; locationLabel: string | null; yearsExperience: number | null; workPreference: string | null; buttonLink: string; buttonText: string }`
+- **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
+  `aspect-16/10` photo with `group-hover:scale-105` zoom + `bg-primary/10` overlay;
+  `Verified` pill (`bg-card text-success`) top-left; `text-heading` name with
+  `group-hover:text-primary`; job `Badge variant="outline"`; accent `buttonVariants` CTA +
+  muted "Sign in" link
+- **Used in**: `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
