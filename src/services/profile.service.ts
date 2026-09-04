@@ -304,11 +304,46 @@ const uploadProfilePhoto = async (
 	}
 };
 
+type AvailabilityStatus = "available" | "hired" | "on_break";
+
+// flips the worker's directory visibility. available is the only state shown in
+// the directory and archive; hired and on_break hide the profile
+const updateAvailability = async (
+	payload: Payload,
+	user: User,
+	status: AvailabilityStatus,
+): Promise<Result<WajakaziProfile>> => {
+	if (user.role !== "mjakazi") {
+		return { success: false, error: "Forbidden", code: "forbidden" };
+	}
+
+	const profile = await getOwnProfile(payload, user);
+	if (!profile) {
+		return { success: false, error: "Profile not found", code: "not_found" };
+	}
+
+	try {
+		const updated = await payload.update({
+			collection: "wajakazi-profiles",
+			id: profile.id,
+			data: { availabilityStatus: status },
+			overrideAccess: false,
+			req: { user },
+		});
+
+		return { success: true, data: updated };
+	} catch (error) {
+		console.error("[services/profile] updateAvailability failed:", error);
+		return { success: false, error: "Could not update your availability." };
+	}
+};
+
 export {
 	computeProfileComplete,
 	getMissingRequiredFields,
 	getOwnProfile,
 	getOwnWaajiriProfile,
+	updateAvailability,
 	updateProfile,
 	updateWaajiriPhone,
 	uploadProfilePhoto,
