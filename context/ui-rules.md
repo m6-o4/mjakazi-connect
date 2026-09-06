@@ -14,6 +14,21 @@ file should be updated.
 
 ## Rules
 
+### Core rules
+
+Three rules apply to every component, no exceptions:
+
+- **Always use the global theme and colors.** Every color comes from a token in
+  `ui-tokens.md` / `globals.css` (via its semantic utility — `bg-primary`,
+  `text-muted-foreground`) or a global CSS variable. Never a hardcoded hex value or raw
+  Tailwind color class.
+- **Always use shadcn components where relevant.** Check `components/ui/` first; never
+  hand-roll what shadcn already provides (`Card`, `Button`, `Select`, `Badge`, `Input`,
+  `Pagination`, `Separator`, etc.). Add new ones with `pnpm dlx shadcn@latest add <name>`.
+- **Always ensure components are mobile responsive.** Test at narrow widths: grids collapse
+  to a single column below the breakpoint, controls wrap instead of overflow, and nothing
+  overflows the viewport.
+
 ### Tokens
 
 - Never use a hardcoded hex value or a raw Tailwind color class (e.g. `bg-teal-500`).
@@ -72,7 +87,8 @@ file should be updated.
 - Header: `72px` fixed height, full width, `--card` background, hairline `--border`
   bottom, no shadow.
 - Mobile-first. Multi-column grids (feature cards, pricing tiers, profile cards) collapse
-  to a single column below the `md` breakpoint.
+  to a single column below the `md` breakpoint. Every new component must be checked at a
+  narrow (mobile) width before it is considered done.
 - Use the `--radius` scale (`radius-sm` through `radius-4xl`) for corners. Never an
   arbitrary pixel/rem radius at the call site — see Component Values in `ui-tokens.md` for
   which step each component type uses.

@@ -730,6 +730,51 @@ finished.
 - **Notes**: removed a stray `import { features } from "process"` from `pages/schema.ts`.
   Email `replyTo` + footer contact now read `RESEND_REPLY_TO`.
 
+### 2026-09-06 — Phase 6.1: Public directory
+
+- **What was built**: The public directory at `/directory` (list) and `/directory/[slug]`
+  (detail), both dynamic server components in the `(web)` route group. The list filters by
+  job category, location, experience bucket (0–2 / 3–5 / 6–9 / 10+ years) and free-text
+  name search, all as URL query params; sorts newest-verified-first
+  (`-verificationReviewedAt`); paginates 9 per numbered page. The detail page shows the full
+  professional profile (photo, name, skills, about, location, experience, education,
+  languages, work preference, availability, salary) with a "Join as a mwajiri" CTA — and
+  **no contact fields anywhere in the response**.
+- **Files touched**: `src/services/directory.service.ts` (new),
+  `src/payload/collections/wajakazi-profiles/schema.ts` (slug field),
+  `src/payload/collections/wajakazi-profiles/hooks/ensure-slug.ts` (new),
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (new),
+  `src/app/(web)/directory/{page,[slug]/page}.tsx` (new),
+  `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination,directory-profile-detail,directory-profile-view-tracker}.tsx`
+  (new), `src/components/ui/pagination.tsx` (installed via shadcn CLI), `src/payload-types.ts`
+  (regenerated), `context/ui-registry.md`, `context/ui-rules.md`,
+  `_scratch_backfill_profile_slugs.ts` (scratch, deleted after running).
+- **Notes**: Contact protection is payload-level, not UI — the directory read passes
+  `overrideAccess: false` + `DIRECTORY_VISIBLE` + an explicit `select` that omits `phone`,
+  `user`, `legalFirstName/LastName`, `dateOfBirth`, `nationality`, `maritalStatus`,
+  `religion` and all verification bookkeeping (invariant #14/#16). The new `slug` field is
+  `index: true` but deliberately **not** `unique` — a random 6-hex suffix guarantees
+  practical uniqueness while avoiding a Mongo unique-index migration hazard for
+  pre-existing profiles; it is set-once by a `beforeChange` hook (`ensureSlug`) so editing
+  a profile never changes its public URL. A stale detail link (profile went `hired` /
+  `verification_expired`) resolves to a 404 via the guarded read. PostHog
+  `directory_searched` (filters, resultCount) and `profile_viewed` (`isUnlocked: false`)
+  wired. `revalidate-profile.ts` mirrors the posts revalidation hook (revalidates
+  `/directory`, `/directory/[slug]`, and a `directory-sitemap` tag) — a no-op today since the
+  directory is dynamic, but future-proofs ISR/sitemap caching. Detail layout uses
+  `lg:grid-cols-3` + `lg:col-span-1/2` (photo 1/3, content 2/3); the earlier
+  `grid-cols-[minmax(...)]` arbitrary value silently generated no CSS, so it was replaced
+  with the standard utilities. `pnpm lint` (0 errors) and `pnpm build` pass.
+- **Follow-ups / manual steps — all complete (2026-09-06)**: (1) slug backfill ran in dev
+  (`pnpm.cmd exec tsx _scratch_backfill_profile_slugs.ts`) and the scratch file deleted.
+  (2) CMS `/directory` page deleted. (3) Header "Find Wajakazi" nav points at `/directory`.
+  (4) Sitemap wired for `/directory` + detail slugs. **Manual verification — complete**:
+  profiles render newest-verified-first; name search, category/location/experience filters,
+  and 9-per-page pagination all update the URL and results; detail page opens from cards;
+  **view-source + RSC payload confirmed no phone/email leaks**; a shared link to a
+  since-hidden profile returns 404. **Phase 6.1 is fully done** — next is Phase 6.2
+  (Contact Vault access model) onward.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

@@ -399,3 +399,59 @@ codebase.
   `group-hover:text-primary`; job `Badge variant="outline"`; accent `buttonVariants` CTA +
   muted "Sign in" link
 - **Used in**: `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
+
+### `DirectoryCard`
+
+- **Location**: `src/components/web/directory/directory-card.tsx`
+- **Purpose**: A single wajakazi in the public directory — links to the profile's own
+  detail page (no sign-up CTA), renders no contact fields
+- **Props**: `{ profile: DirectoryProfile }`
+- **Visual pattern**: mirrors `WajakaziTeaserCard` (`group h-full gap-0 py-0`,
+  `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`, `text-heading`
+  name, job `Badge variant="outline"`); accent `buttonVariants` "View Profile" →
+  `/directory/{slug}`
+- **Used in**: `src/app/(web)/directory/page.tsx`
+
+### `DirectoryFilterBar`
+
+- **Location**: `src/components/web/directory/directory-filter-bar.tsx`
+- **Purpose**: The directory's search + filters (name, category, location, experience) —
+  every filter lives in the URL query string; fires `directory_searched` PostHog event
+- **Props**:
+  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number }`
+- **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
+  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count; navigation
+  via `useRouter` + `URLSearchParams`
+- **Used in**: `src/app/(web)/directory/page.tsx`
+
+### `DirectoryPagination`
+
+- **Location**: `src/components/web/directory/directory-pagination.tsx`
+- **Purpose**: Numbered pagination (9 per page) with windowed ellipsis; preserves active
+  filters in every link
+- **Props**:
+  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? } }`
+- **Visual pattern**: `Link`s styled `size-9 rounded-md border`; active page
+  `bg-primary/10 text-primary`; `ChevronLeft`/`ChevronRight` prev/next; `…` ellipsis spans
+- **Used in**: `src/app/(web)/directory/page.tsx`
+
+### `DirectoryProfileDetail`
+
+- **Location**: `src/components/web/directory/directory-profile-detail.tsx`
+- **Purpose**: The public profile detail — full professional info with no contact fields,
+  and a "Join as a mwajiri" CTA
+- **Props**: `{ profile: DirectoryProfile }`
+- **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
+  content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
+  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; CTA
+  `Card` with accent "Join as a mwajiri" + outline "Sign in"
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+
+### `DirectoryProfileViewTracker`
+
+- **Location**: `src/components/web/directory/directory-profile-view-tracker.tsx`
+- **Purpose**: Fires `profile_viewed` (`isUnlocked: false`) once per public profile view
+- **Props**: `{ slug: string }`
+- **Visual pattern**: renders nothing; client `useEffect` keyed on `slug` calling
+  `posthog.capture`
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`

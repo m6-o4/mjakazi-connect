@@ -712,6 +712,7 @@ export interface WajakaziProfile {
   id: string;
   user: string | User;
   displayName: string;
+  slug?: string | null;
   legalFirstName?: string | null;
   legalLastName?: string | null;
   dateOfBirth?: string | null;
@@ -1674,6 +1675,7 @@ export interface AuditLogsSelect<T extends boolean = true> {
 export interface WajakaziProfilesSelect<T extends boolean = true> {
   user?: T;
   displayName?: T;
+  slug?: T;
   legalFirstName?: T;
   legalLastName?: T;
   dateOfBirth?: T;
