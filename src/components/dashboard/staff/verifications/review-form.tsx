@@ -1,5 +1,6 @@
 "use client";
 
+import { differenceInDays } from "date-fns";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useState } from "react";
@@ -50,9 +51,7 @@ const ReviewForm = ({
 			if (verificationSubmittedAt !== null) {
 				const daysToVerify = Math.max(
 					0,
-					Math.floor(
-						(Date.now() - new Date(verificationSubmittedAt).getTime()) / 86_400_000,
-					),
+					differenceInDays(new Date(), new Date(verificationSubmittedAt)),
 				);
 				posthog.capture("verification_approved", { daysToVerify });
 			} else {

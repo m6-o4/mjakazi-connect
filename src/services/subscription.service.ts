@@ -1,4 +1,4 @@
-import { addDays } from "date-fns";
+import { addDays, isAfter } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
@@ -410,10 +410,7 @@ const notifySubscriptionActivated = async (
 			amount: payment.amount,
 		});
 	} catch (error) {
-		console.error(
-			"[services/subscription] activation notification email failed:",
-			error,
-		);
+		console.error("[services/subscription] activation notification email failed:", error);
 	}
 };
 
@@ -474,7 +471,10 @@ const activateSubscriptionOnPayment = async (
 			},
 		});
 	} else {
-		return fail(`Invalid state: ${subscription.subscriptionState}.`, "illegal_transition");
+		return fail(
+			`Invalid state: ${subscription.subscriptionState}.`,
+			"illegal_transition",
+		);
 	}
 
 	if (result.success) {
@@ -495,7 +495,10 @@ const expireSubscription = async (
 	if (subscription.subscriptionState !== "active") {
 		return fail("Subscription is not active.", "wrong_state");
 	}
-	if (!subscription.tierExpiry || new Date(subscription.tierExpiry) > new Date()) {
+	if (
+		!subscription.tierExpiry ||
+		isAfter(new Date(subscription.tierExpiry), new Date())
+	) {
 		return fail("Subscription has not yet expired.", "not_expired");
 	}
 
