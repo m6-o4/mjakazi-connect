@@ -773,7 +773,30 @@ finished.
   and 9-per-page pagination all update the URL and results; detail page opens from cards;
   **view-source + RSC payload confirmed no phone/email leaks**; a shared link to a
   since-hidden profile returns 404. **Phase 6.1 is fully done** — next is Phase 6.2
-  (Contact Vault access model) onward.
+  (Latest Verified Profiles block).
+
+### 2026-09-06 — Phase 6.2: Latest Verified Profiles block
+
+- **What was built**: Refactored the `wajakazi-archive` marketing block so its cards are the
+  directory's `DirectoryCard` and its data comes from the guarded `listDirectoryProfiles`
+  service — the same path `/directory` uses. The block shows the latest 3 verified profiles
+  (sort `-verificationReviewedAt`), links each card to `/directory/[slug]`, and keeps its
+  headline / headline description / "View all wajakazi" button / background variant / empty
+  state. Removed the dead `limit`, `buttonLink`, `buttonText` block fields and deleted the
+  unused `WajakaziTeaserCard`.
+- **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx`,
+  `src/services/directory.service.ts` (optional `limit` param),
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (also revalidates
+  `/` so the SSG homepage refreshes on verification),
+  `src/components/web/directory/directory-card.tsx` (comment), `src/payload-types.ts`
+  (`WajakaziArchive` fields removed), `src/components/web/wajakazi-teaser-card.tsx`
+  (deleted), `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors) and `pnpm build` pass. The block now reads through
+  `overrideAccess: false` + `DIRECTORY_VISIBLE` + the public-field `select` instead of the
+  old `overrideAccess: true` hand-rolled query, so the homepage can never leak a non-live
+  profile or a contact field. **Manual verification complete** (verify a profile → reload
+  homepage → new profile appears in the block, card links to the detail page).
+  **Phase 6.2 done** — next is Phase 6.3 (Mwajiri browse).
 
 ---
 

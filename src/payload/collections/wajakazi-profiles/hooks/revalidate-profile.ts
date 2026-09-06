@@ -3,10 +3,11 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "paylo
 
 import type { WajakaziProfile } from "@/payload-types";
 
-// revalidates the public directory after a profile changes. the directory pages
-// are dynamic today (server-rendered, no cache), so revalidatePath is a no-op —
-// but this mirrors the posts hook and future-proofs the moment a directory
-// sitemap or ISR caching lands, keeping the invalidation in one place
+// revalidates the public directory and the homepage latest-verified block after
+// a profile changes. the directory pages are dynamic today (server-rendered, no
+// cache), so revalidatePath on them is a no-op — but the homepage is static, so
+// "/" must be invalidated to refresh the latest-verified block. this mirrors the
+// posts hook and keeps the invalidation in one place
 const revalidateProfile: CollectionAfterChangeHook<WajakaziProfile> = ({
 	doc,
 	previousDoc,
@@ -14,6 +15,7 @@ const revalidateProfile: CollectionAfterChangeHook<WajakaziProfile> = ({
 }) => {
 	if (context.disableRevalidate) return doc;
 
+	revalidatePath("/");
 	revalidatePath("/directory");
 	revalidateTag("directory-sitemap", "max");
 
@@ -34,6 +36,7 @@ const revalidateProfileDelete: CollectionAfterDeleteHook<WajakaziProfile> = ({
 }) => {
 	if (context.disableRevalidate) return doc;
 
+	revalidatePath("/");
 	revalidatePath("/directory");
 	revalidateTag("directory-sitemap", "max");
 

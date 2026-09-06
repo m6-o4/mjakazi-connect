@@ -11,9 +11,8 @@ type DirectoryCardProps = {
 	profile: DirectoryProfile;
 };
 
-// a single wajakazi in the public directory. mirrors the visual language of
-// WajakaziTeaserCard but links to the profile's own detail page (rather than a
-// sign-up CTA), and deliberately renders no contact fields
+// a single wajakazi in the public directory. links to the profile's own detail
+// page and deliberately renders no contact fields
 const DirectoryCard = ({ profile }: DirectoryCardProps) => {
 	const name = profile.displayName ?? "";
 	const href = `/directory/${profile.slug ?? ""}`;

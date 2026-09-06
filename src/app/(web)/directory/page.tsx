@@ -62,9 +62,9 @@ const Page = async ({ searchParams }: Args) => {
 					<h1 className="text-heading text-3xl font-semibold md:text-4xl">
 						Find Verified Wajakazi
 					</h1>
-					<p className="text-muted-foreground mt-3 max-w-2xl">
-						Every profile here has had their National ID and Certificate of Good Conduct
-						reviewed by our team. Browse with confidence.
+					<p className="text-muted-foreground mt-3 max-w-4xl">
+						Every profile is document-checked and approved by our team, connect with a
+						trusted mjakazi in minutes.
 					</p>
 				</header>
 

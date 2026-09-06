@@ -39,7 +39,7 @@ const Page = async ({ params }: Args) => {
 	if (!profile) notFound();
 
 	return (
-		<section className="pt-24 pb-24">
+		<section className="pt-32 pb-24">
 			<Container>
 				<DirectoryProfileViewTracker slug={slug} />
 				<DirectoryProfileDetail profile={profile} />

@@ -386,31 +386,18 @@ codebase.
   `default`, others = `outline`); calls `updateAvailabilityAction` then `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`
 
-### `WajakaziTeaserCard`
-
-- **Location**: `src/components/web/wajakazi-teaser-card.tsx`
-- **Purpose**: A verified-wajakazi teaser on marketing pages (formatted to match the
-  `posts-archive` cards); the CTA drives mwajiri sign-ups
-- **Props**:
-  `{ firstName; photoUrl: string | null; jobLabels: string[]; locationLabel: string | null; yearsExperience: number | null; workPreference: string | null; buttonLink: string; buttonText: string }`
-- **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
-  `aspect-16/10` photo with `group-hover:scale-105` zoom + `bg-primary/10` overlay;
-  `Verified` pill (`bg-card text-success`) top-left; `text-heading` name with
-  `group-hover:text-primary`; job `Badge variant="outline"`; accent `buttonVariants` CTA +
-  muted "Sign in" link
-- **Used in**: `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
-
 ### `DirectoryCard`
 
 - **Location**: `src/components/web/directory/directory-card.tsx`
 - **Purpose**: A single wajakazi in the public directory — links to the profile's own
   detail page (no sign-up CTA), renders no contact fields
 - **Props**: `{ profile: DirectoryProfile }`
-- **Visual pattern**: mirrors `WajakaziTeaserCard` (`group h-full gap-0 py-0`,
+- **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
   `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`, `text-heading`
-  name, job `Badge variant="outline"`); accent `buttonVariants` "View Profile" →
+  name, job `Badge variant="outline"`; accent `buttonVariants` "View Profile" →
   `/directory/{slug}`
-- **Used in**: `src/app/(web)/directory/page.tsx`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
 
 ### `DirectoryFilterBar`
 

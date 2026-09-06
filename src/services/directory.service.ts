@@ -1,8 +1,8 @@
 import type { Payload, Where } from "payload";
 import { z } from "zod";
 
-import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import type { WajakaziProfile } from "@/payload-types";
+import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 
 const DIRECTORY_PAGE_SIZE = 9;
 
@@ -68,6 +68,7 @@ type DirectoryQuery = {
 	experience?: ExperienceBucket;
 	q?: string;
 	page?: number;
+	limit?: number;
 };
 
 const experienceWhere = (bucket: ExperienceBucket): Where => {
@@ -87,7 +88,7 @@ const experienceWhere = (bucket: ExperienceBucket): Where => {
 // read through the guarded path (DIRECTORY_VISIBLE + overrideAccess: false +
 // explicit select) so contact fields never leave the service
 const listDirectoryProfiles = async (payload: Payload, query: DirectoryQuery) => {
-	const { category, location, experience, q, page = 1 } = query;
+	const { category, location, experience, q, page = 1, limit } = query;
 
 	const filters: Where[] = [DIRECTORY_VISIBLE];
 	if (category) filters.push({ jobsSkills: { equals: category } });
@@ -100,7 +101,7 @@ const listDirectoryProfiles = async (payload: Payload, query: DirectoryQuery) =>
 		where: { and: filters },
 		depth: 1,
 		page,
-		limit: DIRECTORY_PAGE_SIZE,
+		limit: limit ?? DIRECTORY_PAGE_SIZE,
 		sort: "-verificationReviewedAt",
 		select: DIRECTORY_PUBLIC_FIELDS,
 		overrideAccess: false,
