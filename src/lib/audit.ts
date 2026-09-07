@@ -28,6 +28,7 @@ type AuditAction =
 	| "subscription_blacklisted"
 	| "contact_unlocked"
 	| "eoi_sent"
+	| "eoi_responded"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

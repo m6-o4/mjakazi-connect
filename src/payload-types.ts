@@ -82,6 +82,7 @@ export interface Config {
     subscriptions: Subscription;
     'saved-wajakazi': SavedWajakazi;
     'contact-unlocks': ContactUnlock;
+    'expressions-of-interest': ExpressionsOfInterest;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -106,6 +107,7 @@ export interface Config {
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
     'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
+    'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -681,6 +683,7 @@ export interface AuditLog {
     | 'subscription_blacklisted'
     | 'contact_unlocked'
     | 'eoi_sent'
+    | 'eoi_responded'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -1005,6 +1008,22 @@ export interface ContactUnlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expressions-of-interest".
+ */
+export interface ExpressionsOfInterest {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  batchId?: string | null;
+  pendingKey?: string | null;
+  state: 'sent' | 'accepted' | 'rejected' | 'expired';
+  sentAt?: string | null;
+  respondedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1213,6 +1232,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'contact-unlocks';
         value: string | ContactUnlock;
+      } | null)
+    | ({
+        relationTo: 'expressions-of-interest';
+        value: string | ExpressionsOfInterest;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1877,6 +1900,21 @@ export interface ContactUnlocksSelect<T extends boolean = true> {
   tierAtUnlock?: T;
   unlockedAt?: T;
   subscription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expressions-of-interest_select".
+ */
+export interface ExpressionsOfInterestSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  batchId?: T;
+  pendingKey?: T;
+  state?: T;
+  sentAt?: T;
+  respondedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

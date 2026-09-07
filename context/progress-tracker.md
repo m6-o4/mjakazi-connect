@@ -973,6 +973,54 @@ finished.
 - **Notes**: Removed the now-unused `buttonVariants` import. No schema change, no
   `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) passes.
 
+### 2026-09-07 — Phase 8.1: Expressions of interest
+
+- **What was built**: The expression-of-interest flow end to end. A new sealed
+  `expressions-of-interest` collection (`mwajiri → users`, `mjakazi → wajakazi-profiles`,
+  `batchId`, `pendingKey` (unique), `state` = `sent | accepted | rejected | expired`,
+  `sentAt`, `respondedAt`; compound index on `(mwajiri, mjakazi)`). A new
+  `services/eoi.service.ts` with
+  `sendEoiBatch` (role + active-subscription gate, 3–5 batch bound, directory-visibility
+  recheck, per-pair outstanding-interest guard, minted `batchId`, one `eoi_sent` audit
+  entry + one received email per recipient), `listSentEois`, `listReceivedEois`, and
+  `respondToEoi` (ownership check + CAS `sent → accepted | rejected` + `eoi_responded`
+  audit entry + response emails). Four EOI email templates in `lib/email.ts`
+  (`sendEoiReceivedEmail`, `sendEoiBatchSentEmail`, `sendEoiRespondedEmail`,
+  `sendEoiResponseConfirmedEmail`). Server Actions `sendEoiBatchAction` /
+  `respondToEoiAction` in `app/actions/eoi.ts`. The send UI (`EoiSend`) on the mwajiri
+  saved page; the mjakazi inbox (`EoiInbox`) at `/dashboard/mjakazi/opportunities`; a
+  "Sent interests" card on the mwajiri overview; the "Opportunities" mjakazi nav item.
+- **Files touched**: `src/payload/collections/expressions-of-interest/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/lib/audit.ts` (`eoi_responded`),
+  `src/payload/collections/audit-logs/schema.ts` (`eoi_responded`),
+  `src/services/eoi.service.ts` (new), `src/lib/email.ts` (4 templates),
+  `src/app/actions/eoi.ts` (new),
+  `src/components/dashboard/mwajiri/saved/eoi-send.tsx` (new),
+  `src/components/dashboard/mjakazi/opportunities/eoi-inbox.tsx` (new),
+  `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`, `src/app/(saas)/dashboard/mwajiri/page.tsx`,
+  `src/lib/dashboard-nav.ts`, `src/payload-types.ts` (regenerated),
+  `context/ui-registry.md`.
+- **Notes**: PostHog `interest_sent` (`count`) and `interest_responded` (`response`) fire
+  client-side (already in the code-standards event list). `eoi_sent` audit action already
+  existed; `eoi_responded` was added. `expired` is declared in the enum but no code
+  transitions into it yet — whether an unanswered EOI should auto-expire (and on what
+  trigger) is an open question, likely answered by the 8.3 nudge work. The collection is
+  service-owned: `read` is staff/admin (panel) and both SaaS surfaces read through
+  `eoi.service.ts` with explicit `select`s that never touch contact fields — sender
+  name/location are resolved for display, and no phone/email is ever exposed in either
+  direction. `eoi.service.ts` is now a named exemption under invariant #15 (non-contact
+  display fields only), documented in `architecture.md` and `code-standards.md`. Post-review
+  hardening: `pendingKey` (unique) is the DB backstop for "one outstanding interest per
+  pair" — a concurrent duplicate send fails on the unique index and rolls back its batch;
+  rejection frees the key so re-send is allowed, acceptance keeps it. The duplicated
+  `loadPayerEmail`/`loadWorkerEmail`/`loadUserEmail` helpers were consolidated into
+  `lib/user-email.ts` (subscription + verification + eoi now share it). `pnpm lint` (0
+  errors, 3 pre-existing `TaskConfig<any>` warnings) and `pnpm build` pass. **Manual
+  verification pending**: as an active mwajiri, save 4 wajakazi, send a batch of 4, accept
+  one and reject one from the mjakazi side, and check both inboxes for the send + response
+  emails; attempt a 2-profile batch and confirm it is refused.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
@@ -1000,7 +1048,7 @@ placeholder) as each is built. Data is already available unless marked "later ph
 
 ### Wajakazi (`/dashboard/mjakazi`) — already has completeness + status
 - [ ] Verification expiry countdown (N days left when `verified`)
-- [ ] Expressions of interest received — later (Phase 6.x)
+- [x] Expressions of interest received — built 2026-09-07 (Phase 8.1, `/dashboard/mjakazi/opportunities`)
 - [ ] Directory visibility toggle — later (Phase 6.x)
 
 ### Waajiri (`/dashboard/mwajiri`) — built 2026-09-06
@@ -1008,5 +1056,5 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [x] Renew/upgrade CTA when expiring (in the subscription status card)
 - [x] Directory CTA ("browse verified wajakazi") — live verified count + CTA
 - [x] Saved wajakazi (shortlist) — built 2026-09-06
-- [ ] EOIs sent — later (Phase 8.x)
+- [x] EOIs sent — built 2026-09-07 (Phase 8.1, "Sent interests" card)
 

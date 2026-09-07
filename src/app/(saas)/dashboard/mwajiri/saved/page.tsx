@@ -4,11 +4,13 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { EoiSend } from "@/components/dashboard/mwajiri/saved/eoi-send";
 import { Card, CardContent } from "@/components/ui/card";
 import { DirectoryCard } from "@/components/web/directory/directory-card";
 import config from "@/payload-config";
 import { listDirectoryProfilesByIds } from "@/services/directory.service";
 import { listSavedProfileIds } from "@/services/saved.service";
+import { getOwnSubscription } from "@/services/subscription.service";
 
 export const metadata: Metadata = { title: "Saved Wajakazi" };
 
@@ -21,7 +23,10 @@ const SavedWajakaziPage = async () => {
 	if (!user) redirect("/sign-in");
 
 	const payload = await getPayload({ config });
-	const ids = await listSavedProfileIds(payload, user);
+	const [ids, subscription] = await Promise.all([
+		listSavedProfileIds(payload, user),
+		getOwnSubscription(payload, user),
+	]);
 	const profiles = await listDirectoryProfilesByIds(payload, ids);
 
 	// preserve the save order (most recently saved first); a stale save — whose
@@ -30,6 +35,12 @@ const SavedWajakaziPage = async () => {
 	const ordered = ids
 		.map((id) => byId.get(id))
 		.filter((profile): profile is NonNullable<typeof profile> => profile !== undefined);
+
+	const sendable = ordered.map((profile) => ({
+		id: profile.id,
+		displayName: profile.displayName ?? "",
+		location: profile.location ?? null,
+	}));
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -50,11 +61,17 @@ const SavedWajakaziPage = async () => {
 					</CardContent>
 				</Card>
 			) : (
-				<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-					{ordered.map((profile) => (
-						<DirectoryCard key={profile.id} profile={profile} basePath={BROWSE_BASE} />
-					))}
-				</div>
+				<>
+					<EoiSend
+						profiles={sendable}
+						subscriptionActive={subscription?.subscriptionState === "active"}
+					/>
+					<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+						{ordered.map((profile) => (
+							<DirectoryCard key={profile.id} profile={profile} basePath={BROWSE_BASE} />
+						))}
+					</div>
+				</>
 			)}
 		</div>
 	);

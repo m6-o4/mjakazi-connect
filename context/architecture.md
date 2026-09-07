@@ -587,8 +587,10 @@ Therefore:
    anything.
 3. Every Local API read that can reach a profile passes `overrideAccess: false` and the
    authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
-   `lib/audit.ts` and `contact.service.ts` (which reads contact fields after its own
-   authorization) — named here, and nowhere else.
+   `lib/audit.ts`, `contact.service.ts` (which reads contact fields after its own
+   authorization) and `eoi.service.ts` (which resolves non-contact display fields — a
+   profile's `displayName`/`location`, and a sender's name — with an explicit `select` that
+   never includes contact fields) — named here, and nowhere else.
 4. Masking is a UI convenience, never a control. The data must be absent from the
    response, not hidden in it.
 
@@ -767,7 +769,9 @@ ask.
     unlock. Absence from the payload, not masking in the UI.
 15. Every Local API read that can reach a profile passes `overrideAccess: false` and the
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
-    `lib/audit.ts`, and `contact.service.ts` (the only reader of contact fields).
+    `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields), and
+    `eoi.service.ts` (resolves non-contact display fields with an explicit `select` that
+    never includes contact fields).
 16. Queries touching profiles pass an explicit `select`. Never rely on defaults.
 17. A profile is publicly visible only when `verificationState = verified` **and**
     `availabilityStatus = available` **and** not blacklisted **and** not deactivated.

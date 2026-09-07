@@ -64,6 +64,7 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Contact Unlocked", value: "contact_unlocked" },
 				// expression of interest lifecycle
 				{ label: "Expression of Interest Sent", value: "eoi_sent" },
+				{ label: "Expression of Interest Responded", value: "eoi_responded" },
 				// document vault
 				{ label: "Document Uploaded", value: "document_uploaded" },
 				{ label: "Document Deleted", value: "document_deleted" },

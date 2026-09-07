@@ -318,8 +318,9 @@ arguments, webhook payloads, query parameters that reach a database query.
 - **Every access rule lives in `payload/access/access-control.ts`.** Never declare one
   inline in a collection.
 - Every Local API call that can reach a profile passes `overrideAccess: false` and the
-  authenticated `req`. The named exemptions are the Clerk strategy, the Clerk webhook, and
-  `lib/audit.ts` — nothing else.
+  authenticated `req`. The named exemptions are the Clerk strategy, the Clerk webhook,
+  `lib/audit.ts`, `contact.service.ts` and `eoi.service.ts` (both named in
+  `architecture.md` invariant #15) — nothing else.
 - Queries touching profiles pass an explicit `select`. Contact fields are never selected
   by default.
 - Reading contact fields happens in exactly one place: `contact.service.ts`.

@@ -321,7 +321,154 @@ const sendSubscriptionActivatedEmail = async ({
 	});
 };
 
+type SendEoiReceivedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+};
+
+// expression of interest received — sent to the mjakazi when a mwajiri includes
+// them in a batch
+const sendEoiReceivedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+}: SendEoiReceivedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("New Interest in You")}
+    ${p(`Hi ${escapeHtml(firstName)}, <strong>${escapeHtml(mwajiriName)}</strong> is interested in hiring you and has sent you an expression of interest.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Log in to your dashboard and open Opportunities to accept or reject this interest.</p>
+    `)}
+    ${muted("Accepting an interest lets the employer know you're open to being contacted.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "New interest in you on Mjakazi Connect",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiBatchSentEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	count: number;
+};
+
+// batch sent — confirmation to the mwajiri that their interest went out
+const sendEoiBatchSentEmail = async ({
+	payload,
+	to,
+	firstName,
+	count,
+}: SendEoiBatchSentEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Interest Sent")}
+    ${p(`Hi ${escapeHtml(firstName)}, you sent an expression of interest to <strong>${count}</strong> wajakazi.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">You will be emailed as each wajakazi responds, and you can track their responses from your dashboard.</p>
+    `)}
+    ${muted("Only the wajakazi you selected received this interest.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your interest was sent",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiRespondedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mjakaziName: string;
+	response: "accepted" | "rejected";
+};
+
+// response received — notifies the mwajiri whether a wajakazi accepted or rejected
+const sendEoiRespondedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mjakaziName,
+	response,
+}: SendEoiRespondedEmailArgs): Promise<void> => {
+	const accepted = response === "accepted";
+	const nextCopy = accepted
+		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Great news — unlock ${escapeHtml(mjakaziName)}'s contact details to reach them directly.</p>`
+		: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">No problem — browse more verified wajakazi and send interest to others who may be a better fit.</p>`;
+
+	const content = `
+    ${h1(accepted ? "Interest Accepted" : "Interest Declined")}
+    ${p(`Hi ${escapeHtml(firstName)}, <strong>${escapeHtml(mjakaziName)}</strong> has ${accepted ? "accepted" : "declined"} your expression of interest.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      ${nextCopy}
+    `)}
+    ${muted("Log in to your dashboard to see all your responses.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: accepted ? "A wajakazi accepted your interest" : "A wajakazi declined your interest",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiResponseConfirmedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+	response: "accepted" | "rejected";
+};
+
+// response confirmation — sent to the mjakazi after they accept or reject
+const sendEoiResponseConfirmedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+	response,
+}: SendEoiResponseConfirmedEmailArgs): Promise<void> => {
+	const accepted = response === "accepted";
+	const nextCopy = accepted
+		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The employer has been notified and may reach out to you directly.</p>`
+		: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The employer has been notified that you are not interested.</p>`;
+
+	const content = `
+    ${h1(accepted ? "Interest Accepted" : "Interest Declined")}
+    ${p(`Hi ${escapeHtml(firstName)}, you ${accepted ? "accepted" : "declined"} the expression of interest from <strong>${escapeHtml(mwajiriName)}</strong>.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      ${nextCopy}
+    `)}
+    ${muted("You can review all your opportunities from your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: accepted ? "You accepted an interest" : "You declined an interest",
+		html: baseTemplate(content),
+	});
+};
+
 export {
+	sendEoiBatchSentEmail,
+	sendEoiReceivedEmail,
+	sendEoiRespondedEmail,
+	sendEoiResponseConfirmedEmail,
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,
 	sendSubscriptionReceiptEmail,

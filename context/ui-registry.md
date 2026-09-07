@@ -484,3 +484,42 @@ codebase.
   `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `headerAction`)
+
+### `EoiSend`
+
+- **Location**: `src/components/dashboard/mwajiri/saved/eoi-send.tsx`
+- **Purpose**: The batch expression-of-interest send control on the saved page — a mwajiri
+  selects 3–5 of their saved wajakazi and sends each an interest as one batch (gated on an
+  active subscription)
+- **Props**: `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
+- **Visual pattern**: shadcn `Card` with a `Send` icon in `text-accent`; bordered checkbox
+  rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
+  muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
+  disabled `Button` until 3–5 selected; accent `buttonVariants` "Subscribe to send
+  interest" link when not active; fires `interest_sent` (`count`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`
+
+### `EoiInbox`
+
+- **Location**: `src/components/dashboard/mjakazi/opportunities/eoi-inbox.tsx`
+- **Purpose**: The mjakazi opportunities inbox — received expressions of interest, with
+  Accept/Decline on pending ones and an outcome badge otherwise
+- **Props**: `{ eois: { id; mwajiriName; mwajiriLocation | null; state; sentAtLabel }[] }`
+- **Visual pattern**: `divide`-free stacked shadcn `Card`s; sender name in `text-heading`
+  + muted `location · sentAtLabel` line; `Badge` Accepted (default) / Declined
+  (secondary) / Pending or Expired (outline); `Button` "Accept" (default, `Check` icon) +
+  "Decline" (outline, `X` icon) on `sent`; `Inbox` empty state; fires `interest_responded`
+  (`response`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
+
+### `OpportunitiesCard`
+
+- **Location**: `src/components/dashboard/mjakazi/opportunities-card.tsx`
+- **Purpose**: The opportunities summary on the mjakazi overview — a count of pending
+  expressions of interest and a link into the full opportunities inbox (mirrors the
+  verification box)
+- **Props**: `{ pendingCount: number }`
+- **Visual pattern**: shadcn `Card`; `Inbox` icon in `text-accent`; description swaps
+  between "You have N interest(s) awaiting your response." and "Waajiri interested in
+  hiring you will appear here."; `buttonVariants` "Review opportunities" link
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`

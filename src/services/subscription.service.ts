@@ -4,6 +4,7 @@ import type { Payload } from "payload";
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
 import { sendSubscriptionActivatedEmail, sendSubscriptionReceiptEmail } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
+import { loadUserEmail } from "@/lib/user-email";
 import type { Payment, Subscription, User } from "@/payload-types";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
 
@@ -359,26 +360,6 @@ const stackSubscription = async (
 	}
 };
 
-// resolves the payer's email + first name for a notification send. a trusted
-// read: the email is used only as a send destination, never returned to the client
-const loadPayerEmail = async (
-	payload: Payload,
-	userId: string,
-): Promise<{ email: string; firstName: string } | null> => {
-	try {
-		const user = await payload.findByID({
-			collection: "users",
-			id: userId,
-			depth: 0,
-			overrideAccess: true,
-		});
-		if (!user?.email) return null;
-		return { email: user.email, firstName: user.firstName ?? "there" };
-	} catch {
-		return null;
-	}
-};
-
 // fire-and-forget purchase notifications — a receipt email and an activation
 // email. the transition is already committed by the time this runs, so a failed
 // send never blocks the state change
@@ -392,7 +373,7 @@ const notifySubscriptionPurchase = async (
 		const userId = toId(subscription.user);
 		if (!userId) return;
 
-		const recipient = await loadPayerEmail(payload, userId);
+		const recipient = await loadUserEmail(payload, userId);
 		if (!recipient) return;
 
 		const callback = payment.callbackPayload as unknown as StkCallback | null | undefined;

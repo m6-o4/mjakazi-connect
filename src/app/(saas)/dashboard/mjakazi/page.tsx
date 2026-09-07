@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { OpportunitiesCard } from "@/components/dashboard/mjakazi/opportunities-card";
 import { ProfileCompletenessCard } from "@/components/dashboard/mjakazi/profile-completeness-card";
 import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { VerificationStatusCard } from "@/components/dashboard/mjakazi/verification-status-card";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/profile-constants";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import config from "@/payload-config";
+import { listReceivedEois } from "@/services/eoi.service";
 import { getMissingRequiredFields, getOwnProfile } from "@/services/profile.service";
 import { getFreeResubmissionsRemaining } from "@/services/verification.service";
 
@@ -31,11 +33,15 @@ const MjakaziDashboardPage = async () => {
 	if (!user) redirect("/sign-in");
 
 	const payload = await getPayload({ config });
-	const profile = await getOwnProfile(payload, user);
+	const [profile, receivedEois] = await Promise.all([
+		getOwnProfile(payload, user),
+		listReceivedEois(payload, user),
+	]);
 
 	const profileComplete = profile?.profileComplete ?? false;
 	const verificationState = profile?.verificationState ?? "draft";
 	const missingFields = profile ? new Set(getMissingRequiredFields(profile)) : new Set();
+	const pendingInterestCount = receivedEois.filter((eoi) => eoi.state === "sent").length;
 
 	const checklistItems = PROFILE_REQUIRED_FIELDS.map((field) => ({
 		label: PROFILE_REQUIRED_LABELS[field],
@@ -107,6 +113,8 @@ const MjakaziDashboardPage = async () => {
 			) : (
 				<ProfileCompletenessCard items={checklistItems} />
 			)}
+
+			<OpportunitiesCard pendingCount={pendingInterestCount} />
 		</div>
 	);
 };
