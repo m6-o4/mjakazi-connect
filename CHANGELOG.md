@@ -1,3 +1,15 @@
+# [2.9.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.8.0...v2.9.0) (2026-09-07)
+
+
+### Bug Fixes
+
+* **wajakazi-archive:** align view-all button styles with posts archive ([2a2c9fd](https://github.com/m6-o4/mjakazi-connect/commit/2a2c9fd2580dc354c9b66f3924a6743a99a43207))
+
+
+### Features
+
+* **verification:** expire stale verified profiles daily ([a91ac2a](https://github.com/m6-o4/mjakazi-connect/commit/a91ac2af9cea7e2443ad12416bd2e3c0334147f1))
+
 # [2.8.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.7.0...v2.8.0) (2026-09-07)
 
 ### Features
