@@ -1,30 +1,37 @@
 # [2.8.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.7.0...v2.8.0) (2026-09-07)
 
-
 ### Features
 
-* **contact:** add contact unlock for subscribed mwajiri ([cf23a9e](https://github.com/m6-o4/mjakazi-connect/commit/cf23a9e52d60decfb61b7331a8b4ba6d2d69deeb))
-* **dashboard:** add mwajiri browse, saved shortlist, and overview pages ([a396d8d](https://github.com/m6-o4/mjakazi-connect/commit/a396d8ddabf1707e83ccd4ad5cb26057ff833300))
-* **directory:** add public profile directory with listing and detail pages ([282500f](https://github.com/m6-o4/mjakazi-connect/commit/282500fe9206331cc8cb36e3d9fc2ed7200f3f7a))
+- **contact:** add contact unlock for subscribed mwajiri
+  ([cf23a9e](https://github.com/m6-o4/mjakazi-connect/commit/cf23a9e52d60decfb61b7331a8b4ba6d2d69deeb))
+- **dashboard:** add mwajiri browse, saved shortlist, and overview pages
+  ([a396d8d](https://github.com/m6-o4/mjakazi-connect/commit/a396d8ddabf1707e83ccd4ad5cb26057ff833300))
+- **directory:** add public profile directory with listing and detail pages
+  ([282500f](https://github.com/m6-o4/mjakazi-connect/commit/282500fe9206331cc8cb36e3d9fc2ed7200f3f7a))
 
 # [2.7.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.6.0...v2.7.0) (2026-09-04)
 
-
 ### Features
 
-* add verification resubmission and transactional payment emails ([8ee79fe](https://github.com/m6-o4/mjakazi-connect/commit/8ee79fe83c7c943a74d76bd276a0139c3654849e))
-* **dashboard:** add admin and staff overview pages ([d7e83b6](https://github.com/m6-o4/mjakazi-connect/commit/d7e83b657206b0abbe2b0a5f0da775946ec7b687))
-* **mjakazi:** add availability status updates for worker profiles ([a190887](https://github.com/m6-o4/mjakazi-connect/commit/a1908879975aa53a22142a226c6311578b4293a4))
-* **pages:** add wajakazi archive block for worker listings ([b9cda23](https://github.com/m6-o4/mjakazi-connect/commit/b9cda23fbf993058f09bdfa3ec27c74c2417e8ce))
-* **settings:** add self-service account deletion ([7329a16](https://github.com/m6-o4/mjakazi-connect/commit/7329a160e5383929795379b48f29d92d28c6f4ee))
+- add verification resubmission and transactional payment emails
+  ([8ee79fe](https://github.com/m6-o4/mjakazi-connect/commit/8ee79fe83c7c943a74d76bd276a0139c3654849e))
+- **dashboard:** add admin and staff overview pages
+  ([d7e83b6](https://github.com/m6-o4/mjakazi-connect/commit/d7e83b657206b0abbe2b0a5f0da775946ec7b687))
+- **mjakazi:** add availability status updates for worker profiles
+  ([a190887](https://github.com/m6-o4/mjakazi-connect/commit/a1908879975aa53a22142a226c6311578b4293a4))
+- **pages:** add wajakazi archive block for worker listings
+  ([b9cda23](https://github.com/m6-o4/mjakazi-connect/commit/b9cda23fbf993058f09bdfa3ec27c74c2417e8ce))
+- **settings:** add self-service account deletion
+  ([7329a16](https://github.com/m6-o4/mjakazi-connect/commit/7329a160e5383929795379b48f29d92d28c6f4ee))
 
 # [2.6.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.5.0...v2.6.0) (2026-09-02)
 
-
 ### Features
 
-* subscriptions ([8b3dd26](https://github.com/m6-o4/mjakazi-connect/commit/8b3dd2664abb4a93ad5ff2d2904b0cd9a8b3bab4))
-* **subscriptions:** add subscription collection and state machine ([5597443](https://github.com/m6-o4/mjakazi-connect/commit/5597443d54853921aa45556d6db43693e547755e))
+- subscriptions
+  ([8b3dd26](https://github.com/m6-o4/mjakazi-connect/commit/8b3dd2664abb4a93ad5ff2d2904b0cd9a8b3bab4))
+- **subscriptions:** add subscription collection and state machine
+  ([5597443](https://github.com/m6-o4/mjakazi-connect/commit/5597443d54853921aa45556d6db43693e547755e))
 
 # [2.5.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.4.0...v2.5.0) (2026-09-01)
 
