@@ -5,6 +5,7 @@ import { writeAuditLog, type AuditAction } from "@/lib/audit";
 import {
 	sendPaymentConfirmedEmail,
 	sendVerificationApprovedEmail,
+	sendVerificationExpiredEmail,
 	sendVerificationRejectedEmail,
 } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
@@ -178,7 +179,8 @@ const notifyWorker = async (
 	profile: WajakaziProfile,
 	outcome:
 		| { type: "approved" }
-		| { type: "rejected"; reason: string; attemptsRemaining: number },
+		| { type: "rejected"; reason: string; attemptsRemaining: number }
+		| { type: "expired" },
 ): Promise<void> => {
 	try {
 		const recipient = await loadWorkerEmail(payload, profile);
@@ -190,13 +192,19 @@ const notifyWorker = async (
 				to: recipient.email,
 				firstName: recipient.firstName,
 			});
-		} else {
+		} else if (outcome.type === "rejected") {
 			await sendVerificationRejectedEmail({
 				payload,
 				to: recipient.email,
 				firstName: recipient.firstName,
 				rejectionReason: outcome.reason,
 				attemptsRemaining: outcome.attemptsRemaining,
+			});
+		} else {
+			await sendVerificationExpiredEmail({
+				payload,
+				to: recipient.email,
+				firstName: recipient.firstName,
 			});
 		}
 	} catch (error) {
@@ -653,8 +661,7 @@ const revertToReview = async (
 	});
 };
 
-// verified → verification_expired. driven by the expiry job in Phase 7.1; no
-// caller in this phase
+// verified → verification_expired. driven by the expiry job in Phase 7.1
 const expireVerification = async (
 	payload: Payload,
 	profileId: string,
@@ -672,7 +679,7 @@ const expireVerification = async (
 		return fail("Verification has not yet expired.", "not_expired");
 	}
 
-	return applyTransition({
+	const result = await applyTransition({
 		payload,
 		profile,
 		nextState: "verification_expired",
@@ -680,6 +687,50 @@ const expireVerification = async (
 		actor: null,
 		source: "system",
 	});
+
+	if (result.success) {
+		await notifyWorker(payload, result.data, { type: "expired" });
+	}
+
+	return result;
+};
+
+// polled daily by the 7.1 expiry job. finds verified profiles past their
+// verificationExpiry and expires each idempotently, reusing expireVerification so
+// the transition, audit entry and expiry email live in exactly one place. a missed
+// window self-corrects on the next run because the query polls for eligible records
+const expireExpiredVerifications = async (
+	payload: Payload,
+): Promise<{ expired: number }> => {
+	const now = new Date();
+
+	let candidates: WajakaziProfile[];
+	try {
+		// `verificationState` is indexed; the expiry window is applied in JS so the
+		// query stays on the index and the result set stays bounded
+		const result = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { verificationState: { equals: "verified" } },
+			limit: 200,
+			overrideAccess: true,
+		});
+		candidates = result.docs;
+	} catch (error) {
+		console.error("[services/verification] expiry lookup failed:", error);
+		return { expired: 0 };
+	}
+
+	let expired = 0;
+
+	for (const profile of candidates) {
+		if (!profile.verificationExpiry || new Date(profile.verificationExpiry) > now)
+			continue;
+
+		const result = await expireVerification(payload, profile.id);
+		if (result.success) expired += 1;
+	}
+
+	return { expired };
 };
 
 // any live state → blacklisted. admin only, terminal, mandatory reason
@@ -789,6 +840,7 @@ export {
 	approveVerification,
 	blacklistProfile,
 	deactivateProfile,
+	expireExpiredVerifications,
 	expireVerification,
 	getFreeResubmissionsRemaining,
 	listPendingReviews,

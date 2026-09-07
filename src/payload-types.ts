@@ -140,6 +140,7 @@ export interface Config {
     tasks: {
       'payment-timeout': TaskPaymentTimeout;
       'subscription-expiry': TaskSubscriptionExpiry;
+      'verification-expiry': TaskVerificationExpiry;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -1097,7 +1098,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'payment-timeout' | 'subscription-expiry' | 'schedulePublish';
+        taskSlug: 'inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1130,7 +1131,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'payment-timeout' | 'subscription-expiry' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -2356,6 +2357,14 @@ export interface TaskPaymentTimeout {
  * via the `definition` "TaskSubscription-expiry".
  */
 export interface TaskSubscriptionExpiry {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskVerification-expiry".
+ */
+export interface TaskVerificationExpiry {
   input?: unknown;
   output?: unknown;
 }

@@ -924,6 +924,43 @@ finished.
   (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact appears,
    `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
 
+### 2026-09-07 — Phase 7.1: Verification expiry task
+
+- **What was built**: The `verification-expiry` job (daily, `0 0 * * *`). A new
+  `expireExpiredVerifications` in `verification.service.ts` polls `verified` profiles past
+  their `verificationExpiry` and expires each idempotently by reusing the existing
+  `expireVerification` transition (compare-and-swap, `verification_expired` audit entry).
+  `expireVerification` now emails the worker on success via a new
+  `sendVerificationExpiredEmail` ("renew to stay visible") through the existing
+  `notifyWorker` helper. Registered the task in `payload.config.ts`.
+- **Files touched**: `src/jobs/verification-expiry.ts` (new),
+  `src/services/verification.service.ts` (`expireExpiredVerifications`, `expireVerification`
+  now notifies), `src/lib/email.ts` (`sendVerificationExpiredEmail`),
+  `src/payload.config.ts` (`jobs.tasks`).
+- **Notes**: Hiding is automatic — `DIRECTORY_VISIBLE` requires `verified`, so a profile
+  transitions to `verification_expired` and drops out of the directory and the saved list
+  with no extra work; the `revalidateProfile` afterChange hook fires on the job's update and
+  invalidates the SSG homepage. The expiry email was pulled forward out of the 12.1
+  notifications sweep (7.1's "Done when" requires it); a pre-expiry reminder is still
+  deferred. No schema change, so no `generate:types`. `pnpm lint` (0 errors, 3 warnings —
+  the new `TaskConfig<any>` warning matches the other two jobs) and `pnpm build` pass.
+- **Bug fixed during manual verification**: the `revalidateProfile` / `revalidateProfileDelete`
+  afterChange hooks called `revalidatePath`/`revalidateTag` unguarded. Outside a Next.js
+  request context (the expiry job runs in Payload's background queue, and the throwaway
+  `tsx` script has no request store), `revalidatePath("/")` throws
+  `Invariant: static generation store missing`. Payload captured that throw and returned
+  `docs: []` + an error, so `applyTransition` read `docs.length === 0` as a `conflict` and
+  skipped the `verification_expired` audit entry **and** the worker email — even though the
+  state write had already committed. Fixed by wrapping the revalidate calls in try/catch
+  (revalidation is best-effort; the directory is dynamic anyway). This also un-breaks any
+  other non-request write to `wajakazi-profiles`.
+- **Files touched (bug fix)**: `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts`
+- **Manual verification done**: backdated a verified profile's `verificationExpiry` and ran
+  the task via the throwaway `tsx` script — `expireExpiredVerifications` expired 2 eligible
+  profiles (the target plus a second past-expiry profile), the target's state became
+  `verification_expired`, and the success path (audit entry + worker email) fired. Verify the
+  `verification_expired` email actually arrived (check inbox/spam) to close the loop.
+
 ### 2026-09-07 — Wajakazi archive button style parity (minor UI fix)
 
 - **What was built**: The wajakazi archive block's "View all wajakazi" buttons (desktop

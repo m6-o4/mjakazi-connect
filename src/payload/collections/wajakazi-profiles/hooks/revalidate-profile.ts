@@ -15,15 +15,23 @@ const revalidateProfile: CollectionAfterChangeHook<WajakaziProfile> = ({
 }) => {
 	if (context.disableRevalidate) return doc;
 
-	revalidatePath("/");
-	revalidatePath("/directory");
-	revalidateTag("directory-sitemap", "max");
+	// revalidatePath/revalidateTag throw "static generation store missing" outside
+	// a request context (e.g. the verification-expiry job, which runs in Payload's
+	// background queue). revalidation is best-effort — the directory pages are
+	// dynamic anyway, so swallow the error rather than failing the write.
+	try {
+		revalidatePath("/");
+		revalidatePath("/directory");
+		revalidateTag("directory-sitemap", "max");
 
-	if (doc.slug) revalidatePath(`/directory/${doc.slug}`);
+		if (doc.slug) revalidatePath(`/directory/${doc.slug}`);
 
-	// the slug is set-once, but if it ever changes the old URL must be invalidated
-	if (previousDoc?.slug && previousDoc.slug !== doc.slug) {
-		revalidatePath(`/directory/${previousDoc.slug}`);
+		// the slug is set-once, but if it ever changes the old URL must be invalidated
+		if (previousDoc?.slug && previousDoc.slug !== doc.slug) {
+			revalidatePath(`/directory/${previousDoc.slug}`);
+		}
+	} catch {
+		// no request store — nothing to revalidate
 	}
 
 	return doc;
@@ -36,11 +44,15 @@ const revalidateProfileDelete: CollectionAfterDeleteHook<WajakaziProfile> = ({
 }) => {
 	if (context.disableRevalidate) return doc;
 
-	revalidatePath("/");
-	revalidatePath("/directory");
-	revalidateTag("directory-sitemap", "max");
+	try {
+		revalidatePath("/");
+		revalidatePath("/directory");
+		revalidateTag("directory-sitemap", "max");
 
-	if (doc?.slug) revalidatePath(`/directory/${doc.slug}`);
+		if (doc?.slug) revalidatePath(`/directory/${doc.slug}`);
+	} catch {
+		// no request store — nothing to revalidate
+	}
 
 	return doc;
 };

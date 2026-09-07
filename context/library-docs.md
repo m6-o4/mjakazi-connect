@@ -314,6 +314,13 @@ Recent enough that training data is wrong about several things.
   Browser extensions inject attributes into `body` before hydration.
 - **Caching is uncached by default.** Dynamic code runs at request time unless explicitly
   cached.
+- **`revalidatePath`/`revalidateTag` throw outside a request context.** Called from a
+  Payload background job (the job queue runs outside any request) or a standalone script,
+  they throw `Invariant: static generation store missing`. Payload then reports the write
+  as failed (`docs: []` + an error in the result) even though the DB write already
+  committed. Always wrap revalidation in try/catch inside `afterChange`/`afterDelete`
+  hooks, or set `context.disableRevalidate` on the write (see
+  `wajakazi-profiles/hooks/revalidate-profile.ts`).
 
 ### Project rules
 
