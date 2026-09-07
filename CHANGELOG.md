@@ -1,3 +1,12 @@
+# [2.8.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.7.0...v2.8.0) (2026-09-07)
+
+
+### Features
+
+* **contact:** add contact unlock for subscribed mwajiri ([cf23a9e](https://github.com/m6-o4/mjakazi-connect/commit/cf23a9e52d60decfb61b7331a8b4ba6d2d69deeb))
+* **dashboard:** add mwajiri browse, saved shortlist, and overview pages ([a396d8d](https://github.com/m6-o4/mjakazi-connect/commit/a396d8ddabf1707e83ccd4ad5cb26057ff833300))
+* **directory:** add public profile directory with listing and detail pages ([282500f](https://github.com/m6-o4/mjakazi-connect/commit/282500fe9206331cc8cb36e3d9fc2ed7200f3f7a))
+
 # [2.7.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.6.0...v2.7.0) (2026-09-04)
 
 
