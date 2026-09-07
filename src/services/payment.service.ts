@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { subMinutes } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
@@ -472,7 +473,7 @@ const handleCallback = async (
 const STK_TIMEOUT_MINUTES = 2;
 
 const expireTimedOutPayments = async (payload: Payload): Promise<{ expired: number }> => {
-	const cutoff = new Date(Date.now() - STK_TIMEOUT_MINUTES * 60_000);
+	const cutoff = subMinutes(new Date(), STK_TIMEOUT_MINUTES);
 
 	let candidates: Payment[];
 	try {

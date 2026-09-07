@@ -730,6 +730,200 @@ finished.
 - **Notes**: removed a stray `import { features } from "process"` from `pages/schema.ts`.
   Email `replyTo` + footer contact now read `RESEND_REPLY_TO`.
 
+### 2026-09-06 — Phase 6.1: Public directory
+
+- **What was built**: The public directory at `/directory` (list) and `/directory/[slug]`
+  (detail), both dynamic server components in the `(web)` route group. The list filters by
+  job category, location, experience bucket (0–2 / 3–5 / 6–9 / 10+ years) and free-text
+  name search, all as URL query params; sorts newest-verified-first
+  (`-verificationReviewedAt`); paginates 9 per numbered page. The detail page shows the full
+  professional profile (photo, name, skills, about, location, experience, education,
+  languages, work preference, availability, salary) with a "Join as a mwajiri" CTA — and
+  **no contact fields anywhere in the response**.
+- **Files touched**: `src/services/directory.service.ts` (new),
+  `src/payload/collections/wajakazi-profiles/schema.ts` (slug field),
+  `src/payload/collections/wajakazi-profiles/hooks/ensure-slug.ts` (new),
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (new),
+  `src/app/(web)/directory/{page,[slug]/page}.tsx` (new),
+  `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination,directory-profile-detail,directory-profile-view-tracker}.tsx`
+  (new), `src/components/ui/pagination.tsx` (installed via shadcn CLI), `src/payload-types.ts`
+  (regenerated), `context/ui-registry.md`, `context/ui-rules.md`,
+  `_scratch_backfill_profile_slugs.ts` (scratch, deleted after running).
+- **Notes**: Contact protection is payload-level, not UI — the directory read passes
+  `overrideAccess: false` + `DIRECTORY_VISIBLE` + an explicit `select` that omits `phone`,
+  `user`, `legalFirstName/LastName`, `dateOfBirth`, `nationality`, `maritalStatus`,
+  `religion` and all verification bookkeeping (invariant #14/#16). The new `slug` field is
+  `index: true` but deliberately **not** `unique` — a random 6-hex suffix guarantees
+  practical uniqueness while avoiding a Mongo unique-index migration hazard for
+  pre-existing profiles; it is set-once by a `beforeChange` hook (`ensureSlug`) so editing
+  a profile never changes its public URL. A stale detail link (profile went `hired` /
+  `verification_expired`) resolves to a 404 via the guarded read. PostHog
+  `directory_searched` (filters, resultCount) and `profile_viewed` (`isUnlocked: false`)
+  wired. `revalidate-profile.ts` mirrors the posts revalidation hook (revalidates
+  `/directory`, `/directory/[slug]`, and a `directory-sitemap` tag) — a no-op today since the
+  directory is dynamic, but future-proofs ISR/sitemap caching. Detail layout uses
+  `lg:grid-cols-3` + `lg:col-span-1/2` (photo 1/3, content 2/3); the earlier
+  `grid-cols-[minmax(...)]` arbitrary value silently generated no CSS, so it was replaced
+  with the standard utilities. `pnpm lint` (0 errors) and `pnpm build` pass.
+- **Follow-ups / manual steps — all complete (2026-09-06)**: (1) slug backfill ran in dev
+  (`pnpm.cmd exec tsx _scratch_backfill_profile_slugs.ts`) and the scratch file deleted.
+  (2) CMS `/directory` page deleted. (3) Header "Find Wajakazi" nav points at `/directory`.
+  (4) Sitemap wired for `/directory` + detail slugs. **Manual verification — complete**:
+  profiles render newest-verified-first; name search, category/location/experience filters,
+  and 9-per-page pagination all update the URL and results; detail page opens from cards;
+  **view-source + RSC payload confirmed no phone/email leaks**; a shared link to a
+  since-hidden profile returns 404. **Phase 6.1 is fully done** — next is Phase 6.2
+  (Latest Verified Profiles block).
+
+### 2026-09-06 — Phase 6.2: Latest Verified Profiles block
+
+- **What was built**: Refactored the `wajakazi-archive` marketing block so its cards are the
+  directory's `DirectoryCard` and its data comes from the guarded `listDirectoryProfiles`
+  service — the same path `/directory` uses. The block shows the latest 3 verified profiles
+  (sort `-verificationReviewedAt`), links each card to `/directory/[slug]`, and keeps its
+  headline / headline description / "View all wajakazi" button / background variant / empty
+  state. Removed the dead `limit`, `buttonLink`, `buttonText` block fields and deleted the
+  unused `WajakaziTeaserCard`.
+- **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx`,
+  `src/services/directory.service.ts` (optional `limit` param),
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (also revalidates
+  `/` so the SSG homepage refreshes on verification),
+  `src/components/web/directory/directory-card.tsx` (comment), `src/payload-types.ts`
+  (`WajakaziArchive` fields removed), `src/components/web/wajakazi-teaser-card.tsx`
+  (deleted), `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors) and `pnpm build` pass. The block now reads through
+  `overrideAccess: false` + `DIRECTORY_VISIBLE` + the public-field `select` instead of the
+  old `overrideAccess: true` hand-rolled query, so the homepage can never leak a non-live
+  profile or a contact field. **Manual verification complete** (verify a profile → reload
+  homepage → new profile appears in the block, card links to the detail page).
+  **Phase 6.2 done** — next is Phase 6.3 (Mwajiri browse).
+
+### 2026-09-06 — Phase 6.3: Mwajiri browse
+
+- **What was built**: The authenticated mwajiri browse at `/dashboard/mwajiri/browse`
+  (list) and `/dashboard/mwajiri/browse/[slug]` (detail). Both read the **same guarded
+  directory path** as `/directory` (`listDirectoryProfiles` / `getDirectoryProfile` with
+  `DIRECTORY_PUBLIC_FIELDS` + `overrideAccess: false`), so the data is identical and no
+  contact field is ever selected. The detail swaps the public "Join as a mwajiri" CTA for a
+  masked contact area: placeholder phone/email rows plus a subscription-aware affordance —
+  an `active` subscriber sees a disabled "Unlock contact details" button (wired in 6.4),
+  everyone else sees a live "Subscribe to unlock" link to `/dashboard/mwajiri/subscription`.
+  Added "Browse" to the mwajiri nav.
+- **Files touched**: `src/app/(saas)/dashboard/mwajiri/browse/{page.tsx,[slug]/page.tsx}`
+  (new), `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` (new),
+  `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination}.tsx`
+  (added inert-by-default `basePath` prop), `src/components/web/directory/directory-profile-detail.tsx`
+  (`backHref` + `contactSlot` props), `src/lib/dashboard-nav.ts`, `context/ui-registry.md`.
+- **Notes**: The shared `web/directory` components are parameterized, not forked — each new
+  prop defaults to the public-directory behavior, so `/directory` cannot regress. Masking is
+  UX only; enforcement is the guarded read that never selects `phone`/`user`/legal fields.
+  Reuses `DirectoryProfileViewTracker` (`profile_viewed`, `isUnlocked: false`; 6.4 flips it).
+  No schema change, so no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings)
+  and `pnpm build` pass; `/dashboard/mwajiri/browse` and `.../[slug]` build as `ƒ (Dynamic)`.
+  **Manual verification complete (2026-09-07)**: non-subscriber → masked + subscribe CTA
+  routes to `/subscription`; subscriber (`active`) → masked + disabled unlock; non-mwajiri →
+  redirected by the existing guard; view-source/RSC payload contains no phone/email.
+  **Phase 6.3 done** — next is Phase 6.4 (Contact unlock).
+
+### 2026-09-06 — Mwajiri dashboard overview
+
+- **What was built**: A real `/dashboard/mwajiri` overview replacing the
+  `dashboard/[role]` placeholder — a `SubscriptionStatusCard` (the no-subscription notice +
+  plan CTA, days-remaining/expiry for `active`, honest pending/restricted states), a "Browse
+  wajakazi" card with a live verified+available count, and a "Quick actions" card (Manage
+  subscription / Settings).
+- **Files touched**: `src/app/(saas)/dashboard/mwajiri/page.tsx` (new),
+  `src/components/dashboard/mwajiri/subscription-status-card.tsx` (new),
+  `context/ui-registry.md`.
+- **Notes**: The live count reuses `listDirectoryProfiles` with `limit: 1` (only `totalDocs`
+  is needed), so it reads the same guarded path and can never count a non-live profile.
+  No schema change, no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) and
+  `pnpm build` pass; `/dashboard/mwajiri` builds as `ƒ (Dynamic)`. **Manual verification
+  complete (2026-09-07)**: a mwajiri with no subscription sees the "no subscription" notice +
+  plan CTA; an active subscriber sees tier + days remaining.
+
+### 2026-09-06 — Saved wajakazi (shortlist)
+
+- **What was built**: The "saved wajakazi" bookmark — the top of the browse → save →
+  unlock funnel. A new `saved-wajakazi` collection (one row per mwajiri+mjakazi, compound
+  unique index), a `saved.service.ts` (`toggleSave` / `isSaved` / `listSavedProfileIds`),
+  a `toggleSaveAction` Server Action, a `SaveToggle` on the browse detail (via a new
+  `headerAction` slot on `DirectoryProfileDetail`), and a `/dashboard/mwajiri/saved` list
+  page (nav item "Saved"). Saving is free and pre-subscription.
+- **Files touched**: `src/payload/collections/saved-wajakazi/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/saved.service.ts` (new),
+  `src/services/directory.service.ts` (`listDirectoryProfilesByIds`),
+  `src/app/actions/saved.ts` (new),
+  `src/components/dashboard/mwajiri/browse/save-toggle.tsx` (new),
+  `src/components/web/directory/directory-profile-detail.tsx` (`headerAction` slot),
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/saved/page.tsx` (new), `src/lib/dashboard-nav.ts`,
+  `src/payload-types.ts` (regenerated), `context/code-standards.md` (`profile_saved`
+  event), `context/ui-registry.md`.
+- **Notes**: Saves write no audit entry (a user preference, not a domain state transition);
+  the `profile_saved` PostHog event (`saved` boolean) tracks the behaviour. All
+  `saved-wajakazi` reads use `depth: 0` so the `mjakazi`/`user` relationships stay id
+  strings and never pull contact fields. The saved list reads through the guarded directory
+  path (`listDirectoryProfilesByIds` = `DIRECTORY_VISIBLE` + public select), so a saved
+  profile that leaves the directory (hired / on_break / expired) silently drops out of the
+  list. `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass;
+  `/dashboard/mwajiri/saved` builds as `ƒ (Dynamic)`. **Manual verification complete
+  (2026-09-07)**: save/unsave from a browse detail, saved list updates, cards link back to
+  the browse detail.
+
+### 2026-09-07 — Subscription purchase emails split (receipt + activation)
+
+- **What was built**: The mwajiri subscription purchase now sends two emails instead of
+  one. A new `sendSubscriptionReceiptEmail` (payment receipt — plan, amount, M-Pesa
+  receipt number) fires alongside the existing `sendSubscriptionActivatedEmail`, which was
+  slimmed to plan + access-until (the receipt and amount moved out of it). Both are sent
+  fire-and-forget from `subscription.service.ts` after a confirmed subscription payment
+  activates (or stacks) access, so a failed send never blocks the state change.
+- **Files touched**: `src/lib/email.ts` (`sendSubscriptionReceiptEmail` added,
+  `sendSubscriptionActivatedEmail` slimmed), `src/services/subscription.service.ts`
+  (`notifySubscriptionActivated` → `notifySubscriptionPurchase`, now sends both emails).
+- **Notes**: No schema change (the receipt number is still read from `callbackPayload`
+  metadata, not a dedicated field) and no new PostHog events, so no `generate:types`. The
+  receipt and activation both fire for renewals while active — a renewal is a new payment,
+  so a fresh receipt is correct. `pnpm lint` (0 errors, 2 pre-existing warnings) and
+  `pnpm build` pass. **Manual verification complete (2026-09-07)**: both emails received —
+  a "Payment received" receipt (amount + receipt number) and a "Your subscription is
+  active" notice (plan + access-until).
+
+### 2026-09-07 — Phase 6.4: Contact unlock
+
+- **What was built**: The contact vault reveal — the transaction the product exists to
+  enable. A new sealed `contact-unlocks` collection (one row per mwajiri+mjakazi, compound
+  unique index; `mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`,
+  `unlockedAt`, `subscription → subscriptions`; `create`/`update`/`delete` restricted,
+  `read` = `isAdminOrOwner("mwajiri")`). A new `services/contact.service.ts` — the **only**
+  place phone/email are read — with `hasUnlock`, `getContact` (permanent: does not re-check
+  directory visibility), and `revealContact` (role + active-subscription gate + a
+  `DIRECTORY_VISIBLE` re-check + idempotent create behind the unique index + `contact_unlocked`
+  audit entry). A `revealContactAction` Server Action; `BrowseContactCard` converted to a
+  three-state client component; the browse detail pre-fetches an already-unlocked contact
+  server-side; `DirectoryProfileViewTracker` gained an `isUnlocked` prop.
+- **Files touched**: `src/payload/collections/contact-unlocks/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/contact.service.ts` (new),
+  `src/app/actions/contact.ts` (new),
+  `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`,
+  `src/components/web/directory/directory-profile-view-tracker.tsx`, `src/lib/audit.ts`
+  (`contact_unlocked`), `src/payload/collections/audit-logs/schema.ts`, `src/payload-types.ts`
+  (regenerated), `context/architecture.md` (invariant #15 + contact-vault exemption now
+  name `contact.service.ts`), `context/ui-registry.md`.
+- **Notes**: Deviates from the build plan's literal `api/actions/contact/reveal` route —
+  `revealContactAction` is a Server Action per the Server-Action-first rule. `contact.service.ts`
+  reads phone + email via `overrideAccess: true` because email lives on `users`, which a
+  mwajiri cannot read through access control; it is the named fourth exemption to invariant
+  #15. The reveal returns contact only to the mwajiri who just unlocked it (the deliverable,
+  not a leak). `contact_unlocked` PostHog fires client-side   (`tierAtUnlock`); `profile_viewed`
+  fires `isUnlocked: true` when already unlocked. No `payment` relation on unlocks (the
+  activating payment is on `subscription.lastPaymentId` + the audit metadata). `pnpm lint`
+  (0 errors, 2 pre-existing warnings) and `pnpm build` pass. **Manual verification complete
+  (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact appears,
+  `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
@@ -760,9 +954,10 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [ ] Expressions of interest received — later (Phase 6.x)
 - [ ] Directory visibility toggle — later (Phase 6.x)
 
-### Waajiri (`/dashboard/mwajiri`) — currently placeholder
-- [ ] Subscription status + days remaining → links to subscription
-- [ ] Renew/upgrade CTA when expiring
-- [ ] Directory CTA ("browse verified wajakazi") — later (Phase 6.1)
-- [ ] Saved wajakazi / EOIs sent — later (Phase 6.x)
+### Waajiri (`/dashboard/mwajiri`) — built 2026-09-06
+- [x] Subscription status + days remaining → links to subscription
+- [x] Renew/upgrade CTA when expiring (in the subscription status card)
+- [x] Directory CTA ("browse verified wajakazi") — live verified count + CTA
+- [x] Saved wajakazi (shortlist) — built 2026-09-06
+- [ ] EOIs sent — later (Phase 8.x)
 

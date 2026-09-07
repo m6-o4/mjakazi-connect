@@ -323,6 +323,11 @@ homepage.
 affordances for subscribers. **Done when**: masked without a subscription, unlockable with
 one. **Verify**: browse with no subscription. Every contact masked.
 
+**Scope addition (built 2026-09-06):** a "Saved wajakazi" shortlist — a mwajiri bookmarks
+profiles from the browse detail (free, pre-subscription) and reviews them at
+`/dashboard/mwajiri/saved`. Added to complete the browse → save → unlock funnel; recorded in
+`progress-tracker.md`, not part of the original 6.3/6.4 numbering.
+
 ### 6.4 — Contact unlock
 
 **Role**: the transaction the entire business exists to enable. **Builds**:
@@ -333,6 +338,15 @@ active subscription and unlocks are permanent. **Verify**: reveal with an active
 subscription. Expire it. Confirm the previous unlock is still visible and a new reveal is
 refused with a 403. **Then check the raw response of an unpaid profile view for the phone
 number.**
+
+**Built 2026-09-07.** `contact-unlocks` is sealed (`mwajiri → users`, `mjakazi →
+wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`, `subscription → subscriptions`, no
+`payment`; compound unique on (mwajiri, mjakazi)). `services/contact.service.ts`
+(`hasUnlock`, `getContact`, `revealContact`) is the only reader of phone/email and is the
+named fourth `overrideAccess` exemption in invariant #15. The reveal is a Server Action
+(`revealContactAction` in `src/app/actions/contact.ts`) — a deviation from the literal
+`api/actions/contact/reveal` route name. `revealContact` re-checks `DIRECTORY_VISIBLE`;
+`getContact` does not (unlocks permanent). Manually verified end to end.
 
 ---
 
@@ -454,6 +468,11 @@ Every email in one pass: expiry warning and expiry, payment receipt, expression 
 interest sent and answered, hire confirmed, shortlist delivered, suspension. (Verification
 approved/rejected emails were pulled forward to Phase 3.3.) **Verify**: trigger each once.
 Check copy, links and sender.
+
+**Pulled forward (built 2026-09-07):** the subscription **payment receipt** and
+**activation** emails now ship as two separate messages — `sendSubscriptionReceiptEmail`
+(plan + amount + M-Pesa receipt) and `sendSubscriptionActivatedEmail` (plan + access-until),
+both sent fire-and-forget from `subscription.service.ts` on a confirmed subscription payment.
 
 ### 12.2 — PostHog sweep
 

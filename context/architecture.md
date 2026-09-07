@@ -586,8 +586,9 @@ Therefore:
    for an active subscription and an existing or newly created unlock before returning
    anything.
 3. Every Local API read that can reach a profile passes `overrideAccess: false` and the
-   authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook and
-   `lib/audit.ts` — named here, and nowhere else.
+   authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
+   `lib/audit.ts` and `contact.service.ts` (which reads contact fields after its own
+   authorization) — named here, and nowhere else.
 4. Masking is a UI convenience, never a control. The data must be absent from the
    response, not hidden in it.
 
@@ -766,7 +767,7 @@ ask.
     unlock. Absence from the payload, not masking in the UI.
 15. Every Local API read that can reach a profile passes `overrideAccess: false` and the
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
-    `lib/audit.ts`.
+    `lib/audit.ts`, and `contact.service.ts` (the only reader of contact fields).
 16. Queries touching profiles pass an explicit `select`. Never rely on defaults.
 17. A profile is publicly visible only when `verificationState = verified` **and**
     `availabilityStatus = available` **and** not blacklisted **and** not deactivated.

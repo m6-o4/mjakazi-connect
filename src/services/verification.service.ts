@@ -1,4 +1,4 @@
-import { addMonths } from "date-fns";
+import { addMonths, isAfter } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
@@ -24,9 +24,8 @@ const FREE_REJECTIONS = 2;
 
 // free resubmissions a rejected worker has left before the next resubmission
 // requires a fresh fee. attempts is the number of rejections so far
-const getFreeResubmissionsRemaining = (
-	attempts: number | null | undefined,
-): number => Math.max(0, FREE_REJECTIONS - (attempts ?? 0) + 1);
+const getFreeResubmissionsRemaining = (attempts: number | null | undefined): number =>
+	Math.max(0, FREE_REJECTIONS - (attempts ?? 0) + 1);
 
 // a verified badge is valid for 12 months from approval
 const VERIFICATION_VALIDITY_MONTHS = 12;
@@ -666,7 +665,10 @@ const expireVerification = async (
 		return fail("Profile is not verified.", "wrong_state");
 	}
 
-	if (!profile.verificationExpiry || new Date(profile.verificationExpiry) > new Date()) {
+	if (
+		!profile.verificationExpiry ||
+		isAfter(new Date(profile.verificationExpiry), new Date())
+	) {
 		return fail("Verification has not yet expired.", "not_expired");
 	}
 

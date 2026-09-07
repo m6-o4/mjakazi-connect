@@ -1,71 +1,70 @@
-# Memory — Phase 5 (Subscriptions) complete
+# Memory — Phase 6.4 contact unlock complete (revenue spine done)
 
-Last updated: 2026-09-02 04:08
+Last updated: 2026-09-07 02:33
 
 ## What was built
 
-Phase 5.2 — subscription purchase flow (this session built it; 5.1 was already done):
+**Phase 6.4 (Contact unlock)** — the transaction the product exists to enable:
+- `src/payload/collections/contact-unlocks/schema.ts` — sealed collection
+  (`mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`,
+  `subscription → subscriptions`; compound unique on (mwajiri, mjakazi);
+  create/update/delete `isRestricted`, read `isAdminOrOwner("mwajiri")`).
+- `src/services/contact.service.ts` — the **only** place phone/email are read
+  (`hasUnlock`, `getContact`, `revealContact`).
+- `src/app/actions/contact.ts` — `revealContactAction` Server Action.
+- `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` — three-state client
+  component (live contact / unlock button / subscribe CTA).
+- `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` — pre-fetches already-unlocked
+  contact; `src/components/web/directory/directory-profile-view-tracker.tsx` gained
+  `isUnlocked` prop. Added `contact_unlocked` audit action (`lib/audit.ts` +
+  `audit-logs/schema.ts`). `payload-types.ts` regenerated.
 
-- `/dashboard/mwajiri/subscription` page + new `src/app/(saas)/dashboard/mwajiri/layout.tsx`
-  role guard (mirrors the mjakazi layout). Added "Subscription" nav item in
-  `src/lib/dashboard-nav.ts`.
-- `src/app/actions/subscription.ts` — `initiateSubscriptionPaymentAction({ tierId, phone })`:
-  zod-validates, resolves tier + price server-side, normalizes phone, persists phone,
-  `beginPurchase`, then `initiatePayment` with `paymentType: "subscription"`.
-- `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — client
-  component: tier cards, M-Pesa phone input, pay/awaiting/timeout polling via
-  `router.refresh()`; fires `plan_selected` + `payment_initiated` PostHog events.
-- `src/services/payment.service.ts` — wired `activateSubscriptionOnPayment` into
-  `handleCallback` (subscription branch, `payment_activation_failed` audit on failure).
-- `src/services/profile.service.ts` — `getOwnWaajiriProfile`, `updateWaajiriPhone`.
-- `src/services/subscription.service.ts` — exported `getOwnSubscription`.
-
-Phase 5.3 — subscription expiry job:
-
-- `src/jobs/subscription-expiry.ts` (hourly `0 * * * *`) + `expireExpiredSubscriptions` in
-  `subscription.service.ts` (polls active past `tierExpiry`, expires idempotently via the
-  5.1 `expireSubscription` transition). Registered in `src/payload.config.ts` `jobs.tasks`.
+**Subscription purchase emails split** — mwajiri now gets two emails on a purchase:
+`sendSubscriptionReceiptEmail` (plan + amount + M-Pesa receipt) and a slimmed
+`sendSubscriptionActivatedEmail` (plan + access-until), both fire-and-forget from
+`subscription.service.ts` (`notifySubscriptionActivated` → `notifySubscriptionPurchase`).
 
 ## Decisions made
 
-- **Phone source**: the mwajiri has no profile form, so the purchase page collects the
-  M-Pesa phone (normalized `254…`), persisted best-effort to `waajiri-profiles.phone` for
-  future prefills. A failed phone save never blocks the payment.
-- **Trust boundary**: the client sends only `tierId` + `phone`; price and duration are
-  resolved server-side from `platform-settings` (invariant #12). Stacking (active → extend)
-  reuses the 5.1 `activateSubscriptionOnPayment`.
-- **5.3 scope**: "block new reveals" is NOT in 5.3 — that is `contact.service` (6.4) keying
-  on `subscriptionState === "active"`; existing unlocks stay visible by design. Expiry email
-  deferred to 12.1.
+- `contact.service.ts` is the named **fourth** `overrideAccess` exemption to invariant #15
+  (reads phone + email via trusted reads — email lives on `users`, unreadable by a mwajiri
+  through access control). Documented in `architecture.md`.
+- `contact-unlocks` dropped the `payment` relation (unlocks aren't tied to a payment; the
+  activating payment is on `subscription.lastPaymentId` + audit metadata).
+- Reveal is a Server Action, not the build-plan's literal `api/actions/contact/reveal`
+  route (Server-Action-first rule).
+- `revealContact` re-checks `DIRECTORY_VISIBLE`; `getContact` for an existing unlock does
+  not (unlocks are permanent).
+- Already-unlocked subscribers land directly on live contact (no re-reveal button).
 
 ## Problems solved
 
-- eslint `react-hooks/set-state-in-effect` rejected a `setStatus` reset inside a `useEffect`.
-  Replaced with a derived `awaiting = status === "awaiting" && state !== "active"`; the
-  polling effect keys on `awaiting`, so the callback flipping state to `active` stops
-  polling without an effect body setState.
-- Windows PowerShell blocks `pnpm.ps1` (execution policy). Use `pnpm.cmd` for every pnpm
-  command in this repo.
+- Payload `select` type does not accept `id` — the reveal's visibility re-check uses
+  `select: { slug: true }`.
+- Power dip corrupted `.next` (font-module resolution failure, then a `posthog-js@1.425.1`
+  "module factory is not available" runtime error). Both were stale cache, not code —
+  fixed by clearing `.next` and rebuilding (`pnpm install` reported "Already up to date").
 
 ## Current state
 
-- **Phase 5 complete** (5.1 subscriptions collection/state machine, 5.2 purchase flow, 5.3
-  expiry job). Phase 4 complete. Phase 10.3 partial (admin pricing UI done; the mwajiri
-  pricing page that reads tiers at runtime is Phase 6.x).
-- `pnpm lint` 0 errors (3 warnings: 2 pre-existing + the `TaskConfig<any>` warning that
-  matches `payment-timeout.ts`), `pnpm build` green.
-- **All manual sandbox verification deferred** to a dedicated session: the developer wants
-  to finish the wajakazi-side tests first and will run the payment/expiry checks separately.
+- **Revenue spine complete and manually verified** (identity → profile → documents →
+  verification → payment → review → directory → subscription → contact unlock). An active
+  mwajiri can unlock a mjakazi's contact details end to end.
+- `pnpm lint` 0 errors; `pnpm build` green.
+- `progress-tracker.md`, `ui-registry.md`, `architecture.md`, `build-plan.md` updated.
+- A broad uncommitted `pnpm-lock.yaml` dependency bump (posthog-js 1.425.1→1.427.2 +
+  others) is present but reconciled.
 
 ## Next session starts with
 
-Phase 6 (Directory + Contact Vault), starting at 6.1 — the public `/directory` +
-`/directory/[slug]` with filters and an explicit `select` omitting contact fields. Run
-`/architect` first (large phase touching marketing + the vault). Re-check
-`context/build-plan.md` 6.x and `context/progress-tracker.md` before starting.
+- Phase 7.1 — verification expiry job (`jobs/verification-expiry.ts`, daily):
+  `verified → verification_expired` past expiry, hide profile, email the worker. Re-check
+  `context/build-plan.md` 7.1 and `context/progress-tracker.md`.
 
 ## Open questions
 
-- Manual end-to-end verification is outstanding and deferred to separate session(s): sandbox
-  STK push (verification + subscription), callback replay idempotency, document lock,
-  PostHog events on one person, admin fee/tier edits, and the 5.3 expiry job.
+- Phase 5 deferred manual sandbox verification (STK push, callback replay idempotency,
+  5.3 expiry job) may still be outstanding — confirm before Phase 7+.
+- `getContact` returns contact even for a `blacklisted` (not deleted) profile — "permanent
+  unlock" vs moderation is un-designed; blacklisting lands in Phase 10.1.
+- Minor: "Extend" button in the subscription status card is still the outline variant.

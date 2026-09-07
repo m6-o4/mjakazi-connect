@@ -26,6 +26,7 @@ type AuditAction =
 	| "subscription_expired"
 	| "subscription_suspended"
 	| "subscription_blacklisted"
+	| "contact_unlocked"
 	| "eoi_sent"
 	| "document_uploaded"
 	| "document_deleted"

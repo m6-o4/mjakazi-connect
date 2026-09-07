@@ -386,16 +386,101 @@ codebase.
   `default`, others = `outline`); calls `updateAvailabilityAction` then `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`
 
-### `WajakaziTeaserCard`
+### `DirectoryCard`
 
-- **Location**: `src/components/web/wajakazi-teaser-card.tsx`
-- **Purpose**: A verified-wajakazi teaser on marketing pages (formatted to match the
-  `posts-archive` cards); the CTA drives mwajiri sign-ups
-- **Props**:
-  `{ firstName; photoUrl: string | null; jobLabels: string[]; locationLabel: string | null; yearsExperience: number | null; workPreference: string | null; buttonLink: string; buttonText: string }`
+- **Location**: `src/components/web/directory/directory-card.tsx`
+- **Purpose**: A single wajakazi in the public directory — links to the profile's own
+  detail page (no sign-up CTA), renders no contact fields
+- **Props**: `{ profile: DirectoryProfile; basePath?: string }` (`basePath` defaults
+  `/directory`)
 - **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
-  `aspect-16/10` photo with `group-hover:scale-105` zoom + `bg-primary/10` overlay;
-  `Verified` pill (`bg-card text-success`) top-left; `text-heading` name with
-  `group-hover:text-primary`; job `Badge variant="outline"`; accent `buttonVariants` CTA +
-  muted "Sign in" link
-- **Used in**: `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
+  `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`, `text-heading`
+  name, job `Badge variant="outline"`; accent `buttonVariants` "View Profile" →
+  `{basePath}/{slug}`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
+
+### `DirectoryFilterBar`
+
+- **Location**: `src/components/web/directory/directory-filter-bar.tsx`
+- **Purpose**: The directory's search + filters (name, category, location, experience) —
+  every filter lives in the URL query string; fires `directory_searched` PostHog event
+- **Props**:
+  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number; basePath?: string }`
+- **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
+  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count; navigation
+  via `useRouter` + `URLSearchParams`
+- **Used in**: `src/app/(web)/directory/page.tsx`
+
+### `DirectoryPagination`
+
+- **Location**: `src/components/web/directory/directory-pagination.tsx`
+- **Purpose**: Numbered pagination (9 per page) with windowed ellipsis; preserves active
+  filters in every link
+- **Props**:
+  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? }; basePath?: string }`
+- **Visual pattern**: `Link`s styled `size-9 rounded-md border`; active page
+  `bg-primary/10 text-primary`; `ChevronLeft`/`ChevronRight` prev/next; `…` ellipsis spans
+- **Used in**: `src/app/(web)/directory/page.tsx`
+
+### `DirectoryProfileDetail`
+
+- **Location**: `src/components/web/directory/directory-profile-detail.tsx`
+- **Purpose**: The public profile detail — full professional info with no contact fields,
+  and a "Join as a mwajiri" CTA
+- **Props**:
+  `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
+- **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
+  content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
+  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; CTA
+  `Card` with accent "Join as a mwajiri" + outline "Sign in"
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+
+### `DirectoryProfileViewTracker`
+
+- **Location**: `src/components/web/directory/directory-profile-view-tracker.tsx`
+- **Purpose**: Fires `profile_viewed` (`isUnlocked: false`) once per public profile view
+- **Props**: `{ slug: string }`
+- **Visual pattern**: renders nothing; client `useEffect` keyed on `slug` calling
+  `posthog.capture`
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`
+
+### `BrowseContactCard`
+
+- **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
+- **Purpose**: The contact area on a mwajiri browse detail, three states — live contact
+  (already unlocked), an "Unlock contact details" reveal button (active subscriber), or a
+  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores the
+  returned phone/email locally, and fires `contact_unlocked`.
+- **Props**: `{ mjakaziId: string; isActive: boolean; contact: Contact | null }`
+- **Visual pattern**: shadcn `Card`; a live `ContactRow` (border, `Phone`/`Mail` icon,
+  value or "Not provided") or a `MaskedRow` (`Lock` icon + `••••••••` placeholder) —
+  placeholders only, never real values; `Button` reveal (active) or accent `buttonVariants`
+  link to `/dashboard/mwajiri/subscription`; errors in `text-destructive text-xs`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
+  `DirectoryProfileDetail`'s `contactSlot`)
+
+### `SubscriptionStatusCard`
+
+- **Location**: `src/components/dashboard/mwajiri/subscription-status-card.tsx`
+- **Purpose**: The first card on the mwajiri overview — subscription status with the CTA that
+  follows from it (no-subscription/expired notice + plan CTA, active tier + days remaining,
+  honest pending/restricted states)
+- **Props**: `{ state: SubscriptionState; tierName: string | null; tierExpiry: string | null }`
+- **Visual pattern**: shadcn `Card`; active state `ring-primary/40` with `CheckCircle2` in
+  `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
+  `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
+  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
+
+### `SaveToggle`
+
+- **Location**: `src/components/dashboard/mwajiri/browse/save-toggle.tsx`
+- **Purpose**: The save/unsave control on a mwajiri browse detail — calls
+  `toggleSaveAction`, fires `profile_saved` (`saved`), then refreshes
+- **Props**: `{ mjakaziId: string; initiallySaved: boolean }`
+- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved);
+  `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
+  `DirectoryProfileDetail`'s `headerAction`)

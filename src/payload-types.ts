@@ -80,6 +80,8 @@ export interface Config {
     'vault-documents': VaultDocument;
     payments: Payment;
     subscriptions: Subscription;
+    'saved-wajakazi': SavedWajakazi;
+    'contact-unlocks': ContactUnlock;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -102,6 +104,8 @@ export interface Config {
     'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
+    'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
+    'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -638,10 +642,7 @@ export interface Testimonials {
 export interface WajakaziArchive {
   headline?: string | null;
   headlineDescription?: string | null;
-  limit?: number | null;
   showViewAllLink?: boolean | null;
-  buttonLink: string;
-  buttonText: string;
   backgroundVariant: 'muted' | 'background';
   id?: string | null;
   blockName?: string | null;
@@ -677,6 +678,7 @@ export interface AuditLog {
     | 'subscription_expired'
     | 'subscription_suspended'
     | 'subscription_blacklisted'
+    | 'contact_unlocked'
     | 'eoi_sent'
     | 'document_uploaded'
     | 'document_deleted'
@@ -712,6 +714,7 @@ export interface WajakaziProfile {
   id: string;
   user: string | User;
   displayName: string;
+  slug?: string | null;
   legalFirstName?: string | null;
   legalLastName?: string | null;
   dateOfBirth?: string | null;
@@ -976,6 +979,31 @@ export interface Subscription {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "saved-wajakazi".
+ */
+export interface SavedWajakazi {
+  id: string;
+  user: string | User;
+  mjakazi: string | WajakaziProfile;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-unlocks".
+ */
+export interface ContactUnlock {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  tierAtUnlock?: string | null;
+  unlockedAt?: string | null;
+  subscription?: (string | null) | Subscription;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1176,6 +1204,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'subscriptions';
         value: string | Subscription;
+      } | null)
+    | ({
+        relationTo: 'saved-wajakazi';
+        value: string | SavedWajakazi;
+      } | null)
+    | ({
+        relationTo: 'contact-unlocks';
+        value: string | ContactUnlock;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1546,10 +1582,7 @@ export interface TestimonialsSelect<T extends boolean = true> {
 export interface WajakaziArchiveSelect<T extends boolean = true> {
   headline?: T;
   headlineDescription?: T;
-  limit?: T;
   showViewAllLink?: T;
-  buttonLink?: T;
-  buttonText?: T;
   backgroundVariant?: T;
   id?: T;
   blockName?: T;
@@ -1674,6 +1707,7 @@ export interface AuditLogsSelect<T extends boolean = true> {
 export interface WajakaziProfilesSelect<T extends boolean = true> {
   user?: T;
   displayName?: T;
+  slug?: T;
   legalFirstName?: T;
   legalLastName?: T;
   dateOfBirth?: T;
@@ -1819,6 +1853,29 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   suspendedAt?: T;
   suspensionReason?: T;
   lastPaymentId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "saved-wajakazi_select".
+ */
+export interface SavedWajakaziSelect<T extends boolean = true> {
+  user?: T;
+  mjakazi?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-unlocks_select".
+ */
+export interface ContactUnlocksSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  tierAtUnlock?: T;
+  unlockedAt?: T;
+  subscription?: T;
   updatedAt?: T;
   createdAt?: T;
 }

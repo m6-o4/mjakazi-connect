@@ -2,6 +2,7 @@
 // client component. the callback is the only source of truth for payment; this
 // module only initiates a push and reports whether daraja accepted the request.
 
+import { addSeconds } from "date-fns";
 import { z } from "zod";
 
 import { normalizeKenyanPhone } from "@/lib/phone";
@@ -66,7 +67,7 @@ type OAuthResponse = {
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;
 
 const getAccessToken = async (): Promise<string | null> => {
-	if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+	if (cachedToken && cachedToken.expiresAt > addSeconds(Date.now(), 60).getTime()) {
 		return cachedToken.accessToken;
 	}
 
@@ -89,7 +90,7 @@ const getAccessToken = async (): Promise<string | null> => {
 
 	cachedToken = {
 		accessToken: data.access_token,
-		expiresAt: Date.now() + Number(data.expires_in ?? "3600") * 1000,
+		expiresAt: addSeconds(Date.now(), Number(data.expires_in ?? "3600")).getTime(),
 	};
 
 	return cachedToken.accessToken;

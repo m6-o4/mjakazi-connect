@@ -382,6 +382,7 @@ This is the complete list. **Adding an event means adding it here first.**
 | `verification_rejected`         | staff rejects                          | `attempt`                |
 | `directory_searched`            | directory filter applied               | `filters`, `resultCount` |
 | `profile_viewed`                | profile detail opened                  | `isUnlocked`             |
+| `profile_saved`                 | mwajiri saves or unsaves a profile     | `saved`                  |
 | `plan_selected`                 | tier chosen                            | `tierId`                 |
 | `payment_initiated`             | STK push sent                          | `paymentType`, `tierId`  |
 | `payment_completed`             | callback confirms                      | `paymentType`, `tierId`  |

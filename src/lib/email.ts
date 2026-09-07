@@ -210,14 +210,51 @@ const sendPaymentConfirmedEmail = async ({
 	});
 };
 
+type SendSubscriptionReceiptEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	tierName: string;
+	mpesaReceiptNumber: string;
+	amount: number;
+};
+
+// the payment receipt — sent on a confirmed subscription payment, separate from
+// the activation notice so the mwajiri keeps a clean financial record
+const sendSubscriptionReceiptEmail = async ({
+	payload,
+	to,
+	firstName,
+	tierName,
+	mpesaReceiptNumber,
+	amount,
+}: SendSubscriptionReceiptEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Payment Received")}
+    ${p(`Hi ${escapeHtml(firstName)}, your payment for the ${escapeHtml(tierName)} plan has been received.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">Payment Details</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Plan:</strong> ${escapeHtml(tierName)}</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Amount:</strong> KSh ${amount.toLocaleString()}</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>M-Pesa Receipt:</strong> ${escapeHtml(mpesaReceiptNumber)}</p>
+    `)}
+    ${muted("Keep this receipt for your records.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Payment received",
+		html: baseTemplate(content),
+	});
+};
+
 type SendSubscriptionActivatedEmailArgs = {
 	payload: Payload;
 	to: string;
 	firstName: string;
 	tierName: string;
 	endDate: string;
-	mpesaReceiptNumber: string;
-	amount: number;
 };
 
 const sendSubscriptionActivatedEmail = async ({
@@ -226,8 +263,6 @@ const sendSubscriptionActivatedEmail = async ({
 	firstName,
 	tierName,
 	endDate,
-	mpesaReceiptNumber,
-	amount,
 }: SendSubscriptionActivatedEmailArgs): Promise<void> => {
 	const formattedEndDate = new Date(endDate).toLocaleDateString("en-GB", {
 		day: "numeric",
@@ -243,8 +278,6 @@ const sendSubscriptionActivatedEmail = async ({
     ${infoBox(`
       <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">Subscription Details</p>
       <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Plan:</strong> ${escapeHtml(tierName)}</p>
-      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Amount Paid:</strong> KSh ${amount.toLocaleString()}</p>
-      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>M-Pesa Receipt:</strong> ${escapeHtml(mpesaReceiptNumber)}</p>
       <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Access Until:</strong> ${formattedEndDate}</p>
     `)}
     ${p("Log in to your dashboard to start browsing verified domestic workers.")}
@@ -261,6 +294,7 @@ const sendSubscriptionActivatedEmail = async ({
 export {
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,
+	sendSubscriptionReceiptEmail,
 	sendVerificationApprovedEmail,
 	sendVerificationRejectedEmail,
 };
