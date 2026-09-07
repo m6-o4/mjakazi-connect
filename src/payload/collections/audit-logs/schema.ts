@@ -60,6 +60,8 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Subscription Expired", value: "subscription_expired" },
 				{ label: "Subscription Suspended", value: "subscription_suspended" },
 				{ label: "Subscription Blacklisted", value: "subscription_blacklisted" },
+				// contact vault
+				{ label: "Contact Unlocked", value: "contact_unlocked" },
 				// expression of interest lifecycle
 				{ label: "Expression of Interest Sent", value: "eoi_sent" },
 				// document vault

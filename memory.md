@@ -1,87 +1,70 @@
-# Memory — Phase 6.3 + mwajiri browse/saved complete
+# Memory — Phase 6.4 contact unlock complete (revenue spine done)
 
-Last updated: 2026-09-07 00:45
+Last updated: 2026-09-07 02:33
 
 ## What was built
 
-**Phase 6.3 (Mwajiri browse)** — authenticated directory inside the dashboard:
-- `src/app/(saas)/dashboard/mwajiri/browse/page.tsx` (list) and `browse/[slug]/page.tsx`
-  (detail), reading the same guarded path as `/directory`
-  (`listDirectoryProfiles`/`getDirectoryProfile`, `DIRECTORY_PUBLIC_FIELDS`,
-  `overrideAccess: false`) — no contact fields ever selected.
-- `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` — masked phone/email
-  placeholder rows + subscription-aware affordance (disabled "Unlock contact details" for
-  `active`, "Subscribe to unlock" link otherwise).
+**Phase 6.4 (Contact unlock)** — the transaction the product exists to enable:
+- `src/payload/collections/contact-unlocks/schema.ts` — sealed collection
+  (`mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`,
+  `subscription → subscriptions`; compound unique on (mwajiri, mjakazi);
+  create/update/delete `isRestricted`, read `isAdminOrOwner("mwajiri")`).
+- `src/services/contact.service.ts` — the **only** place phone/email are read
+  (`hasUnlock`, `getContact`, `revealContact`).
+- `src/app/actions/contact.ts` — `revealContactAction` Server Action.
+- `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` — three-state client
+  component (live contact / unlock button / subscribe CTA).
+- `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` — pre-fetches already-unlocked
+  contact; `src/components/web/directory/directory-profile-view-tracker.tsx` gained
+  `isUnlocked` prop. Added `contact_unlocked` audit action (`lib/audit.ts` +
+  `audit-logs/schema.ts`). `payload-types.ts` regenerated.
 
-**Shared directory components parameterized (not forked)** — each new prop defaults to the
-public-directory behavior so `/directory` can't regress:
-- `directory-card.tsx`, `directory-filter-bar.tsx`, `directory-pagination.tsx` → `basePath`.
-- `directory-profile-detail.tsx` → `backHref`, `contactSlot`, `headerAction`.
-
-**Mwajiri dashboard overview** — `src/app/(saas)/dashboard/mwajiri/page.tsx` +
-`subscription-status-card.tsx` (no-subscription notice + plan CTA, active tier + days
-remaining, pending/restricted states), a live verified+available count card, quick actions.
-"Browse wajakazi" buttons removed from the subscription card (redundant with the card below).
-
-**Saved wajakazi (shortlist)** — completes browse → save → unlock funnel:
-- `src/payload/collections/saved-wajakazi/schema.ts` (new collection: `user` + `mjakazi`
-  relations, compound unique index), registered in `collections/index.ts`.
-- `src/services/saved.service.ts` (`toggleSave`, `isSaved`, `listSavedProfileIds`).
-- `src/app/actions/saved.ts` (`toggleSaveAction`).
-- `src/components/dashboard/mwajiri/browse/save-toggle.tsx` (Save/Saved button).
-- `src/app/(saas)/dashboard/mwajiri/saved/page.tsx` (saved list) + "Saved" nav item.
-- `directory.service.ts` gained `listDirectoryProfilesByIds`.
-- `code-standards.md` gained the `profile_saved` PostHog event.
-- `payload-types.ts` regenerated.
+**Subscription purchase emails split** — mwajiri now gets two emails on a purchase:
+`sendSubscriptionReceiptEmail` (plan + amount + M-Pesa receipt) and a slimmed
+`sendSubscriptionActivatedEmail` (plan + access-until), both fire-and-forget from
+`subscription.service.ts` (`notifySubscriptionActivated` → `notifySubscriptionPurchase`).
 
 ## Decisions made
 
-- **Bounded browse**: the actual reveal (`contact-unlocks` + `contact.service.ts` +
-  `api/actions/contact/reveal`) is deferred to 6.4; the subscriber's unlock button stays
-  disabled until then.
-- **Parameterize, don't fork** the shared directory components.
-- **Saved wajakazi**: free and pre-subscription; save from the browse detail only; dedicated
-  `/dashboard/mwajiri/saved` page; stale saves (profile left the directory) silently drop
-  out (list reads through the guarded directory path).
-- `saved-wajakazi` uses a `user` (users) relation — not `waajiri-profiles` — so owner access
-  is the clean `isAdminOrOwner("user")`.
-- Saves write **no audit entry** (a preference, not a state transition); analytics via the
-  `profile_saved` event.
+- `contact.service.ts` is the named **fourth** `overrideAccess` exemption to invariant #15
+  (reads phone + email via trusted reads — email lives on `users`, unreadable by a mwajiri
+  through access control). Documented in `architecture.md`.
+- `contact-unlocks` dropped the `payment` relation (unlocks aren't tied to a payment; the
+  activating payment is on `subscription.lastPaymentId` + audit metadata).
+- Reveal is a Server Action, not the build-plan's literal `api/actions/contact/reveal`
+  route (Server-Action-first rule).
+- `revealContact` re-checks `DIRECTORY_VISIBLE`; `getContact` for an existing unlock does
+  not (unlocks are permanent).
+- Already-unlocked subscribers land directly on live contact (no re-reveal button).
 
 ## Problems solved
 
-- Payload `select` does not include `id` (type error `SavedWajakaziSelect`): use a real field
-  in `select` or omit it — `id` is always returned. Also always set `depth: 0` on
-  `saved-wajakazi` reads so the `mjakazi`/`user` relationships stay id strings and never pull
-  contact fields/emails into memory.
-- Compound unique index in Payload 3: `indexes: [{ fields: ["user", "mjakazi"], unique: true }]`
-  (`CompoundIndex = { fields: string[]; unique?: boolean }`, no `name`).
+- Payload `select` type does not accept `id` — the reveal's visibility re-check uses
+  `select: { slug: true }`.
+- Power dip corrupted `.next` (font-module resolution failure, then a `posthog-js@1.425.1`
+  "module factory is not available" runtime error). Both were stale cache, not code —
+  fixed by clearing `.next` and rebuilding (`pnpm install` reported "Already up to date").
 
 ## Current state
 
-- **Phase 6.3 complete and manually verified** (masked without subscription, subscriber sees
-  disabled unlock, non-mwajiri redirected, view-source/RSC leaks no phone/email).
-- Overview + saved wajakazi complete and working.
-- `pnpm lint` 0 errors (only pre-existing `any` warnings in `payment-timeout.ts` /
-  `subscription-expiry.ts`); `pnpm build` green.
-- `progress-tracker.md`, `ui-registry.md`, `build-plan.md`, `code-standards.md` updated.
+- **Revenue spine complete and manually verified** (identity → profile → documents →
+  verification → payment → review → directory → subscription → contact unlock). An active
+  mwajiri can unlock a mjakazi's contact details end to end.
+- `pnpm lint` 0 errors; `pnpm build` green.
+- `progress-tracker.md`, `ui-registry.md`, `architecture.md`, `build-plan.md` updated.
+- A broad uncommitted `pnpm-lock.yaml` dependency bump (posthog-js 1.425.1→1.427.2 +
+  others) is present but reconciled.
 
 ## Next session starts with
 
-Phase 6.4 (Contact unlock) — the transaction the whole product exists to enable:
-- `contact-unlocks` collection, unique on (mwajiri, mjakazi).
-- `services/contact.service.ts` as the **only** place contact fields are read.
-- `api/actions/contact/reveal` (atomic: unlock record + audit entry + return).
-- Gate reveals on `subscriptionState === "active"`; unlocks are permanent; block new reveals
-  while not active.
-- Wire the disabled "Unlock contact details" button in `BrowseContactCard` to the reveal.
-- Run `/architect` first; re-check `context/build-plan.md` 6.4 and `context/progress-tracker.md`.
+- Phase 7.1 — verification expiry job (`jobs/verification-expiry.ts`, daily):
+  `verified → verification_expired` past expiry, hide profile, email the worker. Re-check
+  `context/build-plan.md` 7.1 and `context/progress-tracker.md`.
 
 ## Open questions
 
-- 6.4's "block new reveals while `subscriptionState !== "active"`" logic (deferred from 5.3)
-  still needs to be designed as part of the contact vault.
-- Phase 5's deferred manual sandbox verification (STK push, callback replay idempotency,
+- Phase 5 deferred manual sandbox verification (STK push, callback replay idempotency,
   5.3 expiry job) may still be outstanding — confirm before Phase 7+.
-- Minor: "Extend" button in the subscription card is still the outline variant (it was the
-  secondary action before "Browse wajakazi" was removed) — may want it promoted to primary.
+- `getContact` returns contact even for a `blacklisted` (not deleted) profile — "permanent
+  unlock" vs moderation is un-designed; blacklisting lands in Phase 10.1.
+- Minor: "Extend" button in the subscription status card is still the outline variant.

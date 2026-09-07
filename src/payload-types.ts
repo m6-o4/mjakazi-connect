@@ -81,6 +81,7 @@ export interface Config {
     payments: Payment;
     subscriptions: Subscription;
     'saved-wajakazi': SavedWajakazi;
+    'contact-unlocks': ContactUnlock;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -104,6 +105,7 @@ export interface Config {
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
+    'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -676,6 +678,7 @@ export interface AuditLog {
     | 'subscription_expired'
     | 'subscription_suspended'
     | 'subscription_blacklisted'
+    | 'contact_unlocked'
     | 'eoi_sent'
     | 'document_uploaded'
     | 'document_deleted'
@@ -987,6 +990,20 @@ export interface SavedWajakazi {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-unlocks".
+ */
+export interface ContactUnlock {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  tierAtUnlock?: string | null;
+  unlockedAt?: string | null;
+  subscription?: (string | null) | Subscription;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1191,6 +1208,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'saved-wajakazi';
         value: string | SavedWajakazi;
+      } | null)
+    | ({
+        relationTo: 'contact-unlocks';
+        value: string | ContactUnlock;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1842,6 +1863,19 @@ export interface SubscriptionsSelect<T extends boolean = true> {
 export interface SavedWajakaziSelect<T extends boolean = true> {
   user?: T;
   mjakazi?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-unlocks_select".
+ */
+export interface ContactUnlocksSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  tierAtUnlock?: T;
+  unlockedAt?: T;
+  subscription?: T;
   updatedAt?: T;
   createdAt?: T;
 }

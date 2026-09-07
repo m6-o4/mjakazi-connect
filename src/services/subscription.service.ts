@@ -2,7 +2,7 @@ import { addDays, isAfter } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
-import { sendSubscriptionActivatedEmail } from "@/lib/email";
+import { sendSubscriptionActivatedEmail, sendSubscriptionReceiptEmail } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import type { Payment, Subscription, User } from "@/payload-types";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
@@ -379,9 +379,10 @@ const loadPayerEmail = async (
 	}
 };
 
-// fire-and-forget activation notification. the transition is already committed
-// by the time this runs, so a failed send never blocks the state change
-const notifySubscriptionActivated = async (
+// fire-and-forget purchase notifications — a receipt email and an activation
+// email. the transition is already committed by the time this runs, so a failed
+// send never blocks the state change
+const notifySubscriptionPurchase = async (
 	payload: Payload,
 	subscription: Subscription,
 	payment: Payment,
@@ -400,17 +401,24 @@ const notifySubscriptionActivated = async (
 			: undefined;
 		const receiptNumber = receiptValue == null ? "N/A" : String(receiptValue);
 
+		await sendSubscriptionReceiptEmail({
+			payload,
+			to: recipient.email,
+			firstName: recipient.firstName,
+			tierName,
+			mpesaReceiptNumber: receiptNumber,
+			amount: payment.amount,
+		});
+
 		await sendSubscriptionActivatedEmail({
 			payload,
 			to: recipient.email,
 			firstName: recipient.firstName,
 			tierName,
 			endDate: subscription.tierExpiry ?? new Date().toISOString(),
-			mpesaReceiptNumber: receiptNumber,
-			amount: payment.amount,
 		});
 	} catch (error) {
-		console.error("[services/subscription] activation notification email failed:", error);
+		console.error("[services/subscription] purchase notification email failed:", error);
 	}
 };
 
@@ -478,7 +486,7 @@ const activateSubscriptionOnPayment = async (
 	}
 
 	if (result.success) {
-		await notifySubscriptionActivated(payload, result.data, payment, tier.name);
+		await notifySubscriptionPurchase(payload, result.data, payment, tier.name);
 	}
 
 	return result;

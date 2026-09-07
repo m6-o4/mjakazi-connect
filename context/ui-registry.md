@@ -449,13 +449,15 @@ codebase.
 ### `BrowseContactCard`
 
 - **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
-- **Purpose**: The masked contact area on a mwajiri browse detail — placeholder phone/email
-  rows plus a subscription-aware affordance (disabled unlock button for `active` subscribers,
-  "Subscribe to unlock" link otherwise); the 6.4 reveal swaps this card for live data
-- **Props**: `{ isActive: boolean }`
-- **Visual pattern**: shadcn `Card`; bordered masked rows (`Lock` icon + `••••••••`
-  placeholder, `Phone`/`Mail` icons) — placeholders only, never real values; `Button
-  disabled` (active) or accent `buttonVariants` link to `/dashboard/mwajiri/subscription`
+- **Purpose**: The contact area on a mwajiri browse detail, three states — live contact
+  (already unlocked), an "Unlock contact details" reveal button (active subscriber), or a
+  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores the
+  returned phone/email locally, and fires `contact_unlocked`.
+- **Props**: `{ mjakaziId: string; isActive: boolean; contact: Contact | null }`
+- **Visual pattern**: shadcn `Card`; a live `ContactRow` (border, `Phone`/`Mail` icon,
+  value or "Not provided") or a `MaskedRow` (`Lock` icon + `••••••••` placeholder) —
+  placeholders only, never real values; `Button` reveal (active) or accent `buttonVariants`
+  link to `/dashboard/mwajiri/subscription`; errors in `text-destructive text-xs`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `contactSlot`)
 

@@ -871,6 +871,59 @@ finished.
   (2026-09-07)**: save/unsave from a browse detail, saved list updates, cards link back to
   the browse detail.
 
+### 2026-09-07 — Subscription purchase emails split (receipt + activation)
+
+- **What was built**: The mwajiri subscription purchase now sends two emails instead of
+  one. A new `sendSubscriptionReceiptEmail` (payment receipt — plan, amount, M-Pesa
+  receipt number) fires alongside the existing `sendSubscriptionActivatedEmail`, which was
+  slimmed to plan + access-until (the receipt and amount moved out of it). Both are sent
+  fire-and-forget from `subscription.service.ts` after a confirmed subscription payment
+  activates (or stacks) access, so a failed send never blocks the state change.
+- **Files touched**: `src/lib/email.ts` (`sendSubscriptionReceiptEmail` added,
+  `sendSubscriptionActivatedEmail` slimmed), `src/services/subscription.service.ts`
+  (`notifySubscriptionActivated` → `notifySubscriptionPurchase`, now sends both emails).
+- **Notes**: No schema change (the receipt number is still read from `callbackPayload`
+  metadata, not a dedicated field) and no new PostHog events, so no `generate:types`. The
+  receipt and activation both fire for renewals while active — a renewal is a new payment,
+  so a fresh receipt is correct. `pnpm lint` (0 errors, 2 pre-existing warnings) and
+  `pnpm build` pass. **Manual verification complete (2026-09-07)**: both emails received —
+  a "Payment received" receipt (amount + receipt number) and a "Your subscription is
+  active" notice (plan + access-until).
+
+### 2026-09-07 — Phase 6.4: Contact unlock
+
+- **What was built**: The contact vault reveal — the transaction the product exists to
+  enable. A new sealed `contact-unlocks` collection (one row per mwajiri+mjakazi, compound
+  unique index; `mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`,
+  `unlockedAt`, `subscription → subscriptions`; `create`/`update`/`delete` restricted,
+  `read` = `isAdminOrOwner("mwajiri")`). A new `services/contact.service.ts` — the **only**
+  place phone/email are read — with `hasUnlock`, `getContact` (permanent: does not re-check
+  directory visibility), and `revealContact` (role + active-subscription gate + a
+  `DIRECTORY_VISIBLE` re-check + idempotent create behind the unique index + `contact_unlocked`
+  audit entry). A `revealContactAction` Server Action; `BrowseContactCard` converted to a
+  three-state client component; the browse detail pre-fetches an already-unlocked contact
+  server-side; `DirectoryProfileViewTracker` gained an `isUnlocked` prop.
+- **Files touched**: `src/payload/collections/contact-unlocks/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/contact.service.ts` (new),
+  `src/app/actions/contact.ts` (new),
+  `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`,
+  `src/components/web/directory/directory-profile-view-tracker.tsx`, `src/lib/audit.ts`
+  (`contact_unlocked`), `src/payload/collections/audit-logs/schema.ts`, `src/payload-types.ts`
+  (regenerated), `context/architecture.md` (invariant #15 + contact-vault exemption now
+  name `contact.service.ts`), `context/ui-registry.md`.
+- **Notes**: Deviates from the build plan's literal `api/actions/contact/reveal` route —
+  `revealContactAction` is a Server Action per the Server-Action-first rule. `contact.service.ts`
+  reads phone + email via `overrideAccess: true` because email lives on `users`, which a
+  mwajiri cannot read through access control; it is the named fourth exemption to invariant
+  #15. The reveal returns contact only to the mwajiri who just unlocked it (the deliverable,
+  not a leak). `contact_unlocked` PostHog fires client-side   (`tierAtUnlock`); `profile_viewed`
+  fires `isUnlocked: true` when already unlocked. No `payment` relation on unlocks (the
+  activating payment is on `subscription.lastPaymentId` + the audit metadata). `pnpm lint`
+  (0 errors, 2 pre-existing warnings) and `pnpm build` pass. **Manual verification complete
+  (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact appears,
+  `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
