@@ -6,6 +6,7 @@ import { Pages } from "@/payload/collections/pages/schema";
 import { Payments } from "@/payload/collections/payments/schema";
 import { Posts } from "@/payload/collections/posts/schema";
 import { ProfilePhotos } from "@/payload/collections/profile-photos/schema";
+import { SavedWajakazi } from "@/payload/collections/saved-wajakazi/schema";
 import { Subscriptions } from "@/payload/collections/subscriptions/schema";
 import { Users } from "@/payload/collections/users/schema";
 import { VaultDocuments } from "@/payload/collections/vault-documents/schema";
@@ -26,6 +27,7 @@ const collections = [
 	VaultDocuments,
 	Payments,
 	Subscriptions,
+	SavedWajakazi,
 ];
 
 export { collections };

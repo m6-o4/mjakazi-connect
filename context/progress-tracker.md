@@ -798,6 +798,79 @@ finished.
   homepage → new profile appears in the block, card links to the detail page).
   **Phase 6.2 done** — next is Phase 6.3 (Mwajiri browse).
 
+### 2026-09-06 — Phase 6.3: Mwajiri browse
+
+- **What was built**: The authenticated mwajiri browse at `/dashboard/mwajiri/browse`
+  (list) and `/dashboard/mwajiri/browse/[slug]` (detail). Both read the **same guarded
+  directory path** as `/directory` (`listDirectoryProfiles` / `getDirectoryProfile` with
+  `DIRECTORY_PUBLIC_FIELDS` + `overrideAccess: false`), so the data is identical and no
+  contact field is ever selected. The detail swaps the public "Join as a mwajiri" CTA for a
+  masked contact area: placeholder phone/email rows plus a subscription-aware affordance —
+  an `active` subscriber sees a disabled "Unlock contact details" button (wired in 6.4),
+  everyone else sees a live "Subscribe to unlock" link to `/dashboard/mwajiri/subscription`.
+  Added "Browse" to the mwajiri nav.
+- **Files touched**: `src/app/(saas)/dashboard/mwajiri/browse/{page.tsx,[slug]/page.tsx}`
+  (new), `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` (new),
+  `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination}.tsx`
+  (added inert-by-default `basePath` prop), `src/components/web/directory/directory-profile-detail.tsx`
+  (`backHref` + `contactSlot` props), `src/lib/dashboard-nav.ts`, `context/ui-registry.md`.
+- **Notes**: The shared `web/directory` components are parameterized, not forked — each new
+  prop defaults to the public-directory behavior, so `/directory` cannot regress. Masking is
+  UX only; enforcement is the guarded read that never selects `phone`/`user`/legal fields.
+  Reuses `DirectoryProfileViewTracker` (`profile_viewed`, `isUnlocked: false`; 6.4 flips it).
+  No schema change, so no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings)
+  and `pnpm build` pass; `/dashboard/mwajiri/browse` and `.../[slug]` build as `ƒ (Dynamic)`.
+  **Manual verification complete (2026-09-07)**: non-subscriber → masked + subscribe CTA
+  routes to `/subscription`; subscriber (`active`) → masked + disabled unlock; non-mwajiri →
+  redirected by the existing guard; view-source/RSC payload contains no phone/email.
+  **Phase 6.3 done** — next is Phase 6.4 (Contact unlock).
+
+### 2026-09-06 — Mwajiri dashboard overview
+
+- **What was built**: A real `/dashboard/mwajiri` overview replacing the
+  `dashboard/[role]` placeholder — a `SubscriptionStatusCard` (the no-subscription notice +
+  plan CTA, days-remaining/expiry for `active`, honest pending/restricted states), a "Browse
+  wajakazi" card with a live verified+available count, and a "Quick actions" card (Manage
+  subscription / Settings).
+- **Files touched**: `src/app/(saas)/dashboard/mwajiri/page.tsx` (new),
+  `src/components/dashboard/mwajiri/subscription-status-card.tsx` (new),
+  `context/ui-registry.md`.
+- **Notes**: The live count reuses `listDirectoryProfiles` with `limit: 1` (only `totalDocs`
+  is needed), so it reads the same guarded path and can never count a non-live profile.
+  No schema change, no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) and
+  `pnpm build` pass; `/dashboard/mwajiri` builds as `ƒ (Dynamic)`. **Manual verification
+  complete (2026-09-07)**: a mwajiri with no subscription sees the "no subscription" notice +
+  plan CTA; an active subscriber sees tier + days remaining.
+
+### 2026-09-06 — Saved wajakazi (shortlist)
+
+- **What was built**: The "saved wajakazi" bookmark — the top of the browse → save →
+  unlock funnel. A new `saved-wajakazi` collection (one row per mwajiri+mjakazi, compound
+  unique index), a `saved.service.ts` (`toggleSave` / `isSaved` / `listSavedProfileIds`),
+  a `toggleSaveAction` Server Action, a `SaveToggle` on the browse detail (via a new
+  `headerAction` slot on `DirectoryProfileDetail`), and a `/dashboard/mwajiri/saved` list
+  page (nav item "Saved"). Saving is free and pre-subscription.
+- **Files touched**: `src/payload/collections/saved-wajakazi/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/saved.service.ts` (new),
+  `src/services/directory.service.ts` (`listDirectoryProfilesByIds`),
+  `src/app/actions/saved.ts` (new),
+  `src/components/dashboard/mwajiri/browse/save-toggle.tsx` (new),
+  `src/components/web/directory/directory-profile-detail.tsx` (`headerAction` slot),
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/saved/page.tsx` (new), `src/lib/dashboard-nav.ts`,
+  `src/payload-types.ts` (regenerated), `context/code-standards.md` (`profile_saved`
+  event), `context/ui-registry.md`.
+- **Notes**: Saves write no audit entry (a user preference, not a domain state transition);
+  the `profile_saved` PostHog event (`saved` boolean) tracks the behaviour. All
+  `saved-wajakazi` reads use `depth: 0` so the `mjakazi`/`user` relationships stay id
+  strings and never pull contact fields. The saved list reads through the guarded directory
+  path (`listDirectoryProfilesByIds` = `DIRECTORY_VISIBLE` + public select), so a saved
+  profile that leaves the directory (hired / on_break / expired) silently drops out of the
+  list. `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass;
+  `/dashboard/mwajiri/saved` builds as `ƒ (Dynamic)`. **Manual verification complete
+  (2026-09-07)**: save/unsave from a browse detail, saved list updates, cards link back to
+  the browse detail.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
@@ -828,9 +901,10 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [ ] Expressions of interest received — later (Phase 6.x)
 - [ ] Directory visibility toggle — later (Phase 6.x)
 
-### Waajiri (`/dashboard/mwajiri`) — currently placeholder
-- [ ] Subscription status + days remaining → links to subscription
-- [ ] Renew/upgrade CTA when expiring
-- [ ] Directory CTA ("browse verified wajakazi") — later (Phase 6.1)
-- [ ] Saved wajakazi / EOIs sent — later (Phase 6.x)
+### Waajiri (`/dashboard/mwajiri`) — built 2026-09-06
+- [x] Subscription status + days remaining → links to subscription
+- [x] Renew/upgrade CTA when expiring (in the subscription status card)
+- [x] Directory CTA ("browse verified wajakazi") — live verified count + CTA
+- [x] Saved wajakazi (shortlist) — built 2026-09-06
+- [ ] EOIs sent — later (Phase 8.x)
 

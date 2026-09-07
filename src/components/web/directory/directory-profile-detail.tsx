@@ -9,6 +9,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,6 +25,9 @@ import type { DirectoryProfile } from "@/services/directory.service";
 
 type DirectoryProfileDetailProps = {
 	profile: DirectoryProfile;
+	backHref?: string;
+	contactSlot?: ReactNode;
+	headerAction?: ReactNode;
 };
 
 const labelFor = (
@@ -42,7 +46,12 @@ const formatSalary = (profile: DirectoryProfile): string | null => {
 	return null;
 };
 
-const DirectoryProfileDetail = ({ profile }: DirectoryProfileDetailProps) => {
+const DirectoryProfileDetail = ({
+	profile,
+	backHref = "/directory",
+	contactSlot,
+	headerAction,
+}: DirectoryProfileDetailProps) => {
 	const name = profile.displayName ?? "";
 	const photoUrl =
 		profile.photo && typeof profile.photo === "object"
@@ -80,7 +89,7 @@ const DirectoryProfileDetail = ({ profile }: DirectoryProfileDetailProps) => {
 	return (
 		<div className="flex flex-col gap-8">
 			<Link
-				href="/directory"
+				href={backHref}
 				className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 text-sm transition-colors"
 			>
 				<ArrowLeft className="size-4" />
@@ -118,6 +127,7 @@ const DirectoryProfileDetail = ({ profile }: DirectoryProfileDetailProps) => {
 								<BadgeCheck className="size-3" />
 								Verified
 							</span>
+							{headerAction ? <div className="ml-auto">{headerAction}</div> : null}
 						</div>
 						{workPreferenceLabel ? (
 							<p className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm">
@@ -188,31 +198,36 @@ const DirectoryProfileDetail = ({ profile }: DirectoryProfileDetailProps) => {
 						</div>
 					) : null}
 
-					<Card className="mt-2">
-						<CardContent className="flex flex-col gap-3 py-6">
-							<h2 className="text-heading text-lg font-semibold">
-								Want to contact {name}?
-							</h2>
-							<p className="text-muted-foreground text-sm">
-								Phone and email are shared with subscribed waajiri only. Create an account
-								to unlock contact details.
-							</p>
-							<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-								<Link
-									href="/sign-up?role=mwajiri"
-									className={buttonVariants({
-										className:
-											"bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
-									})}
-								>
-									Join as a mwajiri
-								</Link>
-								<Link href="/sign-in" className={buttonVariants({ variant: "outline" })}>
-									Sign in
-								</Link>
-							</div>
-						</CardContent>
-					</Card>
+					{contactSlot ?? (
+						<Card className="mt-2">
+							<CardContent className="flex flex-col gap-3 py-6">
+								<h2 className="text-heading text-lg font-semibold">
+									Want to contact {name}?
+								</h2>
+								<p className="text-muted-foreground text-sm">
+									Phone and email are shared with subscribed waajiri only. Create an
+									account to unlock contact details.
+								</p>
+								<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+									<Link
+										href="/sign-up?role=mwajiri"
+										className={buttonVariants({
+											className:
+												"bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
+										})}
+									>
+										Join as a mwajiri
+									</Link>
+									<Link
+										href="/sign-in"
+										className={buttonVariants({ variant: "outline" })}
+									>
+										Sign in
+									</Link>
+								</div>
+							</CardContent>
+						</Card>
+					)}
 				</div>
 			</div>
 		</div>

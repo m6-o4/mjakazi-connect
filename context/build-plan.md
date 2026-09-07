@@ -323,6 +323,11 @@ homepage.
 affordances for subscribers. **Done when**: masked without a subscription, unlockable with
 one. **Verify**: browse with no subscription. Every contact masked.
 
+**Scope addition (built 2026-09-06):** a "Saved wajakazi" shortlist — a mwajiri bookmarks
+profiles from the browse detail (free, pre-subscription) and reviews them at
+`/dashboard/mwajiri/saved`. Added to complete the browse → save → unlock funnel; recorded in
+`progress-tracker.md`, not part of the original 6.3/6.4 numbering.
+
 ### 6.4 — Contact unlock
 
 **Role**: the transaction the entire business exists to enable. **Builds**:

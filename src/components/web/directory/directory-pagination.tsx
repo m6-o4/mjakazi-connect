@@ -19,6 +19,7 @@ type DirectoryPaginationProps = {
 		experience?: string;
 		q?: string;
 	};
+	basePath?: string;
 };
 
 // numbered pages with a windowed ellipsis when the directory grows long. the
@@ -42,6 +43,7 @@ const DirectoryPagination = ({
 	currentPage,
 	totalPages,
 	baseParams,
+	basePath = "/directory",
 }: DirectoryPaginationProps) => {
 	if (totalPages <= 1) return null;
 
@@ -54,7 +56,7 @@ const DirectoryPagination = ({
 		if (page > 1) params.set("page", String(page));
 
 		const queryString = params.toString();
-		return queryString ? `/directory?${queryString}` : "/directory";
+		return queryString ? `${basePath}?${queryString}` : basePath;
 	};
 
 	const pages = getPageRange(currentPage, totalPages);

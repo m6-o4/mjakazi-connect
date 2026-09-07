@@ -110,6 +110,29 @@ const listDirectoryProfiles = async (payload: Payload, query: DirectoryQuery) =>
 	return result;
 };
 
+// the directory profiles a mwajiri has saved, filtered to those still live in
+// the directory. a stale save (a profile that has since gone hired / on a break
+// / expired) is silently absent — the same guarded path as the public list, so
+// contact fields are still never selected and a hidden profile can never surface
+const listDirectoryProfilesByIds = async (
+	payload: Payload,
+	ids: string[],
+): Promise<DirectoryProfile[]> => {
+	if (ids.length === 0) return [];
+
+	const result = await payload.find({
+		collection: "wajakazi-profiles",
+		where: { and: [DIRECTORY_VISIBLE, { id: { in: ids } }] },
+		depth: 1,
+		limit: ids.length,
+		sort: "-verificationReviewedAt",
+		select: DIRECTORY_PUBLIC_FIELDS,
+		overrideAccess: false,
+	});
+
+	return result.docs;
+};
+
 // a single public profile by slug. returns null when the slug is unknown OR the
 // profile has since left the directory (hired, on a break, expired), so a stale
 // shared link resolves to a 404 rather than a stale page
@@ -135,6 +158,7 @@ export {
 	directoryQuerySchema,
 	getDirectoryProfile,
 	listDirectoryProfiles,
+	listDirectoryProfilesByIds,
 };
 
 export type { DirectoryProfile, DirectoryQuery, ExperienceBucket };

@@ -391,11 +391,12 @@ codebase.
 - **Location**: `src/components/web/directory/directory-card.tsx`
 - **Purpose**: A single wajakazi in the public directory — links to the profile's own
   detail page (no sign-up CTA), renders no contact fields
-- **Props**: `{ profile: DirectoryProfile }`
+- **Props**: `{ profile: DirectoryProfile; basePath?: string }` (`basePath` defaults
+  `/directory`)
 - **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
   `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`, `text-heading`
   name, job `Badge variant="outline"`; accent `buttonVariants` "View Profile" →
-  `/directory/{slug}`
+  `{basePath}/{slug}`
 - **Used in**: `src/app/(web)/directory/page.tsx`,
   `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
 
@@ -405,7 +406,7 @@ codebase.
 - **Purpose**: The directory's search + filters (name, category, location, experience) —
   every filter lives in the URL query string; fires `directory_searched` PostHog event
 - **Props**:
-  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number }`
+  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number; basePath?: string }`
 - **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
   (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count; navigation
   via `useRouter` + `URLSearchParams`
@@ -417,7 +418,7 @@ codebase.
 - **Purpose**: Numbered pagination (9 per page) with windowed ellipsis; preserves active
   filters in every link
 - **Props**:
-  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? } }`
+  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? }; basePath?: string }`
 - **Visual pattern**: `Link`s styled `size-9 rounded-md border`; active page
   `bg-primary/10 text-primary`; `ChevronLeft`/`ChevronRight` prev/next; `…` ellipsis spans
 - **Used in**: `src/app/(web)/directory/page.tsx`
@@ -427,7 +428,8 @@ codebase.
 - **Location**: `src/components/web/directory/directory-profile-detail.tsx`
 - **Purpose**: The public profile detail — full professional info with no contact fields,
   and a "Join as a mwajiri" CTA
-- **Props**: `{ profile: DirectoryProfile }`
+- **Props**:
+  `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
 - **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
   content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
   `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; CTA
@@ -441,4 +443,42 @@ codebase.
 - **Props**: `{ slug: string }`
 - **Visual pattern**: renders nothing; client `useEffect` keyed on `slug` calling
   `posthog.capture`
-- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`
+
+### `BrowseContactCard`
+
+- **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
+- **Purpose**: The masked contact area on a mwajiri browse detail — placeholder phone/email
+  rows plus a subscription-aware affordance (disabled unlock button for `active` subscribers,
+  "Subscribe to unlock" link otherwise); the 6.4 reveal swaps this card for live data
+- **Props**: `{ isActive: boolean }`
+- **Visual pattern**: shadcn `Card`; bordered masked rows (`Lock` icon + `••••••••`
+  placeholder, `Phone`/`Mail` icons) — placeholders only, never real values; `Button
+  disabled` (active) or accent `buttonVariants` link to `/dashboard/mwajiri/subscription`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
+  `DirectoryProfileDetail`'s `contactSlot`)
+
+### `SubscriptionStatusCard`
+
+- **Location**: `src/components/dashboard/mwajiri/subscription-status-card.tsx`
+- **Purpose**: The first card on the mwajiri overview — subscription status with the CTA that
+  follows from it (no-subscription/expired notice + plan CTA, active tier + days remaining,
+  honest pending/restricted states)
+- **Props**: `{ state: SubscriptionState; tierName: string | null; tierExpiry: string | null }`
+- **Visual pattern**: shadcn `Card`; active state `ring-primary/40` with `CheckCircle2` in
+  `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
+  `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
+  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
+
+### `SaveToggle`
+
+- **Location**: `src/components/dashboard/mwajiri/browse/save-toggle.tsx`
+- **Purpose**: The save/unsave control on a mwajiri browse detail — calls
+  `toggleSaveAction`, fires `profile_saved` (`saved`), then refreshes
+- **Props**: `{ mjakaziId: string; initiallySaved: boolean }`
+- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved);
+  `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
+  `DirectoryProfileDetail`'s `headerAction`)

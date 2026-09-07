@@ -9,16 +9,21 @@ import type { DirectoryProfile } from "@/services/directory.service";
 
 type DirectoryCardProps = {
 	profile: DirectoryProfile;
+	basePath?: string;
 };
 
-// a single wajakazi in the public directory. links to the profile's own detail
-// page and deliberately renders no contact fields
-const DirectoryCard = ({ profile }: DirectoryCardProps) => {
+// a single wajakazi in the directory. links to the profile's own detail page and
+// deliberately renders no contact fields. `basePath` lets the authenticated
+// mwajiri browse reuse the card against its own route without touching the
+// public directory
+const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps) => {
 	const name = profile.displayName ?? "";
-	const href = `/directory/${profile.slug ?? ""}`;
+	const href = `${basePath}/${profile.slug ?? ""}`;
 
 	const photoUrl =
-		profile.photo && typeof profile.photo === "object" ? (profile.photo.url ?? null) : null;
+		profile.photo && typeof profile.photo === "object"
+			? (profile.photo.url ?? null)
+			: null;
 
 	const jobLabels = Array.isArray(profile.jobsSkills)
 		? profile.jobsSkills

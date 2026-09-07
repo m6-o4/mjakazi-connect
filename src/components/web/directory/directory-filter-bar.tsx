@@ -34,6 +34,7 @@ type DirectoryFilterBarProps = {
 		q?: string;
 	};
 	resultCount: number;
+	basePath?: string;
 };
 
 // the directory filter bar. every filter lives in the URL query string, so a
@@ -44,6 +45,7 @@ const DirectoryFilterBar = ({
 	locations,
 	current,
 	resultCount,
+	basePath = "/directory",
 }: DirectoryFilterBarProps) => {
 	const router = useRouter();
 
@@ -84,12 +86,12 @@ const DirectoryFilterBar = ({
 		for (const [k, v] of Object.entries(next)) params.set(k, v);
 
 		const queryString = params.toString();
-		router.push(queryString ? `/directory?${queryString}` : "/directory");
+		router.push(queryString ? `${basePath}?${queryString}` : basePath);
 	};
 
 	const clearAll = () => {
 		setQuery("");
-		router.push("/directory");
+		router.push(basePath);
 	};
 
 	const hasActiveFilter = Boolean(category || location || experience || q);

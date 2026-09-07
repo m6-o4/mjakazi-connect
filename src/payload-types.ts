@@ -80,6 +80,7 @@ export interface Config {
     'vault-documents': VaultDocument;
     payments: Payment;
     subscriptions: Subscription;
+    'saved-wajakazi': SavedWajakazi;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -102,6 +103,7 @@ export interface Config {
     'vault-documents': VaultDocumentsSelect<false> | VaultDocumentsSelect<true>;
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
+    'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -974,6 +976,17 @@ export interface Subscription {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "saved-wajakazi".
+ */
+export interface SavedWajakazi {
+  id: string;
+  user: string | User;
+  mjakazi: string | WajakaziProfile;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1174,6 +1187,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'subscriptions';
         value: string | Subscription;
+      } | null)
+    | ({
+        relationTo: 'saved-wajakazi';
+        value: string | SavedWajakazi;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1815,6 +1832,16 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   suspendedAt?: T;
   suspensionReason?: T;
   lastPaymentId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "saved-wajakazi_select".
+ */
+export interface SavedWajakaziSelect<T extends boolean = true> {
+  user?: T;
+  mjakazi?: T;
   updatedAt?: T;
   createdAt?: T;
 }
