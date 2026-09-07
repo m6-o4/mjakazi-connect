@@ -1,70 +1,70 @@
-# Memory — Phase 6.4 contact unlock complete (revenue spine done)
+# Memory — Phase 7.1 verification expiry complete (critical path done)
 
-Last updated: 2026-09-07 02:33
+Last updated: 2026-09-07 10:58
 
 ## What was built
 
-**Phase 6.4 (Contact unlock)** — the transaction the product exists to enable:
-- `src/payload/collections/contact-unlocks/schema.ts` — sealed collection
-  (`mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`,
-  `subscription → subscriptions`; compound unique on (mwajiri, mjakazi);
-  create/update/delete `isRestricted`, read `isAdminOrOwner("mwajiri")`).
-- `src/services/contact.service.ts` — the **only** place phone/email are read
-  (`hasUnlock`, `getContact`, `revealContact`).
-- `src/app/actions/contact.ts` — `revealContactAction` Server Action.
-- `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` — three-state client
-  component (live contact / unlock button / subscribe CTA).
-- `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` — pre-fetches already-unlocked
-  contact; `src/components/web/directory/directory-profile-view-tracker.tsx` gained
-  `isUnlocked` prop. Added `contact_unlocked` audit action (`lib/audit.ts` +
-  `audit-logs/schema.ts`). `payload-types.ts` regenerated.
+**Phase 7.1 — verification expiry job** (the last step of the revenue critical path):
+- `src/jobs/verification-expiry.ts` — daily job (`0 0 * * *`, `TaskConfig<any>`) delegating
+  to the service.
+- `src/services/verification.service.ts` — new `expireExpiredVerifications` (polls `verified`
+  profiles past `verificationExpiry`, expires each idempotently by reusing the existing
+  `expireVerification` CAS transition). `expireVerification` now emails the worker on
+  success via the `notifyWorker` helper.
+- `src/lib/email.ts` — new `sendVerificationExpiredEmail` ("renew to stay visible").
+- `src/payload.config.ts` — registered `verificationExpiryTask` in `jobs.tasks`.
+- `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` — wrapped
+  `revalidatePath`/`revalidateTag` calls in try/catch (bug fix, see below).
 
-**Subscription purchase emails split** — mwajiri now gets two emails on a purchase:
-`sendSubscriptionReceiptEmail` (plan + amount + M-Pesa receipt) and a slimmed
-`sendSubscriptionActivatedEmail` (plan + access-until), both fire-and-forget from
-`subscription.service.ts` (`notifySubscriptionActivated` → `notifySubscriptionPurchase`).
+**Minor UI fix** — `src/payload/blocks/wajakazi-archive/component.tsx`: the two "View all
+wajakazi" buttons now use the posts archive block's explicit button styling (dropped the
+`buttonVariants` outline/lg treatment; removed the unused import).
 
 ## Decisions made
 
-- `contact.service.ts` is the named **fourth** `overrideAccess` exemption to invariant #15
-  (reads phone + email via trusted reads — email lives on `users`, unreadable by a mwajiri
-  through access control). Documented in `architecture.md`.
-- `contact-unlocks` dropped the `payment` relation (unlocks aren't tied to a payment; the
-  activating payment is on `subscription.lastPaymentId` + audit metadata).
-- Reveal is a Server Action, not the build-plan's literal `api/actions/contact/reveal`
-  route (Server-Action-first rule).
-- `revealContact` re-checks `DIRECTORY_VISIBLE`; `getContact` for an existing unlock does
-  not (unlocks are permanent).
-- Already-unlocked subscribers land directly on live contact (no re-reveal button).
+- The worker expiry email was pulled forward out of the Phase 12.1 notifications sweep
+  because 7.1's "Done when" requires "worker emailed"; a **pre-expiry reminder** email is
+  still deferred to 12.1.
+- Revalidation in `wajakazi-profiles` hooks is best-effort: the directory pages are
+  dynamic (no cache), only the SSG homepage `/` matters, and outside a request context
+  there is nothing to invalidate — so a missing request store is swallowed, not thrown.
 
 ## Problems solved
 
-- Payload `select` type does not accept `id` — the reveal's visibility re-check uses
-  `select: { slug: true }`.
-- Power dip corrupted `.next` (font-module resolution failure, then a `posthog-js@1.425.1`
-  "module factory is not available" runtime error). Both were stale cache, not code —
-  fixed by clearing `.next` and rebuilding (`pnpm install` reported "Already up to date").
+- **`revalidatePath` throws `Invariant: static generation store missing` outside a request
+  context.** The `verification-expiry` job runs in Payload's background queue (no request
+  store), so the `revalidateProfile` after-change hook threw. Payload captured the throw and
+  returned `docs: []` + an error, so `applyTransition` misread the CAS as a `"conflict"` and
+  skipped the `verification_expired` audit entry **and** the worker email — even though the
+  state write had already committed. Fixed by try/catching the revalidate calls. Recorded in
+  `context/library-docs.md` (Next.js 16 traps).
+- Confirmed the **subscription** (`subscription-expiry`) and **payment** (`payment-timeout`)
+  jobs are NOT affected — `subscriptions` and `payments` have no revalidate hooks, unlike
+  `wajakazi-profiles`/`pages`/`posts`.
 
 ## Current state
 
-- **Revenue spine complete and manually verified** (identity → profile → documents →
-  verification → payment → review → directory → subscription → contact unlock). An active
-  mwajiri can unlock a mjakazi's contact details end to end.
+- Phase 7.1 **complete and manually verified**: backdated a verified profile's
+  `verificationExpiry`, ran the task via a throwaway `tsx` script — `verified →
+  verification_expired`, 2 eligible profiles expired, `verification_expired` audit entry
+  written, worker expiry email delivered. The scratch script has been deleted.
+- The revenue **critical path is now complete end to end** (identity → profile → documents →
+  verification → payment → review → directory → subscription → contact unlock → verification
+  expiry).
 - `pnpm lint` 0 errors; `pnpm build` green.
-- `progress-tracker.md`, `ui-registry.md`, `architecture.md`, `build-plan.md` updated.
-- A broad uncommitted `pnpm-lock.yaml` dependency bump (posthog-js 1.425.1→1.427.2 +
-  others) is present but reconciled.
+- Docs updated: `progress-tracker.md`, `build-plan.md`, `library-docs.md`.
 
 ## Next session starts with
 
-- Phase 7.1 — verification expiry job (`jobs/verification-expiry.ts`, daily):
-  `verified → verification_expired` past expiry, hide profile, email the worker. Re-check
-  `context/build-plan.md` 7.1 and `context/progress-tracker.md`.
+- **Phase 8 — Expressions of Interest and Hires**: 8.1 EOI, 8.2 availability/hire
+  confirmation, 8.3 nudge task. Re-check `context/build-plan.md` (Phase 8 section) and
+  `context/progress-tracker.md`.
 
 ## Open questions
 
 - Phase 5 deferred manual sandbox verification (STK push, callback replay idempotency,
-  5.3 expiry job) may still be outstanding — confirm before Phase 7+.
-- `getContact` returns contact even for a `blacklisted` (not deleted) profile — "permanent
-  unlock" vs moderation is un-designed; blacklisting lands in Phase 10.1.
+  subscription expiry) may still be outstanding.
+- Pre-expiry verification reminder email still deferred (12.1).
 - Minor: "Extend" button in the subscription status card is still the outline variant.
+- `getContact` returns contact for a `blacklisted` (not deleted) profile — permanent-unlock
+  vs moderation is un-designed (Phase 10.1).

@@ -175,6 +175,36 @@ const sendVerificationRejectedEmail = async ({
 	});
 };
 
+type SendVerificationExpiredEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+};
+
+const sendVerificationExpiredEmail = async ({
+	payload,
+	to,
+	firstName,
+}: SendVerificationExpiredEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Verification Expired")}
+    ${p(`Hi ${escapeHtml(firstName)}, your Verified badge has expired, so your profile is no longer visible to employers on Mjakazi Connect.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Complete a new verification to restore your badge and make your profile visible again.</p>
+    `)}
+    ${p("Log in to your dashboard to renew your verification.")}
+    ${muted("Renewal requires a fresh verification fee.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your verification has expired — renew to stay visible",
+		html: baseTemplate(content),
+	});
+};
+
 type SendPaymentConfirmedEmailArgs = {
 	payload: Payload;
 	to: string;
@@ -296,5 +326,6 @@ export {
 	sendSubscriptionActivatedEmail,
 	sendSubscriptionReceiptEmail,
 	sendVerificationApprovedEmail,
+	sendVerificationExpiredEmail,
 	sendVerificationRejectedEmail,
 };

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getPayload } from "payload";
 
 import { Container } from "@/components/container";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DirectoryCard } from "@/components/web/directory/directory-card";
 import { cn } from "@/lib/utils";
@@ -54,14 +53,9 @@ const WajakaziArchiveBlock = async (props: WajakaziArchiveBlockProps) => {
 							{showViewAllLink ? (
 								<Link
 									href="/directory"
-									className={buttonVariants({
-										variant: "outline",
-										size: "lg",
-										className:
-											"border-primary/20 text-primary hover:bg-primary/10 hover:text-primary mt-6 hidden md:mt-0 md:inline-flex",
-									})}
+									className="border-primary/20 text-primary hover:bg-primary/10 mt-6 hidden items-center justify-center rounded-lg border px-6 py-3 font-medium transition-all duration-200 md:mt-0 md:inline-flex"
 								>
-									View all wajakazi <ArrowRight className="size-4" />
+									View all wajakazi <ArrowRight className="ml-2 h-4 w-4" />
 								</Link>
 							) : null}
 						</div>
@@ -88,14 +82,9 @@ const WajakaziArchiveBlock = async (props: WajakaziArchiveBlockProps) => {
 						<div className="mt-10 flex justify-center md:hidden">
 							<Link
 								href="/directory"
-								className={buttonVariants({
-									variant: "outline",
-									size: "lg",
-									className:
-										"border-primary/20 text-primary hover:bg-primary/10 hover:text-primary",
-								})}
+								className="border-primary/20 text-primary hover:bg-primary/10 mt-6 inline-flex items-center justify-center rounded-lg border px-6 py-3 font-medium transition-all duration-200"
 							>
-								View all wajakazi <ArrowRight className="size-4" />
+								View all wajakazi <ArrowRight className="ml-2 h-4 w-4" />
 							</Link>
 						</div>
 					) : null}

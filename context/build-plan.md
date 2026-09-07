@@ -359,6 +359,17 @@ expiry, profile hidden, worker emailed. **Done when**: expiry happens without an
 remembering. **Verify**: backdate an expiry, run the task, confirm the profile leaves the
 directory.
 
+**Built 2026-09-07.** `jobs/verification-expiry.ts` runs daily (`0 0 * * *`). A new
+`expireExpiredVerifications` in `verification.service.ts` polls `verified` profiles past
+`verificationExpiry` and expires each idempotently by reusing `expireVerification` (CAS +
+`verification_expired` audit). `expireVerification` emails the worker on success
+(`sendVerificationExpiredEmail`, "renew to stay visible"). Hiding is automatic — the
+directory guard requires `verified`. Manually verified: backdate + run expired 2 eligible
+profiles, state → `verification_expired`, audit + email path fired. Also fixed the
+`revalidateProfile` hook throwing `static generation store missing` outside a request
+context (the job runs in the background queue), which had been surfacing as a spurious
+`conflict` that skipped the audit entry and email.
+
 **The critical path ends here. The business can take money.**
 
 ---
