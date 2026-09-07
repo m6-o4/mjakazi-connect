@@ -922,7 +922,19 @@ finished.
   activating payment is on `subscription.lastPaymentId` + the audit metadata). `pnpm lint`
   (0 errors, 2 pre-existing warnings) and `pnpm build` pass. **Manual verification complete
   (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact appears,
-  `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
+   `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
+
+### 2026-09-07 — Wajakazi archive button style parity (minor UI fix)
+
+- **What was built**: The wajakazi archive block's "View all wajakazi" buttons (desktop
+  header + mobile bottom) now match the posts archive block's "View All Articles" button
+  styling — replaced the `buttonVariants({ variant: "outline", size: "lg" })` treatment with
+  the posts block's explicit classes (`rounded-lg border border-primary/20 text-primary
+  hover:bg-primary/10 px-6 py-3 font-medium transition-all duration-200`, arrow `ml-2
+  h-4 w-4`).
+- **Files touched**: `src/payload/blocks/wajakazi-archive/component.tsx`
+- **Notes**: Removed the now-unused `buttonVariants` import. No schema change, no
+  `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) passes.
 
 ---
 
