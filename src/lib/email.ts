@@ -623,6 +623,39 @@ const sendHireReversedEmail = async ({
 	});
 };
 
+type SendHireEndedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire ended — notifies the other party that a completed agreement was closed,
+// so neither side is left thinking the match is still active
+const sendHireEndedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireEndedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Contract Ended")}
+    ${p(`Hi ${escapeHtml(firstName)}, the hire with <strong>${escapeHtml(otherPartyName)}</strong> has been ended.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The agreement is now closed, and the wajakazi is available for new opportunities.</p>
+    `)}
+    ${muted("If this is unexpected, log in to review your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was ended",
+		html: baseTemplate(content),
+	});
+};
+
 export {
 	sendEoiBatchSentEmail,
 	sendEoiNudgeEmail,
@@ -631,6 +664,7 @@ export {
 	sendEoiResponseConfirmedEmail,
 	sendHireAgreedEmail,
 	sendHireConfirmedEmail,
+	sendHireEndedEmail,
 	sendHireReversedEmail,
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,

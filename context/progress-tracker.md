@@ -1247,7 +1247,9 @@ finished.
 - **Notes**: `listHires` is now mjakazi-only; the mwajiri overview uses the new
   `listHiresForMwajiri` (includes `ended`). `Reverse` remains only for `pending_agreement`
   (the "this hire is wrong" case before agreement). No PostHog event for `hire_ended` (not
-  in the fixed list). No email is sent on end (no "contract ended" template yet). **Manual
+  in the fixed list). Ending a contract notifies the counterpart via the new
+  `sendHireEndedEmail` template ("Contract Ended" — the agreement is closed and the
+  wajakazi is available again). **Manual
   verification done**: on an `agreed` hire Reverse was absent and End contract present on
   both sides; ending it marked the hire `ended` and the worker reappeared in the directory;
   the review form opened for the mwajiri (not the mjakazi) and a submitted review went to

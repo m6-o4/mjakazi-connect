@@ -4,6 +4,7 @@ import { writeAuditLog } from "@/lib/audit";
 import {
 	sendHireAgreedEmail,
 	sendHireConfirmedEmail,
+	sendHireEndedEmail,
 	sendHireReversedEmail,
 } from "@/lib/email";
 import {
@@ -287,6 +288,27 @@ const notifyHireReversed = async (
 		});
 	} catch (error) {
 		console.error("[services/hire] reversed notification email failed:", error);
+	}
+};
+
+// fire-and-forget: notifies the counterpart that a completed contract was ended
+const notifyHireEnded = async (
+	payload: Payload,
+	counterpartUserId: string | null,
+	actorName: string,
+): Promise<void> => {
+	if (!counterpartUserId) return;
+	try {
+		const recipient = await loadUserEmail(payload, counterpartUserId);
+		if (!recipient) return;
+		await sendHireEndedEmail({
+			payload,
+			to: recipient.email,
+			firstName: recipient.firstName,
+			otherPartyName: actorName,
+		});
+	} catch (error) {
+		console.error("[services/hire] ended notification email failed:", error);
 	}
 };
 
@@ -954,6 +976,12 @@ const endHire = async (
 			metadata: { mjakaziProfileId: mjakaziId },
 			source: "user",
 		});
+
+		await notifyHireEnded(
+			payload,
+			actor.role === "mwajiri" ? mjakaziOwnerId : mwajiriId,
+			userLabel(actor),
+		);
 
 		return { success: true, data: result.docs[0] };
 	} catch (error) {
