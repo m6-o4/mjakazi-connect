@@ -29,6 +29,9 @@ type AuditAction =
 	| "contact_unlocked"
 	| "eoi_sent"
 	| "eoi_responded"
+	| "hire_confirmed"
+	| "hire_agreed"
+	| "hire_reversed"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

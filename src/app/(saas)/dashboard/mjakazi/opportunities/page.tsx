@@ -4,8 +4,10 @@ import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { EoiInbox } from "@/components/dashboard/mjakazi/opportunities/eoi-inbox";
+import { HireInbox } from "@/components/dashboard/mjakazi/opportunities/hire-inbox";
 import config from "@/payload-config";
 import { listReceivedEois } from "@/services/eoi.service";
+import { listHires } from "@/services/hire.service";
 
 export const metadata: Metadata = { title: "Opportunities" };
 
@@ -14,7 +16,10 @@ const OpportunitiesPage = async () => {
 	if (!user) redirect("/sign-in");
 
 	const payload = await getPayload({ config });
-	const eois = await listReceivedEois(payload, user);
+	const [eois, hires] = await Promise.all([
+		listReceivedEois(payload, user),
+		listHires(payload, user),
+	]);
 
 	// format the send date server-side so the client renders a stable label and
 	// never a timezone-dependent one
@@ -39,6 +44,7 @@ const OpportunitiesPage = async () => {
 				</p>
 			</div>
 
+			<HireInbox hires={hires} />
 			<EoiInbox eois={items} />
 		</div>
 	);

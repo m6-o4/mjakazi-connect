@@ -464,11 +464,122 @@ const sendEoiResponseConfirmedEmail = async ({
 	});
 };
 
+type SendHireConfirmedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+	otherPartyRole: "mwajiri" | "mjakazi";
+};
+
+// hire confirmed — notifies the other party that a hire was recorded involving
+// them, and that they can reverse it from their dashboard if it did not happen
+const sendHireConfirmedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+	otherPartyRole,
+}: SendHireConfirmedEmailArgs): Promise<void> => {
+	const otherCopy =
+		otherPartyRole === "mwajiri"
+			? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>${escapeHtml(otherPartyName)}</strong> has confirmed they hired you.</p>`
+			: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>${escapeHtml(otherPartyName)}</strong> has confirmed that you hired them.</p>`;
+
+	const content = `
+    ${h1("Hire Confirmed")}
+    ${p(`Hi ${escapeHtml(firstName)}, a hire has been recorded on Mjakazi Connect.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      ${otherCopy}
+    `)}
+    ${p("If this placement did not happen, you can reverse it from your dashboard so the record is corrected.")}
+    ${muted("Log in to review the hire and confirm it is correct.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was confirmed on Mjakazi Connect",
+		html: baseTemplate(content),
+	});
+};
+
+type SendHireAgreedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire agreed — sent to both parties once the second side confirms, so the match
+// is on the record as agreed by everyone involved
+const sendHireAgreedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireAgreedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Hire Confirmed by Both Sides")}
+    ${p(`Hi ${escapeHtml(firstName)}, you and <strong>${escapeHtml(otherPartyName)}</strong> have both confirmed the hire.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The hire is now recorded on both your dashboards.</p>
+    `)}
+    ${p("If the placement does not hold, you can reverse it from your dashboard.")}
+    ${muted("Log in to review the hire.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Hire confirmed by both sides",
+		html: baseTemplate(content),
+	});
+};
+
+type SendHireReversedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire reversed — notifies the other party that a previously recorded hire was
+// reversed, so they are not left thinking a match still stands
+const sendHireReversedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireReversedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Hire Reversed")}
+    ${p(`Hi ${escapeHtml(firstName)}, the hire with <strong>${escapeHtml(otherPartyName)}</strong> has been reversed.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The match is no longer recorded as active.</p>
+    `)}
+    ${muted("If this is unexpected, log in to review your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was reversed",
+		html: baseTemplate(content),
+	});
+};
+
 export {
 	sendEoiBatchSentEmail,
 	sendEoiReceivedEmail,
 	sendEoiRespondedEmail,
 	sendEoiResponseConfirmedEmail,
+	sendHireAgreedEmail,
+	sendHireConfirmedEmail,
+	sendHireReversedEmail,
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,
 	sendSubscriptionReceiptEmail,

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { HireConfirmCard } from "@/components/dashboard/mwajiri/hire-confirm-card";
 import { SubscriptionStatusCard } from "@/components/dashboard/mwajiri/subscription-status-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
 import config from "@/payload-config";
 import { listDirectoryProfiles } from "@/services/directory.service";
 import { listSentEois } from "@/services/eoi.service";
+import { listHireCandidatesForMwajiri, listHires } from "@/services/hire.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -30,10 +32,12 @@ const MwajiriDashboardPage = async () => {
 
 	// limit: 1 keeps the fetch cheap — only totalDocs (the live verified+available
 	// count) is needed, which comes from the same guarded path as the directory
-	const [subscription, directory, sentEois] = await Promise.all([
+	const [subscription, directory, sentEois, hireCandidates, hires] = await Promise.all([
 		getOwnSubscription(payload, user),
 		listDirectoryProfiles(payload, { limit: 1 }),
 		listSentEois(payload, user),
+		listHireCandidatesForMwajiri(payload, user),
+		listHires(payload, user),
 	]);
 
 	const availableCount = directory.totalDocs;
@@ -99,6 +103,8 @@ const MwajiriDashboardPage = async () => {
 					</CardContent>
 				</Card>
 			</div>
+
+			<HireConfirmCard candidates={hireCandidates} hires={hires} />
 
 			<Card>
 				<CardHeader>

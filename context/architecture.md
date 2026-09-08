@@ -479,9 +479,12 @@ expiry. New reveals require an active subscription.
 (`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`. Sent in batches of 3
 to 5.
 
-**`hires`** — `mwajiri`, `mjakazi`, `confirmedBy` (`mwajiri | mjakazi`), `confirmedAt`,
-`agreedAt`, `sourceEoi`, `sourceConciergeCase`. The event Match Conversion Rate is
-measured from, and the clock the replacement guarantee starts.
+**`hires`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `subscription`
+(→ subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
+`confirmedAt`, `agreedAt`, `reversedAt`, `state` (`pending_agreement | agreed | reversed`),
+`sourceEoi`. One record per (mwajiri, mjakazi) — compound unique index. The event Match
+Conversion Rate is measured from, and the clock the replacement guarantee starts.
+`sourceConciergeCase` lands with the `concierge-cases` collection in Phase 11.
 
 **`reviews`** — `mwajiri`, `mjakazi`, `rating` (1–5), `comment`, `moderationState`
 (`pending | published | rejected`), `moderatedBy`, `createdAt`. Permitted only where a
@@ -525,9 +528,9 @@ never hardcoded in application code.
 users ──1:1── wajakazi-profiles ──1:many── vault-documents
       └─1:1── waajiri-profiles  ──1:1───── subscriptions ──1:many── payments
 
-contact-unlocks ─── waajiri-profiles + wajakazi-profiles
-expressions-of-interest ─── waajiri-profiles + wajakazi-profiles
-hires ─── waajiri-profiles + wajakazi-profiles
+contact-unlocks ─── users + wajakazi-profiles
+expressions-of-interest ─── users + wajakazi-profiles
+hires ─── users + wajakazi-profiles + subscriptions
 reviews ─── requires an existing contact-unlock
 concierge-cases ─── waajiri-profiles + subscriptions + wajakazi-profiles[]
 audit-logs ─── references anything
@@ -588,9 +591,11 @@ Therefore:
 3. Every Local API read that can reach a profile passes `overrideAccess: false` and the
    authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
    `lib/audit.ts`, `contact.service.ts` (which reads contact fields after its own
-   authorization) and `eoi.service.ts` (which resolves non-contact display fields — a
+   authorization), `eoi.service.ts` (which resolves non-contact display fields — a
    profile's `displayName`/`location`, and a sender's name — with an explicit `select` that
-   never includes contact fields) — named here, and nowhere else.
+   never includes contact fields) and `hire.service.ts` (which resolves a profile's owner
+   + `displayName` and writes `availabilityStatus` via a trusted read/update with an
+   explicit non-contact `select`) — named here, and nowhere else.
 4. Masking is a UI convenience, never a control. The data must be absent from the
    response, not hidden in it.
 
@@ -769,9 +774,11 @@ ask.
     unlock. Absence from the payload, not masking in the UI.
 15. Every Local API read that can reach a profile passes `overrideAccess: false` and the
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
-    `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields), and
+    `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields),
     `eoi.service.ts` (resolves non-contact display fields with an explicit `select` that
-    never includes contact fields).
+    never includes contact fields), and `hire.service.ts` (resolves a profile's owner +
+    `displayName` and writes `availabilityStatus` via a trusted read/update with an
+    explicit non-contact `select`).
 16. Queries touching profiles pass an explicit `select`. Never rely on defaults.
 17. A profile is publicly visible only when `verificationState = verified` **and**
     `availabilityStatus = available` **and** not blacklisted **and** not deactivated.

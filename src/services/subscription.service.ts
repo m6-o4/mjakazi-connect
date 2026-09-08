@@ -4,6 +4,7 @@ import type { Payload } from "payload";
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
 import { sendSubscriptionActivatedEmail, sendSubscriptionReceiptEmail } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
+import { toId, userLabel } from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
 import type { Payment, Subscription, User } from "@/payload-types";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
@@ -48,23 +49,6 @@ const fail = (
 
 const isLegalTransition = (from: SubscriptionState, to: SubscriptionState): boolean =>
 	TRANSITIONS[from].includes(to);
-
-// relationships come back as an id string at depth 0, or as an object when
-// populated. normalized to an id here
-const toId = (
-	value: string | { id?: string | number } | null | undefined,
-): string | null => {
-	if (!value) return null;
-	if (typeof value === "string") return value;
-	return typeof value.id === "number" ? String(value.id) : (value.id ?? null);
-};
-
-// the actor label is a name snapshot so the log stays readable after an account
-// is renamed or deleted
-const userLabel = (user: User): string => {
-	const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-	return name || user.email;
-};
 
 // trusted system read resolving the subscription for a user id. subscriptions are
 // 1:1 with users, so this returns at most one record
@@ -605,5 +589,6 @@ export {
 	expireExpiredSubscriptions,
 	expireSubscription,
 	getOwnSubscription,
+	getSubscriptionByUser,
 	suspendSubscription,
 };

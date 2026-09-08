@@ -1,10 +1,12 @@
 "use client";
 
-import { Briefcase, CheckCircle2, Coffee } from "lucide-react";
+import { Briefcase, CheckCircle2, Coffee, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useState, type ReactNode } from "react";
 
 import { updateAvailabilityAction } from "@/app/actions/profile";
+import { confirmHireByMjakaziAction } from "@/app/actions/hire";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -16,8 +18,15 @@ import {
 
 type AvailabilityStatus = "available" | "hired" | "on_break";
 
+type HireCandidate = {
+	mwajiriId: string;
+	name: string;
+	location: string | null;
+};
+
 type AvailabilityCardProps = {
 	currentStatus: AvailabilityStatus;
+	hireCandidates?: HireCandidate[];
 };
 
 const STATUS_CONFIG: Record<
@@ -45,19 +54,32 @@ const STATUS_CONFIG: Record<
 	},
 };
 
-// lets a mjakazi control whether they appear in the public directory/archive
-const AvailabilityCard = ({ currentStatus }: AvailabilityCardProps) => {
+// lets a mjakazi control whether they appear in the public directory/archive.
+// choosing Hired asks who hired them (offering the waajiri who unlocked their
+// contact or sent interest), so a hire can be recorded from this side too
+const AvailabilityCard = ({ currentStatus, hireCandidates = [] }: AvailabilityCardProps) => {
 	const router = useRouter();
 	const [status, setStatus] = useState<AvailabilityStatus>(currentStatus);
-	const [loading, setLoading] = useState(false);
+	const [pickingHire, setPickingHire] = useState(false);
+	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const change = async (next: AvailabilityStatus) => {
-		if (next === status || loading) return;
+		if (next === status || busy) return;
 
-		setLoading(true);
+		// moving to hired asks who hired them when there are candidates to offer
+		if (next === "hired" && hireCandidates.length > 0 && !pickingHire) {
+			setError(null);
+			setPickingHire(true);
+			return;
+		}
+
+		await applyAvailability(next);
+	};
+
+	const applyAvailability = async (next: AvailabilityStatus) => {
+		setBusy("availability");
 		setError(null);
-
 		try {
 			const result = await updateAvailabilityAction(next);
 			if (!result.success) {
@@ -65,11 +87,32 @@ const AvailabilityCard = ({ currentStatus }: AvailabilityCardProps) => {
 				return;
 			}
 			setStatus(next);
+			setPickingHire(false);
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");
 		} finally {
-			setLoading(false);
+			setBusy(null);
+		}
+	};
+
+	const pickMwajiri = async (candidate: HireCandidate) => {
+		setBusy(`pick-${candidate.mwajiriId}`);
+		setError(null);
+		try {
+			const result = await confirmHireByMjakaziAction({ mwajiriId: candidate.mwajiriId });
+			if (!result.success) {
+				setError(result.error ?? "Could not confirm the hire.");
+				return;
+			}
+			posthog.capture("hire_confirmed", { confirmedBy: "mjakazi" });
+			setStatus("hired");
+			setPickingHire(false);
+			router.refresh();
+		} catch {
+			setError("Network error. Please try again.");
+		} finally {
+			setBusy(null);
 		}
 	};
 
@@ -100,12 +143,51 @@ const AvailabilityCard = ({ currentStatus }: AvailabilityCardProps) => {
 							variant={option === status ? "default" : "outline"}
 							size="sm"
 							onClick={() => change(option)}
-							disabled={loading || option === status}
+							disabled={Boolean(busy) || option === status}
 						>
 							{STATUS_CONFIG[option].label}
 						</Button>
 					))}
 				</div>
+
+				{pickingHire ? (
+					<div className="border-border flex flex-col gap-2 rounded-lg border p-3">
+						<p className="text-sm font-medium">Who hired you?</p>
+						<div className="flex flex-col gap-2">
+							{hireCandidates.map((candidate) => (
+								<button
+									key={candidate.mwajiriId}
+									type="button"
+									onClick={() => pickMwajiri(candidate)}
+									disabled={Boolean(busy)}
+									className="border-border hover:bg-muted/50 flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+								>
+									<span className="flex flex-col">
+										<span className="text-sm font-medium">{candidate.name}</span>
+										{candidate.location ? (
+											<span className="text-muted-foreground flex items-center gap-1 text-xs">
+												<MapPin className="size-3" />
+												{candidate.location}
+											</span>
+										) : null}
+									</span>
+									{busy === `pick-${candidate.mwajiriId}` ? (
+										<span className="text-muted-foreground text-xs">Confirming…</span>
+									) : null}
+								</button>
+							))}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => applyAvailability("hired")}
+								disabled={Boolean(busy)}
+							>
+								Not listed — hired elsewhere
+							</Button>
+						</div>
+					</div>
+				) : null}
 
 				{error ? <p className="text-destructive text-xs">{error}</p> : null}
 			</CardContent>

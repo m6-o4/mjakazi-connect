@@ -83,6 +83,7 @@ export interface Config {
     'saved-wajakazi': SavedWajakazi;
     'contact-unlocks': ContactUnlock;
     'expressions-of-interest': ExpressionsOfInterest;
+    hires: Hire;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -108,6 +109,7 @@ export interface Config {
     'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
     'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
     'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
+    hires: HiresSelect<false> | HiresSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -684,6 +686,9 @@ export interface AuditLog {
     | 'contact_unlocked'
     | 'eoi_sent'
     | 'eoi_responded'
+    | 'hire_confirmed'
+    | 'hire_agreed'
+    | 'hire_reversed'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -1024,6 +1029,24 @@ export interface ExpressionsOfInterest {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hires".
+ */
+export interface Hire {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  subscription?: (string | null) | Subscription;
+  confirmedBy: 'mwajiri' | 'mjakazi';
+  confirmedAt?: string | null;
+  agreedAt?: string | null;
+  reversedAt?: string | null;
+  state: 'pending_agreement' | 'agreed' | 'reversed';
+  sourceEoi?: (string | null) | ExpressionsOfInterest;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1236,6 +1259,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'expressions-of-interest';
         value: string | ExpressionsOfInterest;
+      } | null)
+    | ({
+        relationTo: 'hires';
+        value: string | Hire;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1915,6 +1942,23 @@ export interface ExpressionsOfInterestSelect<T extends boolean = true> {
   state?: T;
   sentAt?: T;
   respondedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hires_select".
+ */
+export interface HiresSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  subscription?: T;
+  confirmedBy?: T;
+  confirmedAt?: T;
+  agreedAt?: T;
+  reversedAt?: T;
+  state?: T;
+  sourceEoi?: T;
   updatedAt?: T;
   createdAt?: T;
 }

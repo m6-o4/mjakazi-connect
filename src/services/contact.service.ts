@@ -1,6 +1,7 @@
 import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
+import { toId, userLabel } from "@/lib/payload-helpers";
 import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import type { User, WajakaziProfile } from "@/payload-types";
 import { getOwnSubscription } from "@/services/subscription.service";
@@ -20,23 +21,6 @@ const fail = (
 	error: string,
 	code?: string,
 ): { success: false; error: string; code?: string } => ({ success: false, error, code });
-
-// relationships come back as an id string at depth 0, or as an object when
-// populated. normalized to an id here
-const toId = (
-	value: string | { id?: string | number } | null | undefined,
-): string | null => {
-	if (!value) return null;
-	if (typeof value === "string") return value;
-	return typeof value.id === "number" ? String(value.id) : (value.id ?? null);
-};
-
-// the actor label is a name snapshot so the audit log stays readable after an
-// account is renamed or deleted
-const userLabel = (user: User): string => {
-	const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-	return name || user.email;
-};
 
 // trusted read of a wajakazi profile. this service is the one place contact
 // fields are read, so it reads through overrideAccess after authorizing in the

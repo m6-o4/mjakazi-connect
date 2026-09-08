@@ -1021,6 +1021,59 @@ finished.
   one and reject one from the mjakazi side, and check both inboxes for the send + response
   emails; attempt a 2-profile batch and confirm it is refused.
 
+### 2026-09-08 — Phase 8.2: Availability & hire confirmation
+
+- **What was built**: The hire-confirmation loop. A new sealed `hires` collection
+  (`mwajiri → users`, `mjakazi → wajakazi-profiles`, `subscription → subscriptions`,
+  `confirmedBy` = `mwajiri | mjakazi`, `confirmedAt`, `agreedAt`, `reversedAt`, `state` =
+  `pending_agreement | agreed | reversed`, `sourceEoi → expressions-of-interest`; compound
+  unique index on `(mwajiri, mjakazi)`). A new `services/hire.service.ts` with a single
+  write path `confirmHireCore` — a first confirmation (either side) creates a pending hire
+  and flips the mjakazi's availability to `hired` immediately; the counterpart re-confirming
+  flips it to `agreed`; a `reversed` hire re-opens — plus `confirmHire` (mwajiri),
+  `confirmHireByMjakazi` (mjakazi, auto-links an accepted EOI), `reverseHire` (either
+  party), `reverseHiresForMjakazi` (system path), `listHireCandidatesForMwajiri` (accepted
+  EOIs ∪ unlocked wajakazi), `listHireCandidatesForMjakazi` (unlockers ∪ EOI senders), and
+  `listHires`. Three email templates (`sendHireConfirmedEmail`, `sendHireAgreedEmail`,
+  `sendHireReversedEmail`). Server Actions `confirmHireAction` / `confirmHireByMjakaziAction`
+  / `reverseHireAction`. UI: the mwajiri overview "Confirm a hire" card (`HireConfirmCard`),
+  the mjakazi availability toggle asks "who hired you" when set to Hired (platform waajiri +
+  a "not listed — hired elsewhere" fallback), and the mjakazi's hire confirmations surface
+  on the opportunities screen (`HireInbox`).
+- **Files touched**: `src/payload/collections/hires/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/lib/audit.ts` (`hire_confirmed`,
+  `hire_agreed`, `hire_reversed`), `src/payload/collections/audit-logs/schema.ts`,
+  `src/lib/payload-helpers.ts` (new — shared `toId`/`userLabel`/`loadUserName`/
+  `loadProfileDisplay`/`loadSenderInfo`), `src/services/hire.service.ts` (new),
+  `src/lib/email.ts` (3 templates), `src/app/actions/hire.ts` (new),
+  `src/components/dashboard/mwajiri/hire-confirm-card.tsx` (new),
+  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/page.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`,
+  `src/components/dashboard/settings/availability-card.tsx` (who-hired-you picker),
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx`,
+  `src/services/profile.service.ts` (reverses active hires when a mjakazi leaves `hired`),
+  `src/services/{eoi,contact,subscription}.service.ts` (import shared helpers;
+  `getSubscriptionByUser` exported), `src/payload-types.ts` (regenerated),
+  `context/architecture.md`, `context/code-standards.md`, `context/ui-registry.md`.
+- **Notes**: Deviates from the architecture's literal `hires` field list by adding a `state`
+  enum + `reversedAt` (the product requires "how to reverse it", which the base fields do
+  not capture) and omitting `sourceConciergeCase` (the `concierge-cases` collection lands
+  in Phase 11). Confirmation from either side sets availability → `hired` immediately; the
+  other party is emailed and can reverse. Reversal marks the record `reversed`, frees the
+  mjakazi back to `available`, and notifies the counterpart — leaving `hired` via the toggle
+  also reverses any active hire (dynamic import avoids a `profile ↔ hire` service cycle).
+  Confirmation is gated on a prior relationship: `confirmHire` requires an active
+  subscription plus an accepted EOI or contact unlock; `confirmHireByMjakazi` requires an
+  unlock or sent EOI — no arbitrary counterpart ids. `hire.service.ts` is a named exemption
+  under invariant #15 (trusted profile read with an explicit non-contact `select`, writes
+  `availabilityStatus`). PostHog `hire_confirmed` (`confirmedBy`) fires client-side (already
+  in the code-standards event list). `pnpm lint` (0 errors, 3 pre-existing warnings) and
+  `pnpm build` pass. **Manual verification complete (2026-09-08)**: all ten scenarios
+  passed — confirm from both sides, agree, reverse restores directory visibility,
+  off-platform fallback, re-open reversed, authorization gates, idempotency, dedup, and
+  emails/audit.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

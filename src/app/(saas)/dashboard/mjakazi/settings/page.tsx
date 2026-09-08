@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/components/admin/get-current-user";
 import { AvailabilityCard } from "@/components/dashboard/settings/availability-card";
 import { DeleteAccountCard } from "@/components/dashboard/settings/delete-account-card";
 import config from "@/payload-config";
+import { listHireCandidatesForMjakazi } from "@/services/hire.service";
 import { getOwnProfile } from "@/services/profile.service";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -17,6 +18,7 @@ const MjakaziSettingsPage = async () => {
 
 	const payload = await getPayload({ config });
 	const profile = await getOwnProfile(payload, user);
+	const hireCandidates = await listHireCandidatesForMjakazi(payload, user, profile?.id);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -25,7 +27,12 @@ const MjakaziSettingsPage = async () => {
 				<p className="text-muted-foreground mt-1 text-sm">Manage your account.</p>
 			</div>
 
-			{profile ? <AvailabilityCard currentStatus={profile.availabilityStatus} /> : null}
+			{profile ? (
+				<AvailabilityCard
+					currentStatus={profile.availabilityStatus}
+					hireCandidates={hireCandidates}
+				/>
+			) : null}
 
 			<DeleteAccountCard role="mjakazi" />
 		</div>

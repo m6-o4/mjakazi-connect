@@ -331,6 +331,19 @@ const updateAvailability = async (
 			req: { user },
 		});
 
+		// leaving `hired` reverses any active hire so no stale match lingers on
+		// the record. dynamic import keeps this module out of a static cycle with
+		// hire.service, which imports getOwnProfile from here
+		if (profile.availabilityStatus === "hired" && status !== "hired") {
+			const { reverseHiresForMjakazi } = await import("@/services/hire.service");
+			const reversed = await reverseHiresForMjakazi(payload, user, profile.id);
+			if (reversed.reversed > 0) {
+				console.info(
+					`[services/profile] reversed ${reversed.reversed} active hire(s) for profile ${profile.id}`,
+				);
+			}
+		}
+
 		return { success: true, data: updated };
 	} catch (error) {
 		console.error("[services/profile] updateAvailability failed:", error);
