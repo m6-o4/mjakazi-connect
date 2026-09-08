@@ -1,3 +1,12 @@
+# [2.11.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.10.0...v2.11.0) (2026-09-08)
+
+
+### Features
+
+* **eoi:** expire unanswered interests after 7 days ([f80e3f6](https://github.com/m6-o4/mjakazi-connect/commit/f80e3f64083583abb2830511f012384d2ba178a6))
+* **hire:** notify counterpart when a contract ends ([58944d6](https://github.com/m6-o4/mjakazi-connect/commit/58944d6fcdef93ea28d5849736b42da714b056f3))
+* **reviews:** add hire-gated reviews with staff moderation ([845447c](https://github.com/m6-o4/mjakazi-connect/commit/845447cdc019379ba0502ac2daa09b6d4cd7a322))
+
 # [2.10.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.9.0...v2.10.0) (2026-09-08)
 
 ### Features
