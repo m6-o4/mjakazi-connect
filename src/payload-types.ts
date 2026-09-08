@@ -145,6 +145,7 @@ export interface Config {
       'payment-timeout': TaskPaymentTimeout;
       'subscription-expiry': TaskSubscriptionExpiry;
       'verification-expiry': TaskVerificationExpiry;
+      'eoi-nudge': TaskEoiNudge;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -686,6 +687,7 @@ export interface AuditLog {
     | 'contact_unlocked'
     | 'eoi_sent'
     | 'eoi_responded'
+    | 'eoi_nudged'
     | 'hire_confirmed'
     | 'hire_agreed'
     | 'hire_reversed'
@@ -1024,6 +1026,8 @@ export interface ExpressionsOfInterest {
   state: 'sent' | 'accepted' | 'rejected' | 'expired';
   sentAt?: string | null;
   respondedAt?: string | null;
+  nudgesSent?: number | null;
+  lastNudgedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1140,7 +1144,13 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish';
+        taskSlug:
+          | 'inline'
+          | 'payment-timeout'
+          | 'subscription-expiry'
+          | 'verification-expiry'
+          | 'eoi-nudge'
+          | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1173,7 +1183,9 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish') | null;
+  taskSlug?:
+    | ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'eoi-nudge' | 'schedulePublish')
+    | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1942,6 +1954,8 @@ export interface ExpressionsOfInterestSelect<T extends boolean = true> {
   state?: T;
   sentAt?: T;
   respondedAt?: T;
+  nudgesSent?: T;
+  lastNudgedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2447,6 +2461,14 @@ export interface TaskSubscriptionExpiry {
  * via the `definition` "TaskVerification-expiry".
  */
 export interface TaskVerificationExpiry {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskEoi-nudge".
+ */
+export interface TaskEoiNudge {
   input?: unknown;
   output?: unknown;
 }

@@ -29,6 +29,7 @@ type AuditAction =
 	| "contact_unlocked"
 	| "eoi_sent"
 	| "eoi_responded"
+	| "eoi_nudged"
 	| "hire_confirmed"
 	| "hire_agreed"
 	| "hire_reversed"

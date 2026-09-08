@@ -464,6 +464,51 @@ const sendEoiResponseConfirmedEmail = async ({
 	});
 };
 
+type SendEoiNudgeEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+	role: "mwajiri" | "mjakazi";
+};
+
+// hire nudge — sent 7 and 14 days after an accepted expression of interest to
+// both parties, asking whether it resulted in a hire. two nudges, then silence
+// (enforced by the 8.3 eoi-nudge job)
+const sendEoiNudgeEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+	role,
+}: SendEoiNudgeEmailArgs): Promise<void> => {
+	const isMwajiri = role === "mwajiri";
+	const opening = isMwajiri
+		? `Hi ${escapeHtml(firstName)}, you connected with <strong>${escapeHtml(otherPartyName)}</strong> after they accepted your expression of interest.`
+		: `Hi ${escapeHtml(firstName)}, you accepted an expression of interest from <strong>${escapeHtml(otherPartyName)}</strong>.`;
+	const question = isMwajiri
+		? "If you have hired them, confirm the hire from your dashboard so the match is recorded correctly."
+		: "If they have hired you, mark yourself as hired from your dashboard so the match is recorded correctly.";
+
+	const content = `
+    ${h1("Did It Result in a Hire?")}
+    ${p(opening)}
+    ${p(question)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What To Do</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">${isMwajiri ? "Log in to your dashboard and confirm the hire." : "Log in to your dashboard and set your availability to Hired."}</p>
+    `)}
+    ${muted("If the placement did not happen, you can ignore this message.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Did your interest result in a hire?",
+		html: baseTemplate(content),
+	});
+};
+
 type SendHireConfirmedEmailArgs = {
 	payload: Payload;
 	to: string;
@@ -574,6 +619,7 @@ const sendHireReversedEmail = async ({
 
 export {
 	sendEoiBatchSentEmail,
+	sendEoiNudgeEmail,
 	sendEoiReceivedEmail,
 	sendEoiRespondedEmail,
 	sendEoiResponseConfirmedEmail,

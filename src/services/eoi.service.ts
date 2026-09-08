@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
-import { ValidationError, type Payload } from "payload";
+import { ValidationError, type Payload, type Where } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
 import {
 	sendEoiBatchSentEmail,
+	sendEoiNudgeEmail,
 	sendEoiReceivedEmail,
 	sendEoiRespondedEmail,
 	sendEoiResponseConfirmedEmail,
@@ -411,4 +412,200 @@ const notifyResponse = async (
 	}
 };
 
-export { listReceivedEois, listSentEois, respondToEoi, sendEoiBatch };
+// the 7- and 14-day windows after an accepted interest, one nudge each. the
+// array index is the number of nudges already sent, so `NUDGE_WINDOWS_MS[0]` is
+// the first nudge (7 days) and `[1]` the second (14 days)
+const NUDGE_WINDOWS_MS = [7, 14].map((days) => days * 24 * 60 * 60 * 1000);
+
+// trusted read of a mjakazi profile's owner + display name for the nudge email.
+// an explicit select keeps contact and identity fields out of this read
+const loadMjakaziOwner = async (
+	payload: Payload,
+	profileId: string,
+): Promise<{ user?: string | { id?: string | number } | null; displayName?: string | null } | null> => {
+	try {
+		const result = await payload.find({
+			collection: "wajakazi-profiles",
+			where: { id: { equals: profileId } },
+			limit: 1,
+			depth: 0,
+			select: { user: true, displayName: true },
+			overrideAccess: true,
+		});
+		const doc = result.docs[0];
+		if (!doc) return null;
+		return { user: doc.user, displayName: doc.displayName };
+	} catch {
+		return null;
+	}
+};
+
+// whether a non-reversed hire already exists for the pair — the nudge's question
+// ("did it result in a hire?") is then answered, so it is skipped
+const hasActiveHire = async (
+	payload: Payload,
+	mwajiriId: string,
+	mjakaziId: string,
+): Promise<boolean> => {
+	try {
+		const result = await payload.find({
+			collection: "hires",
+			where: {
+				and: [
+					{ mwajiri: { equals: mwajiriId } },
+					{ mjakazi: { equals: mjakaziId } },
+					{ state: { in: ["pending_agreement", "agreed"] } },
+				],
+			},
+			limit: 1,
+			depth: 0,
+			overrideAccess: true,
+		});
+		return result.docs.length > 0;
+	} catch {
+		return false;
+	}
+};
+
+// compare-and-swap one nudge onto an accepted interest. `count` is the number of
+// nudges already sent (0 or 1); the where-clause pins that exact count so a
+// concurrent run cannot double-apply. `exists: false` covers pre-8.3 accepted
+// records that predate the `nudgesSent` field
+const applyNudge = async (
+	payload: Payload,
+	eoi: ExpressionsOfInterest,
+	count: number,
+): Promise<boolean> => {
+	const countClause: Where =
+		count === 0
+			? { or: [{ nudgesSent: { equals: 0 } }, { nudgesSent: { exists: false } }] }
+			: { or: [{ nudgesSent: { equals: 1 } }] };
+
+	try {
+		const result = await payload.update({
+			collection: "expressions-of-interest",
+			where: {
+				and: [
+					{ id: { equals: eoi.id } },
+					{ state: { equals: "accepted" } },
+					countClause,
+				],
+			},
+			data: { nudgesSent: count + 1, lastNudgedAt: new Date().toISOString() },
+			overrideAccess: true,
+		});
+		return result.docs.length > 0;
+	} catch (error) {
+		console.error("[services/eoi] nudge CAS failed:", error);
+		return false;
+	}
+};
+
+// fire-and-forget: one email to each party plus a system audit entry. the
+// nudge counter is already committed, so a failed send never re-nudges
+const notifyNudge = async (
+	payload: Payload,
+	eoi: ExpressionsOfInterest,
+	nudgeNumber: number,
+): Promise<void> => {
+	const mwajiriId = toId(eoi.mwajiri);
+	const mjakaziId = toId(eoi.mjakazi);
+	if (!mwajiriId || !mjakaziId) return;
+
+	const mwajiriName = (await loadUserName(payload, mwajiriId)) ?? "the employer";
+	const profile = await loadMjakaziOwner(payload, mjakaziId);
+	const mjakaziName = profile?.displayName ?? "the wajakazi";
+	const mjakaziOwnerId = profile ? toId(profile.user) : null;
+
+	await writeAuditLog({
+		action: "eoi_nudged",
+		targetId: mwajiriId,
+		targetLabel: mwajiriName,
+		metadata: { eoiId: eoi.id, mjakaziProfileId: mjakaziId, nudgeNumber },
+		source: "system",
+	});
+
+	try {
+		const mwajiri = await loadUserEmail(payload, mwajiriId);
+		if (mwajiri) {
+			await sendEoiNudgeEmail({
+				payload,
+				to: mwajiri.email,
+				firstName: mwajiri.firstName,
+				otherPartyName: mjakaziName,
+				role: "mwajiri",
+			});
+		}
+	} catch (error) {
+		console.error("[services/eoi] nudge mwajiri email failed:", error);
+	}
+
+	if (!mjakaziOwnerId) return;
+	try {
+		const mjakazi = await loadUserEmail(payload, mjakaziOwnerId);
+		if (mjakazi) {
+			await sendEoiNudgeEmail({
+				payload,
+				to: mjakazi.email,
+				firstName: mjakazi.firstName,
+				otherPartyName: mwajiriName,
+				role: "mjakazi",
+			});
+		}
+	} catch (error) {
+		console.error("[services/eoi] nudge mjakazi email failed:", error);
+	}
+};
+
+// polled daily by the 8.3 nudge job. finds accepted interests whose next nudge
+// window has elapsed and nudges each idempotently (two nudges, then silence).
+// a missed window self-corrects on the next run because the query polls for
+// eligible records rather than relying on being woken at the right moment
+const sendAcceptedEoiNudges = async (
+	payload: Payload,
+): Promise<{ nudged: number }> => {
+	const now = Date.now();
+
+	let candidates: ExpressionsOfInterest[];
+	try {
+		const result = await payload.find({
+			collection: "expressions-of-interest",
+			where: { state: { equals: "accepted" } },
+			limit: 200,
+			depth: 0,
+			overrideAccess: true,
+		});
+		candidates = result.docs;
+	} catch (error) {
+		console.error("[services/eoi] nudge lookup failed:", error);
+		return { nudged: 0 };
+	}
+
+	let nudged = 0;
+
+	for (const eoi of candidates) {
+		if (!eoi.respondedAt) continue;
+
+		const count = eoi.nudgesSent ?? 0;
+		if (count >= 2) continue;
+
+		const elapsed = now - new Date(eoi.respondedAt).getTime();
+		if (elapsed < NUDGE_WINDOWS_MS[count]) continue;
+
+		const mwajiriId = toId(eoi.mwajiri);
+		const mjakaziId = toId(eoi.mjakazi);
+		if (!mwajiriId || !mjakaziId) continue;
+
+		if (await hasActiveHire(payload, mwajiriId, mjakaziId)) continue;
+
+		const applied = await applyNudge(payload, eoi, count);
+		if (!applied) continue;
+
+		await notifyNudge(payload, eoi, count + 1);
+		nudged += 1;
+	}
+
+	return { nudged };
+};
+
+export { listReceivedEois, listSentEois, respondToEoi, sendAcceptedEoiNudges, sendEoiBatch };

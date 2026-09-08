@@ -1072,7 +1072,36 @@ finished.
   `pnpm build` pass. **Manual verification complete (2026-09-08)**: all ten scenarios
   passed — confirm from both sides, agree, reverse restores directory visibility,
   off-platform fallback, re-open reversed, authorization gates, idempotency, dedup, and
-  emails/audit.
+   emails/audit.
+
+### 2026-09-08 — Phase 8.3: EOI nudge task
+
+- **What was built**: The `eoi-nudge` job (daily, `0 8 * * *`). A new
+  `sendAcceptedEoiNudges` in `eoi.service.ts` polls accepted expressions of interest and
+  nudges each at 7 and 14 days after `respondedAt` — one email to both parties asking
+  whether the interest resulted in a hire, two nudges then silence. The
+  `expressions-of-interest` collection gained `nudgesSent` (number, default 0) and
+  `lastNudgedAt` (date) to track the count; a new `sendEoiNudgeEmail` template in
+  `lib/email.ts` varies the copy by recipient role (mwajiri → "confirm the hire",
+  mjakazi → "mark yourself hired"); and a new `eoi_nudged` audit action.
+- **Files touched**: `src/payload/collections/expressions-of-interest/schema.ts`
+  (`nudgesSent`, `lastNudgedAt`), `src/services/eoi.service.ts`
+  (`sendAcceptedEoiNudges` + `loadMjakaziOwner`/`hasActiveHire`/`applyNudge`/`notifyNudge`),
+  `src/lib/email.ts` (`sendEoiNudgeEmail`), `src/lib/audit.ts` (`eoi_nudged`),
+  `src/payload/collections/audit-logs/schema.ts` (`eoi_nudged`), `src/jobs/eoi-nudge.ts`
+  (new), `src/payload.config.ts` (`jobs.tasks`), `src/payload-types.ts` (regenerated).
+- **Notes**: The job polls `state: accepted` and filters the 7/14-day window plus the
+  `nudgesSent` count in JS (same pattern as the expiry jobs) so a missed window
+  self-corrects. Idempotency is a compare-and-swap on the exact prior `nudgesSent` — with
+  an `exists: false` clause to cover pre-8.3 accepted records that predate the field — so a
+  concurrent run cannot double-send. A non-reversed hire (`pending_agreement | agreed`) for
+  the pair suppresses the nudge: the question is already answered. The nudge is email +
+  `eoi_nudged` audit only (no PostHog event — it is a system job, not a user action).
+  Schedule is `0 8 * * *` (8am) rather than midnight so the ask lands in the morning.
+  `pnpm lint` (0 errors, 4 warnings — the new `TaskConfig<any>` matches the three existing
+  jobs) and `pnpm build` pass. **Manual verification pending**: backdate an accepted EOI's
+  `respondedAt` 8 days, run the task, confirm both parties are emailed once and a second run
+  does not repeat; backdate 15 days and confirm the second nudge fires once and then silence.
 
 ---
 

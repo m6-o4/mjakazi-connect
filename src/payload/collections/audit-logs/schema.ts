@@ -65,6 +65,7 @@ const AuditLogs: CollectionConfig = {
 				// expression of interest lifecycle
 				{ label: "Expression of Interest Sent", value: "eoi_sent" },
 				{ label: "Expression of Interest Responded", value: "eoi_responded" },
+				{ label: "Expression of Interest Nudged", value: "eoi_nudged" },
 				// hire lifecycle
 				{ label: "Hire Confirmed", value: "hire_confirmed" },
 				{ label: "Hire Agreed", value: "hire_agreed" },

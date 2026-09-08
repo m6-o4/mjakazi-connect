@@ -87,6 +87,21 @@ const ExpressionsOfInterest: CollectionConfig = {
 			label: "Responded At",
 			admin: { readOnly: true, position: "sidebar" },
 		},
+		{
+			// how many hire nudges the 8.3 job has sent for an accepted interest
+			// (0–2). two nudges, then silence — written only by the nudge task
+			name: "nudgesSent",
+			type: "number",
+			label: "Nudges Sent",
+			defaultValue: 0,
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			name: "lastNudgedAt",
+			type: "date",
+			label: "Last Nudged At",
+			admin: { readOnly: true, position: "sidebar" },
+		},
 	],
 	indexes: [{ fields: ["mwajiri", "mjakazi"] }],
 	timestamps: true,

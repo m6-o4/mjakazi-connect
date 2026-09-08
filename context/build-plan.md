@@ -398,6 +398,14 @@ the Mwajiri side. Then, with another pair, from the Mjakazi side.
 interest. Two nudges, then silence. **Verify**: backdate an acceptance, run the task,
 confirm one email and no repeats.
 
+**Built 2026-09-08.** `jobs/eoi-nudge.ts` (daily, `0 8 * * *`) delegates to
+`sendAcceptedEoiNudges` in `eoi.service.ts`. `expressions-of-interest` gained `nudgesSent`
++ `lastNudgedAt`; each accepted interest is nudged once at 7 and once at 14 days (email to
+both parties + `eoi_nudged` audit), idempotently via a CAS on the exact prior `nudgesSent`
+(with an `exists: false` clause for pre-8.3 records). A non-reversed hire for the pair
+suppresses the nudge. The `expired` EOI state remains unused — 8.3 nudges *accepted*
+interests only, so the "should a sent interest auto-expire" question is still open.
+
 ---
 
 # Phase 9 — Reviews

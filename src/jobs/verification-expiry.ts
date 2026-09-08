@@ -8,7 +8,7 @@ import { expireExpiredVerifications } from "@/services/verification.service";
 // from the directory (the guard requires `verified`) and emails the worker. the
 // transition, audit entry and email live in the verification service — the handler
 // only resolves payload and delegates.
-const verificationExpiryTask: TaskConfig<any> = {
+const verificationExpiryTask: TaskConfig<{ input: object; output: { expired: number } }> = {
 	slug: "verification-expiry",
 	label: "Verification Expiry",
 	schedule: [{ cron: "0 0 * * *", queue: "default" }],
