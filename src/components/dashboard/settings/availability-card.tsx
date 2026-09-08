@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useState, type ReactNode } from "react";
 
-import { updateAvailabilityAction } from "@/app/actions/profile";
 import { confirmHireByMjakaziAction } from "@/app/actions/hire";
+import { updateAvailabilityAction } from "@/app/actions/profile";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -57,7 +57,10 @@ const STATUS_CONFIG: Record<
 // lets a mjakazi control whether they appear in the public directory/archive.
 // choosing Hired asks who hired them (offering the waajiri who unlocked their
 // contact or sent interest), so a hire can be recorded from this side too
-const AvailabilityCard = ({ currentStatus, hireCandidates = [] }: AvailabilityCardProps) => {
+const AvailabilityCard = ({
+	currentStatus,
+	hireCandidates = [],
+}: AvailabilityCardProps) => {
 	const router = useRouter();
 	const [status, setStatus] = useState<AvailabilityStatus>(currentStatus);
 	const [pickingHire, setPickingHire] = useState(false);

@@ -72,9 +72,7 @@ const EoiInbox = ({ eois }: EoiInboxProps) => {
 										{eoi.mwajiriName}
 									</p>
 									<p className="text-muted-foreground text-xs">
-										{[eoi.mwajiriLocation, eoi.sentAtLabel]
-											.filter(Boolean)
-											.join(" · ")}
+										{[eoi.mwajiriLocation, eoi.sentAtLabel].filter(Boolean).join(" · ")}
 									</p>
 								</div>
 								{eoi.state === "accepted" ? (

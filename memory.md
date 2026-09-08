@@ -1,73 +1,83 @@
-# Memory — Phase 8.3 EOI nudge task + job type cleanup
+# Memory — Phase 9.1 Reviews + end-contract flow (and assorted follow-ups)
 
-Last updated: 2026-09-08 13:58
+Last updated: 2026-09-08 21:15
 
 ## What was built
 
-**Phase 8.3 — EOI nudge task, end to end:**
-- `src/jobs/eoi-nudge.ts` (new) — daily (`0 8 * * *`) job delegating to the service.
-- `src/services/eoi.service.ts` — `sendAcceptedEoiNudges` plus helpers
-  `loadMjakaziOwner`, `hasActiveHire`, `applyNudge`, `notifyNudge` (exported).
-- `src/payload/collections/expressions-of-interest/schema.ts` — added `nudgesSent`
-  (number, default 0) and `lastNudgedAt` (date).
-- `src/lib/email.ts` — `sendEoiNudgeEmail` (role-aware copy: mwajiri → "confirm the
-  hire", mjakazi → "mark yourself hired").
-- `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` — new `eoi_nudged`
-  action.
-- `src/payload.config.ts` — registered `eoiNudgeTask`; `src/payload-types.ts` regenerated.
+**Phase 9.1 — Reviews, end to end:**
+- `src/payload/collections/reviews/schema.ts` (new) — sealed collection, unique
+  `[mwajiri, mjakazi]`; fields `reviewerName` (snapshot), `rating` (1–5), `comment`,
+  `state` (`pending | published | rejected`), `rejectionReason`, `reviewedAt`,
+  `hiddenByWorker`.
+- `src/services/review.service.ts` (new) — the single authority: `submitReview`,
+  `listPendingReviews`/`approveReview`/`rejectReview`, `setReviewVisibility`,
+  `listWorkerReviews`, `getPublicReviews` (aggregate), `getReviewFormState`,
+  `listReviewedMjakaziIds`.
+- `src/app/actions/reviews.ts` (new) — submit / toggle visibility / staff approve-reject.
+- UI: `src/components/rating-stars.tsx`, `dashboard/mwajiri/browse/leave-review-form.tsx`,
+  `dashboard/mjakazi/reviews/reviews-panel.tsx`, `dashboard/staff/reviews/review-queue.tsx`,
+  `web/directory/profile-reviews.tsx`, and `(saas)/dashboard/staff/reviews/page.tsx`.
+- `review_*` audit actions (`lib/audit.ts` + `audit-logs/schema.ts`); `review.service`
+  added to the invariant-#15 exemption list in `architecture.md`.
+- `review_submitted` PostHog event (`rating`) fired from `LeaveReviewForm`.
 
-**Job type cleanup (this session):**
-- All four job files (`payment-timeout.ts`, `subscription-expiry.ts`, `verification-expiry.ts`,
-  `eoi-nudge.ts`) had `TaskConfig<any>`. Replaced with the typed `TaskInputOutput` form:
-  `TaskConfig<{ input: object; output: { expired: number } }>` (and `{ nudged: number }` for
-  eoi-nudge). `pnpm lint` now 0 errors / 0 warnings; `tsc --noEmit` clean.
+**End-contract flow (review entry point for hired wajakazi):**
+- `hires` schema gained `ended` terminal state + `endedAt` (distinct from `reversed`).
+- `hire.service.ts`: `endHire` (either party ends an `agreed` hire → `ended`, releases the
+  mjakazi back to `available`, `hire_ended` audit), plus `listHiresForMwajiri`
+  (`listHires` is now mjakazi-only).
+- `HireConfirmCard` (mwajiri) and `HireInbox` (mjakazi): on an `agreed` hire the **Reverse**
+  button is gone, replaced by **End contract**; only the mwajiri's end opens `LeaveReviewForm`
+  inline; ended-but-unreviewed hires show **Leave a review**; reviewed hires show a badge.
+- `sendHireEndedEmail` template + `notifyHireEnded` — counterpart notified on end (the
+  missing "end of employment" email).
+
+**Follow-ups completed earlier this session:**
+- EOI auto-expire: `src/jobs/eoi-expire.ts` (daily `0 0 * * *`) + `expireUnansweredEois` in
+  `eoi.service.ts` (7 days after `sentAt`, `eoi_expired` audit, frees `pendingKey`).
+- Nudge windows tightened 7/14 → **3/5 days** (`NUDGE_WINDOWS_MS`).
+- Verification payment: editable M-Pesa number (`pay-verification.tsx` + `payment.ts`),
+  defaulting to the profile phone, **not** persisted back to `profile.phone`.
+- Reverification made **replace-only**: `vault.service.ts` `deleteVaultDocument` refuses
+  deletion of a `verified` profile's document; `Remove` button hidden while verified.
 
 ## Decisions made
 
-- **Nudge at 7 and 14 days after `respondedAt`** of an accepted EOI, two nudges then
-  silence, tracked by `nudgesSent` (0–2).
-- **Idempotency via compare-and-swap on the exact prior `nudgesSent`**, with an
-  `exists: false` clause so pre-8.3 accepted records (which predate the field) still match.
-- **A non-reversed hire (`pending_agreement | agreed`) suppresses the nudge** — the
-  question "did it result in a hire?" is already answered.
-- Nudge is **email + `eoi_nudged` audit only, no PostHog event** (system job, not a user
-  action). Schedule is 8am, not midnight, since it is a user-facing ask.
-- **Job `TaskConfig` typed via the `TaskInputOutput` form**, not the slug-key form — the
-  slug-key form references `TypedJobs['tasks']`, which is generated from
-  `payload.config.ts` that imports the task (circular for standalone task files).
+- **Review gate = unlock + a hire that reached `agreed` or `ended`** (never
+  `pending_agreement` or `reversed`). Rejection is terminal (one review per pair, ever).
+- **Either party can end a contract**; the **review is mwajiri-only** for now.
+- **Worker show/hide** on each published review; hidden reviews are excluded from the public
+  list *and* the aggregate. Reviewer attribution is a first-name + last-initial snapshot.
+- Payment phone is **not** written back to the worker's profile (payer may differ from the
+  worker); the mwajiri flow persists it because there the payer is always the mwajiri.
 
 ## Problems solved
 
-- **`TaskConfig<any>` eslint warning** — resolved by typing as
-  `TaskConfig<{ input: object; output: … }>` instead of a slug key.
-- **`Where` type union error** in the nudge CAS (`or`/`equals` branches widened with
-  `undefined` keys and failed Payload's `Where` index signature) — fixed by annotating the
-  count clause `const countClause: Where` and giving both branches a single `or` shape.
+- Hired wajakazi drop out of the directory (`DIRECTORY_VISIBLE` = verified **and**
+  available), so the browse detail could not host the review form for them → solved with the
+  "End contract → review" flow on the "Your hires" list.
+- Mongoose duplicate-index warning (field `index: true` + same field in the `indexes` array)
+  → removed the duplicate.
+- Component name collision (two `ReviewForm`s) → renamed the mwajiri one to
+  `LeaveReviewForm`.
 
 ## Current state
 
-- **Phase 8.2 was committed** by Michael before this session's work started.
-- **Phase 8.3 complete and compiled** — `pnpm lint` 0/0, `pnpm build` green (only the known
-  harmless Windows `sharp`/`detect-libc` `EPERM` symlink warnings), `tsc --noEmit` clean.
-- **Phase 8.3 changes are UNCOMMITTED** in the working tree.
-- Docs updated: `progress-tracker.md` (8.3 entry), `build-plan.md` (8.3 "Built" note).
+- **All committed** and manually verified by Michael. `pnpm lint` 0/0, `pnpm build` green
+  (only the known Windows `sharp`/`detect-libc` `EPERM` symlink warnings).
+- `progress-tracker.md`, `build-plan.md`, `architecture.md`, `ui-registry.md` are current
+  (manual-verification notes marked done).
 
 ## Next session starts with
 
-- **Commit the uncommitted Phase 8.3 changes**, then **manually verify the nudge task**:
-  backdate an accepted EOI's `respondedAt` 8 days, run the task, confirm both parties get
-  one email and a second run is silent; backdate 15 days and confirm the second nudge fires
-  once then silence.
-- Then **Phase 9.1 — Reviews** (`reviews` collection, submission gated on an unlock, one
-  per unlock, staff moderation queue at `/dashboard/staff/reviews`). Re-check
-  `context/build-plan.md` (9.1) and `context/progress-tracker.md`.
+- **Phase 10 — Admin & Moderation**: 10.1 suspend, reinstate, delete, blacklist per the
+  authority matrix in `architecture.md` (also resolves the carried-forward `getContact`
+  returns-a-blacklisted-contact gap).
 
 ## Open questions
 
-- The EOI `expired` state is still unused — 8.3 nudges *accepted* interests only, so the
-  "should an unanswered `sent` EOI ever auto-expire, and on what trigger?" question remains
-  open.
-- Carried forward, still unresolved: Phase 5 deferred manual sandbox verification (STK
-  push, callback replay idempotency, subscription expiry); pre-expiry verification reminder
-  email (12.1); "Extend" button in the subscription status card still uses the outline
-  variant; `getContact` returns contact for a `blacklisted` (not deleted) profile (10.1).
+- `hire_ended` PostHog event intentionally **not** added (not in the fixed event list in
+  `code-standards.md` — add it there first if wanted).
+- Carried forward, still unresolved: Phase 5 deferred manual sandbox verification (STK push,
+  callback replay idempotency, subscription expiry); pre-expiry verification reminder email
+  (12.1); "Extend" button in the subscription status card still uses the outline variant.

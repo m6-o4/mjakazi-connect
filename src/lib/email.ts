@@ -61,11 +61,15 @@ const baseTemplate = (content: string) => `
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-          ${LOGO_URL ? `<tr>
+          ${
+						LOGO_URL
+							? `<tr>
             <td style="background-color:${BODY_BACKGROUND};border-radius:12px 12px 0 0;padding:24px 32px 16px;text-align:center;">
               <img src="${LOGO_URL}" alt="Mjakazi Connect" style="display:block;width:160px;max-width:100%;height:auto;margin:0 auto;" />
             </td>
-          </tr>` : ""}
+          </tr>`
+							: ""
+					}
           <tr>
             <td style="background-color:${HEADER_BACKGROUND};border-radius:${LOGO_URL ? "0" : "12px 12px 0 0"};padding:24px 32px;">
               <p style="margin:0;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Mjakazi Connect</p>
@@ -420,7 +424,9 @@ const sendEoiRespondedEmail = async ({
 
 	await sendEmail(payload, {
 		to,
-		subject: accepted ? "A wajakazi accepted your interest" : "A wajakazi declined your interest",
+		subject: accepted
+			? "A wajakazi accepted your interest"
+			: "A wajakazi declined your interest",
 		html: baseTemplate(content),
 	});
 };
@@ -617,6 +623,39 @@ const sendHireReversedEmail = async ({
 	});
 };
 
+type SendHireEndedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire ended — notifies the other party that a completed agreement was closed,
+// so neither side is left thinking the match is still active
+const sendHireEndedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireEndedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Contract Ended")}
+    ${p(`Hi ${escapeHtml(firstName)}, the hire with <strong>${escapeHtml(otherPartyName)}</strong> has been ended.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The agreement is now closed, and the wajakazi is available for new opportunities.</p>
+    `)}
+    ${muted("If this is unexpected, log in to review your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was ended",
+		html: baseTemplate(content),
+	});
+};
+
 export {
 	sendEoiBatchSentEmail,
 	sendEoiNudgeEmail,
@@ -625,6 +664,7 @@ export {
 	sendEoiResponseConfirmedEmail,
 	sendHireAgreedEmail,
 	sendHireConfirmedEmail,
+	sendHireEndedEmail,
 	sendHireReversedEmail,
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,

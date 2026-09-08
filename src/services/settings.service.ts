@@ -93,10 +93,16 @@ const updateSubscriptionTiers = async (
 			return fail("Each tier needs a display name.", "missing_name");
 		}
 		if (!Number.isInteger(tier.price) || tier.price < 1) {
-			return fail("Each tier price must be a whole number of KSh, at least KSh 1.", "invalid_price");
+			return fail(
+				"Each tier price must be a whole number of KSh, at least KSh 1.",
+				"invalid_price",
+			);
 		}
 		if (!Number.isInteger(tier.durationDays) || tier.durationDays < 1) {
-			return fail("Each tier duration must be a whole number of days, at least 1 day.", "invalid_duration");
+			return fail(
+				"Each tier duration must be a whole number of days, at least 1 day.",
+				"invalid_duration",
+			);
 		}
 	}
 

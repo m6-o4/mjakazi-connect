@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import { buildConfig, PayloadRequest } from "payload";
 import sharp from "sharp";
 
+import { eoiExpireTask } from "@/jobs/eoi-expire";
 import { eoiNudgeTask } from "@/jobs/eoi-nudge";
 import { paymentTimeoutTask } from "@/jobs/payment-timeout";
 import { subscriptionExpiryTask } from "@/jobs/subscription-expiry";
@@ -80,7 +81,13 @@ export default buildConfig({
 			},
 		},
 		autoRun: [{ cron: "* * * * *", limit: 10 }],
-		tasks: [paymentTimeoutTask, subscriptionExpiryTask, verificationExpiryTask, eoiNudgeTask],
+		tasks: [
+			paymentTimeoutTask,
+			subscriptionExpiryTask,
+			verificationExpiryTask,
+			eoiNudgeTask,
+			eoiExpireTask,
+		],
 	},
 	plugins: [...plugins],
 	secret: payloadSecret,

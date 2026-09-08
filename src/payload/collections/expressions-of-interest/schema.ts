@@ -71,7 +71,7 @@ const ExpressionsOfInterest: CollectionConfig = {
 				{ label: "Sent", value: "sent" },
 				{ label: "Accepted", value: "accepted" },
 				{ label: "Rejected", value: "rejected" },
-				// reserved — no code transitions into it yet (8.1)
+				// reached only by the eoi-expire job, 7 days after an unanswered send
 				{ label: "Expired", value: "expired" },
 			],
 		},

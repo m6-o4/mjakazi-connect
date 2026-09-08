@@ -5,12 +5,16 @@ import { cache } from "react";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { BrowseContactCard } from "@/components/dashboard/mwajiri/browse/browse-contact-card";
+import { LeaveReviewForm } from "@/components/dashboard/mwajiri/browse/leave-review-form";
 import { SaveToggle } from "@/components/dashboard/mwajiri/browse/save-toggle";
+import { RatingStars } from "@/components/rating-stars";
+import { Card, CardContent } from "@/components/ui/card";
 import { DirectoryProfileDetail } from "@/components/web/directory/directory-profile-detail";
 import { DirectoryProfileViewTracker } from "@/components/web/directory/directory-profile-view-tracker";
 import config from "@/payload-config";
 import { getContact, type Contact } from "@/services/contact.service";
 import { getDirectoryProfile } from "@/services/directory.service";
+import { getReviewFormState, type ReviewFormState } from "@/services/review.service";
 import { isSaved } from "@/services/saved.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
@@ -52,17 +56,20 @@ const Page = async ({ params }: Args) => {
 	let saved = false;
 	let isUnlocked = false;
 	let contact: Contact | null = null;
+	let reviewState: ReviewFormState | null = null;
 	if (user) {
 		const payload = await getPayload({ config });
-		const [subscription, wasSaved, unlockedContact] = await Promise.all([
+		const [subscription, wasSaved, unlockedContact, formState] = await Promise.all([
 			getOwnSubscription(payload, user),
 			isSaved(payload, user, profile.id),
 			getContact(payload, user, profile.id),
+			getReviewFormState(payload, user, profile.id),
 		]);
 		isActive = subscription?.subscriptionState === "active";
 		saved = wasSaved;
 		isUnlocked = unlockedContact !== null;
 		contact = unlockedContact;
+		reviewState = formState;
 	}
 
 	return (
@@ -80,6 +87,28 @@ const Page = async ({ params }: Args) => {
 					/>
 				}
 			/>
+
+			{reviewState?.eligible ? (
+				<LeaveReviewForm mjakaziId={profile.id} />
+			) : reviewState?.existing ? (
+				<Card>
+					<CardContent className="flex flex-col gap-2 py-6">
+						<div className="flex items-center gap-2">
+							<RatingStars rating={reviewState.existing.rating} />
+							<span className="text-muted-foreground text-sm">
+								{reviewState.existing.state === "pending"
+									? "Awaiting moderation"
+									: reviewState.existing.state === "published"
+										? "Published"
+										: "Not published"}
+							</span>
+						</div>
+						<p className="text-foreground text-sm leading-relaxed wrap-break-word">
+							{reviewState.existing.comment}
+						</p>
+					</CardContent>
+				</Card>
+			) : null}
 		</div>
 	);
 };

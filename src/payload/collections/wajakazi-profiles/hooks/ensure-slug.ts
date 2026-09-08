@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-
 import type { CollectionBeforeChangeHook } from "payload";
 
 import { formatSlug } from "@/payload/fields/slug/format-slug";

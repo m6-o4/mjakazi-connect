@@ -479,16 +479,24 @@ expiry. New reveals require an active subscription.
 (`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`. Sent in batches of 3
 to 5.
 
-**`hires`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `subscription`
-(→ subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
-`confirmedAt`, `agreedAt`, `reversedAt`, `state` (`pending_agreement | agreed | reversed`),
-`sourceEoi`. One record per (mwajiri, mjakazi) — compound unique index. The event Match
-Conversion Rate is measured from, and the clock the replacement guarantee starts.
-`sourceConciergeCase` lands with the `concierge-cases` collection in Phase 11.
+**`hires`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `subscription` (→
+subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
+`confirmedAt`, `agreedAt`, `reversedAt`, `endedAt`, `state`
+(`pending_agreement | agreed | reversed | ended`), `sourceEoi`. One record per (mwajiri,
+mjakazi) — compound unique index. The event Match Conversion Rate is measured from, and the
+clock the replacement guarantee starts. `ended` is the natural close (either party ends a
+completed contract, which also releases the mjakazi back to `available`), distinct from
+`reversed` ("did not hold"). `sourceConciergeCase` lands with the `concierge-cases`
+collection in Phase 11.
 
-**`reviews`** — `mwajiri`, `mjakazi`, `rating` (1–5), `comment`, `moderationState`
-(`pending | published | rejected`), `moderatedBy`, `createdAt`. Permitted only where a
-`contact-unlock` exists. One review per unlock.
+**`reviews`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `reviewerName`
+(snapshot of first name + last initial), `rating` (1–5), `comment`, `state`
+(`pending | published | rejected`), `rejectionReason`, `reviewedAt`, `hiddenByWorker`. One
+record per (mwajiri, mjakazi) — compound unique index. Gated on an existing
+`contact-unlock` **and** a hire that reached `agreed` **or** `ended` (a hire that never
+held earns no review). Starts `pending`; staff publish or reject (terminal, reason
+required). The worker can hide/show each `published` review; hidden reviews are excluded
+from the public profile and its aggregate.
 
 **`concierge-cases`** — `mwajiri`, `subscription`, `state`
 (`intake | in_review | shortlist_delivered | closed | replacement_requested`), `brief`,
@@ -592,10 +600,13 @@ Therefore:
    authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
    `lib/audit.ts`, `contact.service.ts` (which reads contact fields after its own
    authorization), `eoi.service.ts` (which resolves non-contact display fields — a
-   profile's `displayName`/`location`, and a sender's name — with an explicit `select` that
-   never includes contact fields) and `hire.service.ts` (which resolves a profile's owner
-   + `displayName` and writes `availabilityStatus` via a trusted read/update with an
-   explicit non-contact `select`) — named here, and nowhere else.
+   profile's `displayName`/`location`, and a sender's name — with an explicit `select`
+   that never includes contact fields), `hire.service.ts` (which resolves a profile's
+   owner
+   - `displayName` and writes `availabilityStatus` via a trusted read/update with an
+     explicit non-contact `select`) and `review.service.ts` (which resolves a profile's
+     owner + `displayName` via a trusted read with an explicit non-contact `select`) —
+     named here, and nowhere else.
 4. Masking is a UI convenience, never a control. The data must be absent from the
    response, not hidden in it.
 
@@ -622,7 +633,9 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   is public and CDN-served; the vault is neither.
 - **Viewing is an event.** Every document view writes an audit entry naming the viewer,
   the subject, the document type and the time. No exceptions, including for `admin`.
-- **Locking.** Documents cannot be edited while verification is `pending_review`.
+- **Locking.** Documents cannot be edited while verification is `pending_review`. A
+  `verified` worker can only _replace_ a document — which reverts them to `pending_review`
+  — never remove one, so a badge can never stand over missing evidence.
 - **Erasure.** Account deletion nullifies personal data and destroys vault documents.
   Payment records are retained for statutory audit with the personal fields nulled.
 - **Indexing.** Phone numbers, ID numbers and document URLs are never exposed to search
@@ -659,12 +672,12 @@ fires the confirmation callback, so the confirmed-payment path cannot be exercis
 end in development without feeding a callback back in. A single dev-only Server Action,
 `simulatePaymentCallbackAction` (`src/app/actions/dev.ts`), exists for that purpose. It is
 gated on `process.env.MPESA_ENVIRONMENT === "production"` and returns "Not available"
-there, so it cannot run against the production M-Pesa environment. In development it resolves the caller's latest `stk_sent` payment
-and runs a correctly-shaped synthetic callback through the real `handleCallback` handler —
-the same correlation checks, audit entries and activation transitions as a genuine
-callback. It never sets state directly and never grants access without a confirmed
-payment. This is a deliberate, documented exception to invariant #13, not a reintroduction
-of v1's mock route.
+there, so it cannot run against the production M-Pesa environment. In development it
+resolves the caller's latest `stk_sent` payment and runs a correctly-shaped synthetic
+callback through the real `handleCallback` handler — the same correlation checks, audit
+entries and activation transitions as a genuine callback. It never sets state directly and
+never grants access without a confirmed payment. This is a deliberate, documented
+exception to invariant #13, not a reintroduction of v1's mock route.
 
 ---
 
@@ -677,12 +690,13 @@ Payload's built-in job queue. Configured in `payload.config.ts` with `jobs.autoR
 Access to the queue is granted to `admin` and `staff` from the panel, or to an external
 scheduler presenting `CRON_SECRET` as a bearer token against `/api/payload-jobs/run`.
 
-| Task                  | Frequency    | Effect                                                                             |
-| --------------------- | ------------ | ---------------------------------------------------------------------------------- |
-| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email               |
-| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                         |
-| `payment-timeout`     | every minute | `stk_sent` → `expired` past the window                                             |
-| `eoi-nudge`           | daily        | hire-confirmation prompt at 7 and 14 days after an accepted expression of interest |
+| Task                  | Frequency    | Effect                                                                            |
+| --------------------- | ------------ | --------------------------------------------------------------------------------- |
+| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email              |
+| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                        |
+| `payment-timeout`     | every minute | `stk_sent` → `expired` past the window                                            |
+| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest |
+| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair    |
 
 Every task calls a domain service. None writes to the database directly. Every one is
 idempotent, writes an audit entry per transition, and must survive running twice against
@@ -765,8 +779,8 @@ ask.
 11. All money is integer KSh. No floats in the money path.
 12. Prices come from `platform-settings`, never from a literal in application code.
 13. No payment bypass, mock route or dev shortcut exists in the codebase. The one
-    exception is the development-only callback simulator described in the Payments
-    section (`src/app/actions/dev.ts`), which is inert in production.
+    exception is the development-only callback simulator described in the Payments section
+    (`src/app/actions/dev.ts`), which is inert in production.
 
 ### Access
 
@@ -776,9 +790,10 @@ ask.
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
     `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields),
     `eoi.service.ts` (resolves non-contact display fields with an explicit `select` that
-    never includes contact fields), and `hire.service.ts` (resolves a profile's owner +
+    never includes contact fields), `hire.service.ts` (resolves a profile's owner +
     `displayName` and writes `availabilityStatus` via a trusted read/update with an
-    explicit non-contact `select`).
+    explicit non-contact `select`), and `review.service.ts` (resolves a profile's owner +
+    `displayName` via a trusted read with an explicit non-contact `select`).
 16. Queries touching profiles pass an explicit `select`. Never rely on defaults.
 17. A profile is publicly visible only when `verificationState = verified` **and**
     `availabilityStatus = available` **and** not blacklisted **and** not deactivated.

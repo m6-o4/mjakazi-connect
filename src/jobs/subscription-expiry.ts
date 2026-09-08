@@ -8,15 +8,16 @@ import { expireExpiredSubscriptions } from "@/services/subscription.service";
 // (phase 6.4) while leaving existing unlocks intact. the transition and audit
 // entry live in the subscription service — the handler only resolves payload
 // and delegates.
-const subscriptionExpiryTask: TaskConfig<{ input: object; output: { expired: number } }> = {
-	slug: "subscription-expiry",
-	label: "Subscription Expiry",
-	schedule: [{ cron: "0 * * * *", queue: "default" }],
-	handler: async () => {
-		const payload = await getPayload({ config });
-		const { expired } = await expireExpiredSubscriptions(payload);
-		return { output: { expired } };
-	},
-};
+const subscriptionExpiryTask: TaskConfig<{ input: object; output: { expired: number } }> =
+	{
+		slug: "subscription-expiry",
+		label: "Subscription Expiry",
+		schedule: [{ cron: "0 * * * *", queue: "default" }],
+		handler: async () => {
+			const payload = await getPayload({ config });
+			const { expired } = await expireExpiredSubscriptions(payload);
+			return { output: { expired } };
+		},
+	};
 
 export { subscriptionExpiryTask };

@@ -19,7 +19,11 @@ import {
 import config from "@/payload-config";
 import { listDirectoryProfiles } from "@/services/directory.service";
 import { listSentEois } from "@/services/eoi.service";
-import { listHireCandidatesForMwajiri, listHires } from "@/services/hire.service";
+import {
+	listHireCandidatesForMwajiri,
+	listHiresForMwajiri,
+} from "@/services/hire.service";
+import { listReviewedMjakaziIds } from "@/services/review.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -37,8 +41,18 @@ const MwajiriDashboardPage = async () => {
 		listDirectoryProfiles(payload, { limit: 1 }),
 		listSentEois(payload, user),
 		listHireCandidatesForMwajiri(payload, user),
-		listHires(payload, user),
+		listHiresForMwajiri(payload, user),
 	]);
+
+	const reviewedIds = await listReviewedMjakaziIds(
+		payload,
+		user.id,
+		hires.map((hire) => hire.mjakaziId),
+	);
+	const hiresWithReview = hires.map((hire) => ({
+		...hire,
+		reviewed: reviewedIds.has(hire.mjakaziId),
+	}));
 
 	const availableCount = directory.totalDocs;
 
@@ -104,7 +118,7 @@ const MwajiriDashboardPage = async () => {
 				</Card>
 			</div>
 
-			<HireConfirmCard candidates={hireCandidates} hires={hires} />
+			<HireConfirmCard candidates={hireCandidates} hires={hiresWithReview} />
 
 			<Card>
 				<CardHeader>
@@ -119,18 +133,23 @@ const MwajiriDashboardPage = async () => {
 				<CardContent>
 					{sentEois.length === 0 ? (
 						<p className="text-muted-foreground text-sm">
-							You have not sent any interest yet. Save wajakazi, then send a batch
-							from your saved list.
+							You have not sent any interest yet. Save wajakazi, then send a batch from
+							your saved list.
 						</p>
 					) : (
 						<ul className="divide-border divide-y">
 							{sentEois.slice(0, 10).map((eoi) => (
-								<li key={eoi.id} className="flex items-center justify-between gap-3 py-2.5">
+								<li
+									key={eoi.id}
+									className="flex items-center justify-between gap-3 py-2.5"
+								>
 									<span className="text-sm font-medium">{eoi.mjakaziName}</span>
 									{eoi.state === "accepted" ? (
 										<Badge>Accepted</Badge>
 									) : eoi.state === "rejected" ? (
 										<Badge variant="secondary">Declined</Badge>
+									) : eoi.state === "expired" ? (
+										<Badge variant="outline">Expired</Badge>
 									) : (
 										<Badge variant="outline">Pending</Badge>
 									)}

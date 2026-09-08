@@ -14,20 +14,25 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PayVerificationProps = {
 	fee: number | null;
+	phone: string;
 };
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 150000;
 
-// the pending_payment pay flow. sends the stk push via the server action, then
-// polls for the callback to flip the profile into review. the page server
-// component re-renders on router.refresh(), so once the state changes this
-// component unmounts and the review status takes its place
-const PayVerification = ({ fee }: PayVerificationProps) => {
+// the pending_payment pay flow. the phone defaults to the profile number but is
+// editable, so a mjakazi can pay from any m-pesa number. sends the stk push via
+// the server action, then polls for the callback to flip the profile into
+// review. the page server component re-renders on router.refresh(), so once the
+// state changes this component unmounts and the review status takes its place
+const PayVerification = ({ fee, phone }: PayVerificationProps) => {
 	const router = useRouter();
+	const [phoneValue, setPhoneValue] = useState<string>(phone);
 	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "timedOut">(
 		"idle",
 	);
@@ -52,7 +57,7 @@ const PayVerification = ({ fee }: PayVerificationProps) => {
 		setStatus("paying");
 		setError(null);
 		try {
-			const result = await initiateVerificationPaymentAction();
+			const result = await initiateVerificationPaymentAction({ phone: phoneValue });
 			if (!result.success) {
 				setError(result.error ?? "Could not start the payment.");
 				setStatus("idle");
@@ -66,7 +71,7 @@ const PayVerification = ({ fee }: PayVerificationProps) => {
 		}
 	};
 
-	const disabled = fee === null || status === "paying";
+	const disabled = fee === null || !phoneValue.trim() || status === "paying";
 
 	return (
 		<Card>
@@ -82,6 +87,17 @@ const PayVerification = ({ fee }: PayVerificationProps) => {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
+				<div className="flex flex-col gap-2">
+					<Label htmlFor="mpesa-phone">M-Pesa phone number</Label>
+					<Input
+						id="mpesa-phone"
+						inputMode="tel"
+						placeholder="0712 345 678"
+						value={phoneValue}
+						onChange={(event) => setPhoneValue(event.target.value)}
+					/>
+				</div>
+
 				{status === "awaiting" ? (
 					<div className="text-muted-foreground flex flex-col gap-2 text-sm">
 						<div className="flex items-center gap-2">

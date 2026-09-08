@@ -1,7 +1,7 @@
+import { Info } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
-import { Info } from "lucide-react";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { DocumentVault } from "@/components/dashboard/mjakazi/document-vault";
@@ -62,7 +62,10 @@ const MjakaziDocumentsPage = async () => {
 				</div>
 			) : null}
 
-			<DocumentVault documents={documents} />
+			<DocumentVault
+				documents={documents}
+				isVerified={profile.verificationState === "verified"}
+			/>
 		</div>
 	);
 };

@@ -33,13 +33,14 @@ type DocumentInfo = {
 
 type DocumentVaultProps = {
 	documents: DocumentInfo[];
+	isVerified?: boolean;
 };
 
 // the two document slots (national id + certificate of good conduct). uploading
 // persists immediately, re-uploading a type replaces it, and removal is guarded
 // by a confirmation. documents are only ever opened through the audited
 // /api/actions/vault/{id} route
-const DocumentVault = ({ documents }: DocumentVaultProps) => {
+const DocumentVault = ({ documents, isVerified = false }: DocumentVaultProps) => {
 	const [docs, setDocs] = useState<DocumentInfo[]>(documents);
 	const [uploading, setUploading] = useState<string | null>(null);
 	const [removing, setRemoving] = useState<string | null>(null);
@@ -172,15 +173,17 @@ const DocumentVault = ({ documents }: DocumentVaultProps) => {
 										>
 											Replace
 										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() => setConfirmingType(value)}
-											disabled={removing === doc.id}
-										>
-											Remove
-										</Button>
+										{!isVerified ? (
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onClick={() => setConfirmingType(value)}
+												disabled={removing === doc.id}
+											>
+												Remove
+											</Button>
+										) : null}
 									</div>
 								</>
 							) : (

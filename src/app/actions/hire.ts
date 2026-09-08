@@ -9,6 +9,7 @@ import config from "@/payload-config";
 import {
 	confirmHire,
 	confirmHireByMjakazi,
+	endHire,
 	reverseHire,
 } from "@/services/hire.service";
 
@@ -24,6 +25,10 @@ const confirmHireByMjakaziSchema = z.object({
 });
 
 const reverseHireSchema = z.object({
+	hireId: z.string().min(1),
+});
+
+const endHireSchema = z.object({
 	hireId: z.string().min(1),
 });
 
@@ -115,4 +120,40 @@ const reverseHireAction = async (input: unknown): Promise<ActionResult> => {
 	}
 };
 
-export { confirmHireAction, confirmHireByMjakaziAction, reverseHireAction };
+// either party ends a completed contract — releases the mjakazi and, for the
+// mwajiri, opens the door to a review
+const endHireAction = async (input: unknown): Promise<ActionResult> => {
+	try {
+		const parsed = endHireSchema.safeParse(input);
+		if (!parsed.success) return { success: false, error: "Invalid hire." };
+
+		const user = await getCurrentUser();
+		if (!user) return { success: false, error: "You must be signed in." };
+		if (user.role !== "mwajiri" && user.role !== "mjakazi") {
+			return { success: false, error: "Forbidden." };
+		}
+
+		const payload = await getPayload({ config });
+		const result = await endHire(payload, user, parsed.data.hireId);
+
+		if (!result.success) {
+			return { success: false, error: result.error, code: result.code };
+		}
+
+		revalidatePath("/dashboard/mwajiri");
+		revalidatePath("/dashboard/mjakazi");
+		revalidatePath("/dashboard/mjakazi/settings");
+
+		return { success: true };
+	} catch (error) {
+		console.error("[actions/hire] endHire failed:", error);
+		return { success: false, error: "Could not end the contract." };
+	}
+};
+
+export {
+	confirmHireAction,
+	confirmHireByMjakaziAction,
+	endHireAction,
+	reverseHireAction,
+};

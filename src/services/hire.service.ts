@@ -4,13 +4,23 @@ import { writeAuditLog } from "@/lib/audit";
 import {
 	sendHireAgreedEmail,
 	sendHireConfirmedEmail,
+	sendHireEndedEmail,
 	sendHireReversedEmail,
 } from "@/lib/email";
-import { loadProfileDisplay, loadSenderInfo, loadUserName, toId, userLabel } from "@/lib/payload-helpers";
+import {
+	loadProfileDisplay,
+	loadSenderInfo,
+	loadUserName,
+	toId,
+	userLabel,
+} from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
 import type { Hire, User } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
-import { getOwnSubscription, getSubscriptionByUser } from "@/services/subscription.service";
+import {
+	getOwnSubscription,
+	getSubscriptionByUser,
+} from "@/services/subscription.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -31,8 +41,8 @@ type MjakaziHireCandidate = {
 	location: string | null;
 };
 
-// listHires only returns active hires, so its state is narrowed to the two live
-// states rather than carrying the unreachable `reversed` case into the UI
+// listHires (mjakazi) only returns active hires, so its state is narrowed to the
+// two live states rather than carrying the unreachable `reversed` case into the UI
 type HireListItemState = Extract<HireState, "pending_agreement" | "agreed">;
 
 type HireListItem = {
@@ -40,6 +50,18 @@ type HireListItem = {
 	counterpartyId: string;
 	counterpartyName: string;
 	state: HireListItemState;
+	awaitingYou: boolean;
+};
+
+// the mwajiri overview also needs completed (`ended`) hires so they can be
+// reviewed, so its list carries the extra terminal state
+type MwajiriHireState = Extract<HireState, "pending_agreement" | "agreed" | "ended">;
+
+type MwajiriHireItem = {
+	id: string;
+	mjakaziId: string;
+	counterpartyName: string;
+	state: MwajiriHireState;
 	awaitingYou: boolean;
 };
 
@@ -55,7 +77,10 @@ const fail = (
 const loadProfile = async (
 	payload: Payload,
 	profileId: string,
-): Promise<{ user?: string | { id?: string | number } | null; displayName?: string | null } | null> => {
+): Promise<{
+	user?: string | { id?: string | number } | null;
+	displayName?: string | null;
+} | null> => {
 	try {
 		const result = await payload.find({
 			collection: "wajakazi-profiles",
@@ -81,7 +106,9 @@ const findHire = async (
 	try {
 		const result = await payload.find({
 			collection: "hires",
-			where: { and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }] },
+			where: {
+				and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }],
+			},
 			limit: 1,
 			depth: 0,
 			overrideAccess: true,
@@ -140,7 +167,9 @@ const isHireCandidateForMwajiri = async (
 		}),
 		payload.find({
 			collection: "contact-unlocks",
-			where: { and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }] },
+			where: {
+				and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }],
+			},
 			limit: 1,
 			depth: 0,
 			overrideAccess: true,
@@ -159,14 +188,18 @@ const isHireCandidateForMjakazi = async (
 	const [unlock, eoi] = await Promise.all([
 		payload.find({
 			collection: "contact-unlocks",
-			where: { and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }] },
+			where: {
+				and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }],
+			},
 			limit: 1,
 			depth: 0,
 			overrideAccess: true,
 		}),
 		payload.find({
 			collection: "expressions-of-interest",
-			where: { and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }] },
+			where: {
+				and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }],
+			},
 			limit: 1,
 			depth: 0,
 			overrideAccess: true,
@@ -258,6 +291,27 @@ const notifyHireReversed = async (
 	}
 };
 
+// fire-and-forget: notifies the counterpart that a completed contract was ended
+const notifyHireEnded = async (
+	payload: Payload,
+	counterpartUserId: string | null,
+	actorName: string,
+): Promise<void> => {
+	if (!counterpartUserId) return;
+	try {
+		const recipient = await loadUserEmail(payload, counterpartUserId);
+		if (!recipient) return;
+		await sendHireEndedEmail({
+			payload,
+			to: recipient.email,
+			firstName: recipient.firstName,
+			otherPartyName: actorName,
+		});
+	} catch (error) {
+		console.error("[services/hire] ended notification email failed:", error);
+	}
+};
+
 // the single write path. `confirmedBy` is derived from the actor's role, so a
 // first confirmation creates a pending hire, the counterpart re-confirming flips
 // it to agreed, and a reversed hire re-opens as pending. sets availability →
@@ -279,7 +333,10 @@ const confirmHireCore = async (
 	const mjakaziOwnerId = toId(profile.user);
 	const counterpartUserId = actorRole === "mwajiri" ? mjakaziOwnerId : mwajiriId;
 	const actorName = userLabel(actor);
-	const mwajiriName = actorRole === "mwajiri" ? actorName : (await loadUserName(payload, mwajiriId)) ?? "the employer";
+	const mwajiriName =
+		actorRole === "mwajiri"
+			? actorName
+			: ((await loadUserName(payload, mwajiriId)) ?? "the employer");
 	const mjakaziName = profile.displayName ?? "the wajakazi";
 
 	const existing = await findHire(payload, mwajiriId, mjakaziId);
@@ -298,7 +355,10 @@ const confirmHireCore = async (
 			const result = await payload.update({
 				collection: "hires",
 				where: {
-					and: [{ id: { equals: existing.id } }, { state: { equals: "pending_agreement" } }],
+					and: [
+						{ id: { equals: existing.id } },
+						{ state: { equals: "pending_agreement" } },
+					],
 				},
 				data: { state: "agreed", agreedAt: new Date().toISOString() },
 				overrideAccess: true,
@@ -319,7 +379,13 @@ const confirmHireCore = async (
 				source: "user",
 			});
 
-			await notifyHireAgreed(payload, mwajiriId, mjakaziOwnerId, mwajiriName, mjakaziName);
+			await notifyHireAgreed(
+				payload,
+				mwajiriId,
+				mjakaziOwnerId,
+				mwajiriName,
+				mjakaziName,
+			);
 
 			return { success: true, data: result.docs[0] };
 		} catch (error) {
@@ -345,7 +411,9 @@ const confirmHireCore = async (
 		if (existing?.state === "reversed") {
 			const result = await payload.update({
 				collection: "hires",
-				where: { and: [{ id: { equals: existing.id } }, { state: { equals: "reversed" } }] },
+				where: {
+					and: [{ id: { equals: existing.id } }, { state: { equals: "reversed" } }],
+				},
 				data: {
 					confirmedBy: actorRole,
 					confirmedAt: now,
@@ -491,7 +559,9 @@ const listHireCandidatesForMwajiri = async (
 	const [eoiResult, unlockResult] = await Promise.all([
 		payload.find({
 			collection: "expressions-of-interest",
-			where: { and: [{ mwajiri: { equals: user.id } }, { state: { equals: "accepted" } }] },
+			where: {
+				and: [{ mwajiri: { equals: user.id } }, { state: { equals: "accepted" } }],
+			},
 			limit: 100,
 			depth: 0,
 			select: { mjakazi: true },
@@ -526,7 +596,10 @@ const listHireCandidatesForMwajiri = async (
 	const activeHires = await payload.find({
 		collection: "hires",
 		where: {
-			and: [{ mwajiri: { equals: user.id } }, { state: { in: ["pending_agreement", "agreed"] } }],
+			and: [
+				{ mwajiri: { equals: user.id } },
+				{ state: { in: ["pending_agreement", "agreed"] } },
+			],
 		},
 		limit: 100,
 		depth: 0,
@@ -534,7 +607,9 @@ const listHireCandidatesForMwajiri = async (
 		overrideAccess: true,
 	});
 	const activeProfileIds = new Set(
-		activeHires.docs.map((doc) => toId(doc.mjakazi)).filter((id): id is string => id !== null),
+		activeHires.docs
+			.map((doc) => toId(doc.mjakazi))
+			.filter((id): id is string => id !== null),
 	);
 
 	const ids = [...profileIds].filter((id) => !activeProfileIds.has(id));
@@ -594,7 +669,10 @@ const listHireCandidatesForMjakazi = async (
 	const activeHires = await payload.find({
 		collection: "hires",
 		where: {
-			and: [{ mjakazi: { equals: resolvedId } }, { state: { in: ["pending_agreement", "agreed"] } }],
+			and: [
+				{ mjakazi: { equals: resolvedId } },
+				{ state: { in: ["pending_agreement", "agreed"] } },
+			],
 		},
 		limit: 100,
 		depth: 0,
@@ -602,7 +680,9 @@ const listHireCandidatesForMjakazi = async (
 		overrideAccess: true,
 	});
 	const activeUserIds = new Set(
-		activeHires.docs.map((doc) => toId(doc.mwajiri)).filter((id): id is string => id !== null),
+		activeHires.docs
+			.map((doc) => toId(doc.mwajiri))
+			.filter((id): id is string => id !== null),
 	);
 
 	const ids = [...userIds].filter((id) => !activeUserIds.has(id));
@@ -615,48 +695,72 @@ const listHireCandidatesForMjakazi = async (
 	}));
 };
 
-// the caller's active hires, shaped for their side of the dashboard. `awaitingYou`
-// is true when the other party confirmed first and this party has not yet agreed
+// mwajiri side — every hire is in view, active or completed, so the overview can
+// offer "end contract" on agreed hires and "leave a review" on ended ones.
+// `awaitingYou` is true when the mjakazi confirmed first and the mwajiri has not
+// yet agreed
+const listHiresForMwajiri = async (
+	payload: Payload,
+	user: User,
+): Promise<MwajiriHireItem[]> => {
+	if (user.role !== "mwajiri") return [];
+
+	const result = await payload.find({
+		collection: "hires",
+		where: {
+			and: [
+				{ mwajiri: { equals: user.id } },
+				{ state: { in: ["pending_agreement", "agreed", "ended"] } },
+			],
+		},
+		limit: 100,
+		depth: 0,
+		sort: "-confirmedAt",
+		select: { mjakazi: true, state: true, confirmedBy: true },
+		overrideAccess: true,
+	});
+
+	const profileIds = result.docs
+		.map((doc) => toId(doc.mjakazi))
+		.filter((id): id is string => id !== null);
+	const display = await loadProfileDisplay(payload, profileIds);
+
+	return result.docs.map((doc) => {
+		const pid = toId(doc.mjakazi) ?? "";
+		return {
+			id: doc.id,
+			mjakaziId: pid,
+			counterpartyName: display.get(pid)?.displayName ?? "Wajakazi",
+			state:
+				doc.state === "agreed"
+					? "agreed"
+					: doc.state === "ended"
+						? "ended"
+						: "pending_agreement",
+			awaitingYou: doc.state === "pending_agreement" && doc.confirmedBy === "mjakazi",
+		};
+	});
+};
+
+// the mjakazi's active hires, shaped for the opportunities inbox. `awaitingYou`
+// is true when the mwajiri confirmed first and this party has not yet agreed
 const listHires = async (
 	payload: Payload,
 	user: User,
 	profileId?: string,
 ): Promise<HireListItem[]> => {
-	if (user.role === "mwajiri") {
-		const result = await payload.find({
-			collection: "hires",
-			where: { and: [{ mwajiri: { equals: user.id } }, { state: { in: ["pending_agreement", "agreed"] } }] },
-			limit: 100,
-			depth: 0,
-			sort: "-confirmedAt",
-			select: { mjakazi: true, state: true, confirmedBy: true },
-			overrideAccess: true,
-		});
-
-		const profileIds = result.docs
-			.map((doc) => toId(doc.mjakazi))
-			.filter((id): id is string => id !== null);
-		const display = await loadProfileDisplay(payload, profileIds);
-
-		return result.docs.map((doc) => {
-			const pid = toId(doc.mjakazi) ?? "";
-			return {
-				id: doc.id,
-				counterpartyId: pid,
-				counterpartyName: display.get(pid)?.displayName ?? "Wajakazi",
-				state: doc.state === "agreed" ? "agreed" : "pending_agreement",
-				awaitingYou: doc.state === "pending_agreement" && doc.confirmedBy === "mjakazi",
-			};
-		});
-	}
-
 	if (user.role === "mjakazi") {
 		const resolvedId = profileId ?? (await getOwnProfile(payload, user))?.id;
 		if (!resolvedId) return [];
 
 		const result = await payload.find({
 			collection: "hires",
-			where: { and: [{ mjakazi: { equals: resolvedId } }, { state: { in: ["pending_agreement", "agreed"] } }] },
+			where: {
+				and: [
+					{ mjakazi: { equals: resolvedId } },
+					{ state: { in: ["pending_agreement", "agreed"] } },
+				],
+			},
 			limit: 100,
 			depth: 0,
 			sort: "-confirmedAt",
@@ -698,7 +802,10 @@ const confirmHire = async (
 
 	const subscription = await getOwnSubscription(payload, actor);
 	if (!subscription || subscription.subscriptionState !== "active") {
-		return fail("An active subscription is required to confirm a hire.", "subscription_required");
+		return fail(
+			"An active subscription is required to confirm a hire.",
+			"subscription_required",
+		);
 	}
 
 	if (!(await isHireCandidateForMwajiri(payload, actor.id, mjakaziId))) {
@@ -781,7 +888,10 @@ const reverseHiresForMjakazi = async (
 	const result = await payload.find({
 		collection: "hires",
 		where: {
-			and: [{ mjakazi: { equals: mjakaziProfileId } }, { state: { in: ["pending_agreement", "agreed"] } }],
+			and: [
+				{ mjakazi: { equals: mjakaziProfileId } },
+				{ state: { in: ["pending_agreement", "agreed"] } },
+			],
 		},
 		limit: 100,
 		depth: 0,
@@ -797,12 +907,97 @@ const reverseHiresForMjakazi = async (
 	return { reversed };
 };
 
+// either party ends a completed contract. agreed → ended (the natural close,
+// distinct from `reversed` which means "did not hold"), the mjakazi is released
+// back to available, and the audit records the close — for a mwajiri, a review
+// can follow
+const endHire = async (
+	payload: Payload,
+	actor: User,
+	hireId: string,
+): Promise<Result<Hire>> => {
+	if (actor.role !== "mwajiri" && actor.role !== "mjakazi") {
+		return fail("Forbidden", "forbidden");
+	}
+
+	let hire: Hire;
+	try {
+		hire = await payload.findByID({
+			collection: "hires",
+			id: hireId,
+			depth: 0,
+			overrideAccess: true,
+		});
+	} catch {
+		return fail("Hire not found.", "not_found");
+	}
+
+	const mwajiriId = toId(hire.mwajiri);
+	const mjakaziId = toId(hire.mjakazi);
+	if (!mjakaziId || !mwajiriId) return fail("Hire is missing a party.", "invalid");
+	if (hire.state !== "agreed") return fail("This hire is not active.", "invalid");
+
+	const profile = await loadProfile(payload, mjakaziId);
+	const mjakaziOwnerId = profile ? toId(profile.user) : null;
+
+	const isParty =
+		(actor.role === "mwajiri" && mwajiriId === actor.id) ||
+		(actor.role === "mjakazi" && mjakaziOwnerId === actor.id);
+	if (!isParty) return fail("Forbidden", "forbidden");
+
+	try {
+		const result = await payload.update({
+			collection: "hires",
+			where: {
+				and: [{ id: { equals: hire.id } }, { state: { equals: "agreed" } }],
+			},
+			data: { state: "ended", endedAt: new Date().toISOString() },
+			overrideAccess: true,
+		});
+		if (result.docs.length === 0) {
+			return fail("Hire changed. Please refresh and try again.", "conflict");
+		}
+
+		// release the mjakazi back to available so they re-enter the directory
+		await payload.update({
+			collection: "wajakazi-profiles",
+			id: mjakaziId,
+			data: { availabilityStatus: "available" },
+			overrideAccess: true,
+		});
+
+		await writeAuditLog({
+			action: "hire_ended",
+			actorId: actor.id,
+			actorLabel: userLabel(actor),
+			targetId: actor.role === "mwajiri" ? mjakaziOwnerId : mwajiriId,
+			previousState: "agreed",
+			newState: "ended",
+			metadata: { mjakaziProfileId: mjakaziId },
+			source: "user",
+		});
+
+		await notifyHireEnded(
+			payload,
+			actor.role === "mwajiri" ? mjakaziOwnerId : mwajiriId,
+			userLabel(actor),
+		);
+
+		return { success: true, data: result.docs[0] };
+	} catch (error) {
+		console.error("[services/hire] end failed:", error);
+		return fail("Could not end the contract.");
+	}
+};
+
 export {
 	confirmHire,
 	confirmHireByMjakazi,
+	endHire,
 	listHireCandidatesForMjakazi,
 	listHireCandidatesForMwajiri,
 	listHires,
+	listHiresForMwajiri,
 	reverseHire,
 	reverseHiresForMjakazi,
 };

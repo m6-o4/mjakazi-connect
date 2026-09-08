@@ -259,14 +259,15 @@ same callback by hand — the second must be refused and audit-logged.
 **Role**: the first monetized transition, end to end. **Builds**: a minimal admin-only
 `platform-settings` global holding `verificationFee` (pulled forward from 10.3); the
 verification payment initiation (pay button + Server Action calling `initiatePayment` with
-`paymentType = verification`, amount from `platform-settings`, phone from the profile —
-pulled forward out of 5.2); and the confirmed-callback wiring — on `payment.confirmed`
-with `paymentType = verification`, atomically move `pending_payment → pending_review`,
-store the payment reference, lock documents, write the audit entry. **Done when**: a
-complete profile can pay end to end and lands in `pending_review` only on a confirmed
-callback; a failed payment leaves the state untouched; documents are locked during review.
-**Verify**: pay the KSh 1,500 fee end to end. Then confirm a failed payment leaves the
-state untouched, and replay the callback by hand — nothing applies twice.
+`paymentType = verification`, amount from `platform-settings`, phone defaulting to the
+profile number but editable — pulled forward out of 5.2); and the confirmed-callback
+wiring — on `payment.confirmed` with `paymentType = verification`, atomically move
+`pending_payment → pending_review`, store the payment reference, lock documents, write the
+audit entry. **Done when**: a complete profile can pay end to end and lands in
+`pending_review` only on a confirmed callback; a failed payment leaves the state
+untouched; documents are locked during review. **Verify**: pay the KSh 1,500 fee end to
+end. Then confirm a failed payment leaves the state untouched, and replay the callback by
+hand — nothing applies twice.
 
 ---
 
@@ -325,8 +326,8 @@ one. **Verify**: browse with no subscription. Every contact masked.
 
 **Scope addition (built 2026-09-06):** a "Saved wajakazi" shortlist — a mwajiri bookmarks
 profiles from the browse detail (free, pre-subscription) and reviews them at
-`/dashboard/mwajiri/saved`. Added to complete the browse → save → unlock funnel; recorded in
-`progress-tracker.md`, not part of the original 6.3/6.4 numbering.
+`/dashboard/mwajiri/saved`. Added to complete the browse → save → unlock funnel; recorded
+in `progress-tracker.md`, not part of the original 6.3/6.4 numbering.
 
 ### 6.4 — Contact unlock
 
@@ -339,14 +340,15 @@ subscription. Expire it. Confirm the previous unlock is still visible and a new 
 refused with a 403. **Then check the raw response of an unpaid profile view for the phone
 number.**
 
-**Built 2026-09-07.** `contact-unlocks` is sealed (`mwajiri → users`, `mjakazi →
-wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`, `subscription → subscriptions`, no
-`payment`; compound unique on (mwajiri, mjakazi)). `services/contact.service.ts`
-(`hasUnlock`, `getContact`, `revealContact`) is the only reader of phone/email and is the
-named fourth `overrideAccess` exemption in invariant #15. The reveal is a Server Action
-(`revealContactAction` in `src/app/actions/contact.ts`) — a deviation from the literal
-`api/actions/contact/reveal` route name. `revealContact` re-checks `DIRECTORY_VISIBLE`;
-`getContact` does not (unlocks permanent). Manually verified end to end.
+**Built 2026-09-07.** `contact-unlocks` is sealed (`mwajiri → users`,
+`mjakazi → wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`,
+`subscription → subscriptions`, no `payment`; compound unique on (mwajiri, mjakazi)).
+`services/contact.service.ts` (`hasUnlock`, `getContact`, `revealContact`) is the only
+reader of phone/email and is the named fourth `overrideAccess` exemption in invariant #15.
+The reveal is a Server Action (`revealContactAction` in `src/app/actions/contact.ts`) — a
+deviation from the literal `api/actions/contact/reveal` route name. `revealContact`
+re-checks `DIRECTORY_VISIBLE`; `getContact` does not (unlocks permanent). Manually
+verified end to end.
 
 ---
 
@@ -394,17 +396,24 @@ the Mwajiri side. Then, with another pair, from the Mjakazi side.
 
 ### 8.3 — Nudge task
 
-**Builds**: `jobs/eoi-nudge.ts`, daily, at 7 and 14 days after an accepted expression of
+**Builds**: `jobs/eoi-nudge.ts`, daily, at 3 and 5 days after an accepted expression of
 interest. Two nudges, then silence. **Verify**: backdate an acceptance, run the task,
 confirm one email and no repeats.
 
 **Built 2026-09-08.** `jobs/eoi-nudge.ts` (daily, `0 8 * * *`) delegates to
 `sendAcceptedEoiNudges` in `eoi.service.ts`. `expressions-of-interest` gained `nudgesSent`
-+ `lastNudgedAt`; each accepted interest is nudged once at 7 and once at 14 days (email to
-both parties + `eoi_nudged` audit), idempotently via a CAS on the exact prior `nudgesSent`
-(with an `exists: false` clause for pre-8.3 records). A non-reversed hire for the pair
-suppresses the nudge. The `expired` EOI state remains unused — 8.3 nudges *accepted*
-interests only, so the "should a sent interest auto-expire" question is still open.
+
+- `lastNudgedAt`; each accepted interest is nudged once at 3 and once at 5 days (email to
+  both parties + `eoi_nudged` audit), idempotently via a CAS on the exact prior
+  `nudgesSent` (with an `exists: false` clause for pre-8.3 records). A non-reversed hire
+  for the pair suppresses the nudge. The nudge windows were later tightened from 7/14 to
+  3/5 days.
+
+**Expiry added 2026-09-08.** `jobs/eoi-expire.ts` (daily, `0 0 * * *`) delegates to
+`expireUnansweredEois` in `eoi.service.ts`, which expires unanswered (`sent`) interests 7
+days after `sentAt` (CAS on `state === "sent"` + `eoi_expired` audit, pendingKey
+uniquified so the pair can be re-sent). This resolves the previously-open "should a sent
+interest auto-expire" question.
 
 ---
 
@@ -417,6 +426,30 @@ staff moderation queue at `/dashboard/staff/reviews`, published reviews on the p
 **Done when**: a review cannot be left without an unlock, nor twice, and nothing appears
 before moderation. **Verify**: attempt a review without an unlock. Submit one, confirm it
 is invisible, publish it, confirm it appears.
+
+**Built 2026-09-08.** `reviews` collection (`mwajiri`, `mjakazi`, `reviewerName`, `rating`
+1–5, `comment`, `state`, `rejectionReason`, `reviewedAt`, `hiddenByWorker`; unique
+`[mwajiri, mjakazi]`) registered in `collections/index.ts` and sealed at the surface.
+`review.service.ts` owns everything: `submitReview` (gate = mwajiri + unlock + `agreed`
+hire + no existing review, lands `pending` + `review_submitted`),
+`listPendingReviews`/`approveReview`/`rejectReview` (staff queue, reject terminal with a
+reason), `setReviewVisibility` + `listWorkerReviews` (worker show/hide on published
+reviews), `getPublicReviews` (published + visible + aggregate), and `getReviewFormState`
+(for the browse detail). Five `review_*` audit actions. UI: `LeaveReviewForm` (mwajiri
+browse detail, gated), `ReviewsPanel` (mjakazi dashboard), `ReviewQueue`
+(`/dashboard/staff/reviews` + staff overview stat + nav), `ProfileReviews` + `RatingStars`
+(public profile). The gate was tightened from the plan's "unlock only" to **unlock +
+`agreed` or `ended` hire**, and the worker got a show/hide toggle per the approved
+blueprint.
+
+**End-contract flow added 2026-09-08.** Reviewing a _hired_ wajakazi needed an entry point
+the browse detail could not give (hired wajakazi leave the directory). `hires` gained an
+`ended` terminal state + `endedAt`; `endHire` (`hire.service.ts`) lets **either party**
+close a completed `agreed` hire (CAS → `ended`, `hire_ended` audit) and releases the
+mjakazi back to `available`. On an `agreed` hire `Reverse` is gone on both sides, replaced
+by **End contract**. The mwajiri overview's `HireConfirmCard` shows **End contract** on
+`agreed` hires (then opens `LeaveReviewForm` inline) and **Leave a review** on `ended`
+hires, with a Reviewed badge once submitted; the review step is mwajiri-only.
 
 ---
 
@@ -490,8 +523,9 @@ Check copy, links and sender.
 
 **Pulled forward (built 2026-09-07):** the subscription **payment receipt** and
 **activation** emails now ship as two separate messages — `sendSubscriptionReceiptEmail`
-(plan + amount + M-Pesa receipt) and `sendSubscriptionActivatedEmail` (plan + access-until),
-both sent fire-and-forget from `subscription.service.ts` on a confirmed subscription payment.
+(plan + amount + M-Pesa receipt) and `sendSubscriptionActivatedEmail` (plan +
+access-until), both sent fire-and-forget from `subscription.service.ts` on a confirmed
+subscription payment.
 
 ### 12.2 — PostHog sweep
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import posthog from "posthog-js";
+import { useEffect } from "react";
 
 // fires `profile_viewed` once per profile view. on the public directory a
 // profile is never unlocked, so isUnlocked is always false there; the mwajiri

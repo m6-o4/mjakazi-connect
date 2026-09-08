@@ -17,23 +17,29 @@ const StaffOverviewPage = async () => {
 
 	// trusted platform-wide counts — staff read the whole queue, and these
 	// numbers never leave the overview
-	const [pendingReviews, awaitingPayment, verified] = await Promise.all([
-		payload.count({
-			collection: "wajakazi-profiles",
-			where: { verificationState: { equals: "pending_review" } },
-			overrideAccess: true,
-		}),
-		payload.count({
-			collection: "wajakazi-profiles",
-			where: { verificationState: { equals: "pending_payment" } },
-			overrideAccess: true,
-		}),
-		payload.count({
-			collection: "wajakazi-profiles",
-			where: { verificationState: { equals: "verified" } },
-			overrideAccess: true,
-		}),
-	]);
+	const [pendingReviews, awaitingPayment, verified, pendingModeration] =
+		await Promise.all([
+			payload.count({
+				collection: "wajakazi-profiles",
+				where: { verificationState: { equals: "pending_review" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "wajakazi-profiles",
+				where: { verificationState: { equals: "pending_payment" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "wajakazi-profiles",
+				where: { verificationState: { equals: "verified" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "reviews",
+				where: { state: { equals: "pending" } },
+				overrideAccess: true,
+			}),
+		]);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -57,6 +63,12 @@ const StaffOverviewPage = async () => {
 					description="Workers mid-checkout"
 				/>
 				<StatCard label="Verified wajakazi" value={verified.totalDocs} />
+				<StatCard
+					label="Pending reviews"
+					value={pendingModeration.totalDocs}
+					description="Awaiting moderation"
+					href="/dashboard/staff/reviews"
+				/>
 			</div>
 		</div>
 	);
