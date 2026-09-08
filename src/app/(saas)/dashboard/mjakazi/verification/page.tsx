@@ -63,7 +63,7 @@ const MjakaziVerificationPage = async () => {
 				/>
 			) : profile.verificationState === "pending_payment" ? (
 				<>
-					<PayVerification fee={verificationFee} />
+					<PayVerification fee={verificationFee} phone={profile.phone ?? ""} />
 					{process.env.MPESA_ENVIRONMENT !== "production" ? (
 						<DevPaymentSimulate />
 					) : null}

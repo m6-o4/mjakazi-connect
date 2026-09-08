@@ -259,8 +259,8 @@ same callback by hand — the second must be refused and audit-logged.
 **Role**: the first monetized transition, end to end. **Builds**: a minimal admin-only
 `platform-settings` global holding `verificationFee` (pulled forward from 10.3); the
 verification payment initiation (pay button + Server Action calling `initiatePayment` with
-`paymentType = verification`, amount from `platform-settings`, phone from the profile —
-pulled forward out of 5.2); and the confirmed-callback wiring — on `payment.confirmed`
+`paymentType = verification`, amount from `platform-settings`, phone defaulting to the
+profile number but editable — pulled forward out of 5.2); and the confirmed-callback wiring — on `payment.confirmed`
 with `paymentType = verification`, atomically move `pending_payment → pending_review`,
 store the payment reference, lock documents, write the audit entry. **Done when**: a
 complete profile can pay end to end and lands in `pending_review` only on a confirmed

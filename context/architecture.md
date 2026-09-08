@@ -622,7 +622,9 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   is public and CDN-served; the vault is neither.
 - **Viewing is an event.** Every document view writes an audit entry naming the viewer,
   the subject, the document type and the time. No exceptions, including for `admin`.
-- **Locking.** Documents cannot be edited while verification is `pending_review`.
+- **Locking.** Documents cannot be edited while verification is `pending_review`. A
+  `verified` worker can only *replace* a document — which reverts them to `pending_review` —
+  never remove one, so a badge can never stand over missing evidence.
 - **Erasure.** Account deletion nullifies personal data and destroys vault documents.
   Payment records are retained for statutory audit with the personal fields nulled.
 - **Indexing.** Phone numbers, ID numbers and document URLs are never exposed to search

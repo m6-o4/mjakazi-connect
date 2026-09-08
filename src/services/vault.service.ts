@@ -198,11 +198,11 @@ const deleteVaultDocument = async (
 		}
 
 		// same review lock as upload — the owning profile must not be under
-		// review when a document is removed. a trusted read: the caller is already
-		// authorized by the document read above, and the verification state is used
-		// only for the lock + reverification decision
+		// review when a document is removed, and a verified worker's documents are
+		// the reviewed evidence so they must be replaced, never removed. a trusted
+		// read: the caller is already authorized by the document read above, and
+		// the verification state is used only for these two guards
 		const profileId = toId(document.profile);
-		let wasVerified = false;
 		if (profileId) {
 			const profile = await payload.findByID({
 				collection: "wajakazi-profiles",
@@ -217,7 +217,17 @@ const deleteVaultDocument = async (
 					code: "documents_locked",
 				};
 			}
-			wasVerified = profile?.verificationState === "verified";
+			// reverification is triggered by replacing a document (upload), never
+			// by removing one — deleting would leave the badge up with evidence
+			// missing and lock the worker out of re-uploading
+			if (profile?.verificationState === "verified") {
+				return {
+					success: false,
+					error:
+						"Replace this document instead of removing it — your verified badge depends on it.",
+					code: "replace_required",
+				};
+			}
 		}
 
 		await payload.delete({
@@ -237,15 +247,6 @@ const deleteVaultDocument = async (
 				profileId: toId(document.profile),
 			},
 		});
-
-		// a verified worker's documents are the reviewed evidence — removing one
-		// sends the profile back for a free re-review
-		if (wasVerified && profileId) {
-			const reverted = await revertToReview(payload, profileId);
-			if (!reverted.success) {
-				console.warn("[services/vault] reverification trigger failed:", reverted.error);
-			}
-		}
 
 		return { success: true, data: undefined };
 	} catch (error) {

@@ -62,7 +62,10 @@ const MjakaziDocumentsPage = async () => {
 				</div>
 			) : null}
 
-			<DocumentVault documents={documents} />
+			<DocumentVault
+				documents={documents}
+				isVerified={profile.verificationState === "verified"}
+			/>
 		</div>
 	);
 };

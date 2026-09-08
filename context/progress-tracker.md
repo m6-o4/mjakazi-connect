@@ -1099,9 +1099,9 @@ finished.
   `eoi_nudged` audit only (no PostHog event — it is a system job, not a user action).
   Schedule is `0 8 * * *` (8am) rather than midnight so the ask lands in the morning.
   `pnpm lint` (0 errors, 4 warnings — the new `TaskConfig<any>` matches the three existing
-  jobs) and `pnpm build` pass. **Manual verification pending**: backdate an accepted EOI's
-   `respondedAt` 8 days, run the task, confirm both parties are emailed once and a second run
-   does not repeat; backdate 15 days and confirm the second nudge fires once and then silence.
+  jobs) and `pnpm build` pass. **Manual verification done (2026-09-08)**: verified after the
+  windows were tightened to 3/5 days — see the follow-up entry below; both nudges fire once
+  each and then silence.
 
 ### 2026-09-08 — EOI auto-expire + nudge timing change
 
@@ -1130,10 +1130,50 @@ finished.
   jobs never touch the same record. Both jobs poll eligible records (missed windows
   self-correct). No schema shape change (the `expired` state and `sentAt` already existed), so
   no `generate:types` was needed for these fields — but the audit action option changed, so
-  types were regenerated. **Manual verification pending**: backdate a `sent` EOI's `sentAt`
-  8 days, run `eoi-expire`, confirm it becomes `expired` with an `eoi_expired` audit entry and
-  that a fresh batch to the same mjakazi is accepted; backdate an accepted EOI's `respondedAt`
-  4 days, run `eoi-nudge`, confirm the first nudge fires at 3 days and the second at 5.
+  types were regenerated. **Manual verification done**: backdated a `sent` EOI's `sentAt`
+  8 days, ran `eoi-expire` — it became `expired` with an `eoi_expired` audit entry and a fresh
+  batch to the same mjakazi was accepted; backdated an accepted EOI's `respondedAt` 4 days,
+  ran `eoi-nudge` — the first nudge fired at 3 days and the second at 5, then silence.
+
+### 2026-09-08 — Verification payment: editable M-Pesa number
+
+- **What was built**: The mjakazi verification fee screen now lets the worker pay from any
+  M-Pesa number, matching the mwajiri subscription flow. The `PayVerification` card gained an
+  editable "M-Pesa phone number" input that defaults to the profile's on-file number;
+  `initiateVerificationPaymentAction` now accepts and normalizes that phone (zod +
+  `normalizeKenyanPhone`) and passes it to `initiatePayment` instead of always using the
+  profile phone.
+- **Files touched**: `src/app/actions/payment.ts` (schema + phone input + normalization),
+  `src/components/dashboard/mjakazi/verification/pay-verification.tsx` (phone input),
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx` (pass `phone` prop).
+- **Notes**: The payment phone is deliberately **not** persisted back to
+  `wajakazi-profiles.phone` — that field is the worker's own contact number (shown to waajiri
+  after a contact unlock), and the payer may be a different person (a relative paying on the
+  worker's behalf). The mwajiri flow persists the phone because there the payer is always the
+  mwajiri themself. The chosen number is still recorded on the `payments.phoneNumber` record
+  for audit. No schema change, so no `generate:types`. **Manual verification done**: as a
+  mjakazi in `pending_payment`, the field prefilled the profile number; edited it to a
+  different valid number, paid in the sandbox, and the STK prompt arrived on the edited
+  number while the profile phone was unchanged.
+
+### 2026-09-08 — Reverification is replace-only (delete trigger removed)
+
+- **What was built**: Re-verification is now triggered **only** by replacing evidence, not
+  removing it. `deleteVaultDocument` (`vault.service.ts`) refuses deletion of a `verified`
+  profile's documents (`replace_required`, "Replace this document instead of removing it…")
+  and no longer calls `revertToReview` on delete — the previous delete-trigger left a
+  verified worker stuck in `pending_review` with a missing document and no way to re-upload
+  (the review lock blocks upload). The document vault UI also hides the `Remove` button
+  while `verified` (only `Replace` is shown), so the affordance matches the rule.
+- **Files touched**: `src/services/vault.service.ts` (`deleteVaultDocument`),
+  `src/components/dashboard/mjakazi/document-vault/index.tsx` (`isVerified` prop),
+  `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` (passes `isVerified`).
+- **Notes**: Replace still triggers reverification via the existing `uploadVaultDocument`
+  `wasVerified → revertToReview` path, and legal-name / photo changes keep their triggers in
+  `profile.service.ts`. `pending_review` documents remain locked (unchanged). No schema
+  change, so no `generate:types`. **Manual verification done**: on a `verified` profile the
+  `Remove` button was gone; replacing one document dropped the profile to `pending_review`
+  (and out of the directory), and staff re-approval returned it to `verified`.
 
 ---
 
