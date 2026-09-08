@@ -61,11 +61,15 @@ const baseTemplate = (content: string) => `
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-          ${LOGO_URL ? `<tr>
+          ${
+						LOGO_URL
+							? `<tr>
             <td style="background-color:${BODY_BACKGROUND};border-radius:12px 12px 0 0;padding:24px 32px 16px;text-align:center;">
               <img src="${LOGO_URL}" alt="Mjakazi Connect" style="display:block;width:160px;max-width:100%;height:auto;margin:0 auto;" />
             </td>
-          </tr>` : ""}
+          </tr>`
+							: ""
+					}
           <tr>
             <td style="background-color:${HEADER_BACKGROUND};border-radius:${LOGO_URL ? "0" : "12px 12px 0 0"};padding:24px 32px;">
               <p style="margin:0;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Mjakazi Connect</p>
@@ -420,7 +424,9 @@ const sendEoiRespondedEmail = async ({
 
 	await sendEmail(payload, {
 		to,
-		subject: accepted ? "A wajakazi accepted your interest" : "A wajakazi declined your interest",
+		subject: accepted
+			? "A wajakazi accepted your interest"
+			: "A wajakazi declined your interest",
 		html: baseTemplate(content),
 	});
 };

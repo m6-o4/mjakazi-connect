@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import { Users } from "lucide-react";
+import type { Metadata } from "next";
 import { getPayload } from "payload";
 
 import { Container } from "@/components/container";

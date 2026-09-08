@@ -62,7 +62,12 @@ const respondToEoiAction = async (input: unknown): Promise<ActionResult> => {
 		if (user.role !== "mjakazi") return { success: false, error: "Forbidden." };
 
 		const payload = await getPayload({ config });
-		const result = await respondToEoi(payload, user, parsed.data.eoiId, parsed.data.response);
+		const result = await respondToEoi(
+			payload,
+			user,
+			parsed.data.eoiId,
+			parsed.data.response,
+		);
 
 		if (!result.success) {
 			return { success: false, error: result.error, code: result.code };

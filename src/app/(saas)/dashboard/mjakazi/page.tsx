@@ -6,8 +6,9 @@ import { getPayload } from "payload";
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { OpportunitiesCard } from "@/components/dashboard/mjakazi/opportunities-card";
 import { ProfileCompletenessCard } from "@/components/dashboard/mjakazi/profile-completeness-card";
-import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
+import { ReviewsPanel } from "@/components/dashboard/mjakazi/reviews/reviews-panel";
 import { VerificationStatusCard } from "@/components/dashboard/mjakazi/verification-status-card";
+import { VerificationStateCard } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { buttonVariants } from "@/components/ui/button";
 import {
 	Card,
@@ -24,6 +25,7 @@ import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import config from "@/payload-config";
 import { listReceivedEois } from "@/services/eoi.service";
 import { getMissingRequiredFields, getOwnProfile } from "@/services/profile.service";
+import { listWorkerReviews } from "@/services/review.service";
 import { getFreeResubmissionsRemaining } from "@/services/verification.service";
 
 export const metadata = { title: "Dashboard" };
@@ -33,10 +35,12 @@ const MjakaziDashboardPage = async () => {
 	if (!user) redirect("/sign-in");
 
 	const payload = await getPayload({ config });
-	const [profile, receivedEois] = await Promise.all([
+	const [profile, receivedEois, workerReviews] = await Promise.all([
 		getOwnProfile(payload, user),
 		listReceivedEois(payload, user),
+		listWorkerReviews(payload, user),
 	]);
+	const reviews = workerReviews.success ? workerReviews.data : [];
 
 	const profileComplete = profile?.profileComplete ?? false;
 	const verificationState = profile?.verificationState ?? "draft";
@@ -115,6 +119,14 @@ const MjakaziDashboardPage = async () => {
 			)}
 
 			<OpportunitiesCard pendingCount={pendingInterestCount} />
+
+			<div>
+				<h2 className="text-heading text-lg font-semibold">Your reviews</h2>
+				<p className="text-muted-foreground mt-1 text-sm">
+					What waajiri say about you. Choose what appears on your public profile.
+				</p>
+			</div>
+			<ReviewsPanel reviews={reviews} />
 		</div>
 	);
 };

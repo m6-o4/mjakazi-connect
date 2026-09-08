@@ -2,8 +2,8 @@ import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
 import { toId, userLabel } from "@/lib/payload-helpers";
-import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import type { User, WajakaziProfile } from "@/payload-types";
+import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import { getOwnSubscription } from "@/services/subscription.service";
 
 type Result<T = void> =
@@ -75,7 +75,9 @@ const hasUnlock = async (
 
 	const result = await payload.find({
 		collection: "contact-unlocks",
-		where: { and: [{ mwajiri: { equals: user.id } }, { mjakazi: { equals: mjakaziId } }] },
+		where: {
+			and: [{ mwajiri: { equals: user.id } }, { mjakazi: { equals: mjakaziId } }],
+		},
 		limit: 1,
 		depth: 0,
 		overrideAccess: false,

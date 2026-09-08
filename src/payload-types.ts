@@ -84,6 +84,7 @@ export interface Config {
     'contact-unlocks': ContactUnlock;
     'expressions-of-interest': ExpressionsOfInterest;
     hires: Hire;
+    reviews: Review;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -110,6 +111,7 @@ export interface Config {
     'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
     'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
     hires: HiresSelect<false> | HiresSelect<true>;
+    reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -693,6 +695,12 @@ export interface AuditLog {
     | 'hire_confirmed'
     | 'hire_agreed'
     | 'hire_reversed'
+    | 'hire_ended'
+    | 'review_submitted'
+    | 'review_published'
+    | 'review_rejected'
+    | 'review_hidden'
+    | 'review_shown'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -1046,8 +1054,27 @@ export interface Hire {
   confirmedAt?: string | null;
   agreedAt?: string | null;
   reversedAt?: string | null;
-  state: 'pending_agreement' | 'agreed' | 'reversed';
+  endedAt?: string | null;
+  state: 'pending_agreement' | 'agreed' | 'reversed' | 'ended';
   sourceEoi?: (string | null) | ExpressionsOfInterest;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews".
+ */
+export interface Review {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  reviewerName?: string | null;
+  rating: number;
+  comment: string;
+  state: 'pending' | 'published' | 'rejected';
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  hiddenByWorker?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1286,6 +1313,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'hires';
         value: string | Hire;
+      } | null)
+    | ({
+        relationTo: 'reviews';
+        value: string | Review;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1982,8 +2013,26 @@ export interface HiresSelect<T extends boolean = true> {
   confirmedAt?: T;
   agreedAt?: T;
   reversedAt?: T;
+  endedAt?: T;
   state?: T;
   sourceEoi?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews_select".
+ */
+export interface ReviewsSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  reviewerName?: T;
+  rating?: T;
+  comment?: T;
+  state?: T;
+  rejectionReason?: T;
+  reviewedAt?: T;
+  hiddenByWorker?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -569,12 +569,13 @@ finished.
   `payment_initiated` (`paymentType: "subscription"`, `tierId`) fire client-side;
   `payment_completed`/`payment_failed` are server-side (5.1/4.4). No schema change, so no
   `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass.
-   **Manual verification pending**: as a mwajiri, choose a tier, enter a phone number, pay
-   in the sandbox, and confirm the subscription flips to `active` with `tierExpiry` set;
-   buy again while active and confirm the expiry extends; confirm the phone persists to
-   `waajiri-profiles.phone`.
+  **Manual verification pending**: as a mwajiri, choose a tier, enter a phone number, pay
+  in the sandbox, and confirm the subscription flips to `active` with `tierExpiry` set;
+  buy again while active and confirm the expiry extends; confirm the phone persists to
+  `waajiri-profiles.phone`.
 
 ### 2026-09-02 — Phase 5.3: Subscription expiry task
+
 - **What was built**: The `subscription-expiry` job on Payload's queue, hourly
   (`0 * * * *`). A new `jobs/subscription-expiry.ts` registers the task and delegates to
   `expireExpiredSubscriptions` in `subscription.service.ts`, which polls `active`
@@ -585,14 +586,14 @@ finished.
   `src/payload.config.ts` (`jobs.tasks`).
 - **Notes**: Expiry transition is a CAS on `subscriptionState === "active"`, so a
   concurrent purchase/callback wins and the task never double-applies. A missed window
-  self-corrects on the next run (polls for eligible records). Blocking *new reveals* is
+  self-corrects on the next run (polls for eligible records). Blocking _new reveals_ is
   not implemented here — that is `contact.service` in Phase 6.4, which keys on
   `subscriptionState === "active"`; existing unlocks are unaffected by design. Expiry
   email is deferred to the 12.1 notifications sweep. No schema change, so no
-  `generate:types`. `pnpm lint` (0 errors, 3 warnings — the new `TaskConfig<any>`
-  warning matches `payment-timeout.ts`) and `pnpm build` pass. **Manual verification
-  pending**: backdate an active subscription's `tierExpiry`, run the job, confirm the
-  state becomes `expired` with a `subscription_expired` audit entry.
+  `generate:types`. `pnpm lint` (0 errors, 3 warnings — the new `TaskConfig<any>` warning
+  matches `payment-timeout.ts`) and `pnpm build` pass. **Manual verification pending**:
+  backdate an active subscription's `tierExpiry`, run the job, confirm the state becomes
+  `expired` with a `subscription_expired` audit entry.
 
 ### 2026-09-02 — End-to-end pipeline verification (sign-up → verified) + fixes
 
@@ -614,42 +615,44 @@ finished.
   `verificationState` (draft → documents card, pending_payment → awaiting-payment card,
   other states → `VerificationStateCard`).
 - **Key finding — Daraja 3.0 sandbox**: The sandbox (Daraja 3.0, launched 2025-11-25) no
-  longer completes STK pushes or fires the callback after PIN entry; v1 was tested
-  against the old Daraja 2.0 sandbox, which auto-completed and reversed ~10 min later.
-  The callback pipeline itself is proven working (Daraja → Cloudflare tunnel → route). To complete
-  sandbox payments, `_scratch_fire_callback.ts` (repo root, untracked, NOT part of the
-  app) reads the latest `stk_sent` payment and POSTs a correctly-matched callback to the
-  live route — the same message Daraja sends in production. Production is unaffected: PIN
-  entry fires the callback automatically there.
+  longer completes STK pushes or fires the callback after PIN entry; v1 was tested against
+  the old Daraja 2.0 sandbox, which auto-completed and reversed ~10 min later. The
+  callback pipeline itself is proven working (Daraja → Cloudflare tunnel → route). To
+  complete sandbox payments, `_scratch_fire_callback.ts` (repo root, untracked, NOT part
+  of the app) reads the latest `stk_sent` payment and POSTs a correctly-matched callback
+  to the live route — the same message Daraja sends in production. Production is
+  unaffected: PIN entry fires the callback automatically there.
 - **Files touched**: `src/services/settings.service.ts`,
   `src/payload/blocks/globals/platform-settings/schema.ts`,
   `src/components/dashboard/admin/settings/{platform-settings-form,subscription-tiers-form}.tsx`,
   `src/lib/mpesa.ts`, `src/app/(payload)/api/webhooks/payments/callback/route.ts`,
   `src/app/(saas)/dashboard/mjakazi/page.tsx`, `_scratch_fire_callback.ts` (scratch).
 - **Notes**: `_scratch_fire_callback.ts` is a throwaway test helper — delete before
-  commit. Next: test 2 more wajakazi — rejection (staff rejects with a reason, email
-  sent, attempts increment) and approve/reject email delivery (Phase 3.3). Then the
-  mwajiri subscription purchase flow (5.2), which needs the same callback helper. No
+  commit. Next: test 2 more wajakazi — rejection (staff rejects with a reason, email sent,
+  attempts increment) and approve/reject email delivery (Phase 3.3). Then the mwajiri
+  subscription purchase flow (5.2), which needs the same callback helper. No
   `generate:types` needed (no schema shape change).
 
 ### 2026-09-04 — Verification resubmit, fee policy, and transactional emails
 
-- **What was built/fixed**: (1) Wired the missing resubmit flow — `resubmitForVerification`
-  existed in the service but had no caller, so a rejected mjakazi was stuck at
-  "Not approved". Added `resubmitVerificationAction` (`src/app/actions/verification.ts`)
-  and `ResubmitVerification` (`src/components/dashboard/mjakazi/verification/resubmit-verification.tsx`),
-  rendered on the verification page when `rejected`. (2) Changed `FREE_REJECTIONS` from 3
-  to 2 — two free resubmissions per fee, the third rejection requires a fresh fee; also
-  fixed the rejection email's "resubmissions remaining" off-by-one
+- **What was built/fixed**: (1) Wired the missing resubmit flow —
+  `resubmitForVerification` existed in the service but had no caller, so a rejected
+  mjakazi was stuck at "Not approved". Added `resubmitVerificationAction`
+  (`src/app/actions/verification.ts`) and `ResubmitVerification`
+  (`src/components/dashboard/mjakazi/verification/resubmit-verification.tsx`), rendered on
+  the verification page when `rejected`. (2) Changed `FREE_REJECTIONS` from 3 to 2 — two
+  free resubmissions per fee, the third rejection requires a fresh fee; also fixed the
+  rejection email's "resubmissions remaining" off-by-one
   (`FREE_REJECTIONS - attempts + 1`). (3) Restored the two missing transactional emails
-  from v1: `sendPaymentConfirmedEmail` (mjakazi, wired into `activateVerificationOnPayment`)
-  and `sendSubscriptionActivatedEmail` (mwajiri, wired into `activateSubscriptionOnPayment`),
-  both fire-and-forget via `notifyPaymentReceived`/`notifySubscriptionActivated`. (4) Added
-  the brand logo to the email template header (`mjakazi-connect-logo.png` served from
-  `NEXT_PUBLIC_SERVER_URL`; falls back to text-only header when unset). (5) Switched the
-  dev-only payment simulator gating from `NODE_ENV` to `MPESA_ENVIRONMENT !== "production"`.
-  (6) Fixed the staff queue "Legal name not set" false label (it showed that whenever legal
-  name === display name).
+  from v1: `sendPaymentConfirmedEmail` (mjakazi, wired into
+  `activateVerificationOnPayment`) and `sendSubscriptionActivatedEmail` (mwajiri, wired
+  into `activateSubscriptionOnPayment`), both fire-and-forget via
+  `notifyPaymentReceived`/`notifySubscriptionActivated`. (4) Added the brand logo to the
+  email template header (`mjakazi-connect-logo.png` served from `NEXT_PUBLIC_SERVER_URL`;
+  falls back to text-only header when unset). (5) Switched the dev-only payment simulator
+  gating from `NODE_ENV` to `MPESA_ENVIRONMENT !== "production"`. (6) Fixed the staff
+  queue "Legal name not set" false label (it showed that whenever legal name === display
+  name).
 - **Files touched**: `src/app/actions/verification.ts`,
   `src/components/dashboard/mjakazi/verification/resubmit-verification.tsx` (new),
   `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
@@ -661,64 +664,67 @@ finished.
   `src/components/dashboard/staff/verifications/verification-queue.tsx`,
   `context/architecture.md` (dev-simulator exception note).
 - **Follow-up (flagged)**: verification expiry email — send a reminder before and a notice
-  at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase 12.1
-  notifications sweep. Not started.
+  at `verification_expired` ("renew to stay visible"). Currently deferred to the Phase
+  12.1 notifications sweep. Not started.
 
 ### 2026-09-04 — Account self-deletion (settings) + dev fixes
 
 - **What was built**: (1) Self-service "Delete Account" for wajakazi and waajiri, ported
-  from v1 (`delete-account-card` + `/apis/profile/delete-account`). Added `deleteOwnAccount`
-  + a shared `deleteAccountData` cascade in `src/services/accounts.service.ts`,
-  `deleteOwnAccountAction` (`src/app/actions/account.ts`), `DeleteAccountCard`
-  (`src/components/dashboard/settings/delete-account-card.tsx`), `Settings` pages for both
-  roles, and nav entries. The cascade also removes subscriptions and payments — the old
-  admin-only `deleteAccount` missed those and now shares the same helper. (2) Broke a
-  `profile.service ↔ verification.service` circular import (dynamic import for
-  `revertToReview`) that was making the Next dev "compiling" indicator stick.
+  from v1 (`delete-account-card` + `/apis/profile/delete-account`). Added
+  `deleteOwnAccount`
+  - a shared `deleteAccountData` cascade in `src/services/accounts.service.ts`,
+    `deleteOwnAccountAction` (`src/app/actions/account.ts`), `DeleteAccountCard`
+    (`src/components/dashboard/settings/delete-account-card.tsx`), `Settings` pages for
+    both roles, and nav entries. The cascade also removes subscriptions and payments — the
+    old admin-only `deleteAccount` missed those and now shares the same helper. (2) Broke
+    a `profile.service ↔ verification.service` circular import (dynamic import for
+    `revertToReview`) that was making the Next dev "compiling" indicator stick.
 - **Manual verification (done)**: deletion confirmed working for a newly registered and an
-  approved mjakazi — profile photo and vault documents removed too, checked via the Payload
-  admin. "Stuck at compiling" resolved after the cycle fix + dev restart.
-- **Files touched**: `src/services/accounts.service.ts`, `src/app/actions/account.ts` (new),
-  `src/components/dashboard/settings/delete-account-card.tsx` (new),
+  approved mjakazi — profile photo and vault documents removed too, checked via the
+  Payload admin. "Stuck at compiling" resolved after the cycle fix + dev restart.
+- **Files touched**: `src/services/accounts.service.ts`, `src/app/actions/account.ts`
+  (new), `src/components/dashboard/settings/delete-account-card.tsx` (new),
   `src/app/(saas)/dashboard/mjakazi/settings/page.tsx` (new),
   `src/app/(saas)/dashboard/mwajiri/settings/page.tsx` (new), `src/lib/dashboard-nav.ts`,
   `src/services/profile.service.ts` (cycle fix).
 - **Notes**: email delivery resolved — two blockers existed: `loadWorkerEmail` missing
-  `overrideAccess` (recipient never resolved) and `RESEND_FROM_EMAIL` on an unverified domain
-  (Resend rejected every send). Payment-received, rejection and approval emails are now
-  confirmed working. Mwajiri deletion (with an active subscription) not yet exercised.
+  `overrideAccess` (recipient never resolved) and `RESEND_FROM_EMAIL` on an unverified
+  domain (Resend rejected every send). Payment-received, rejection and approval emails are
+  now confirmed working. Mwajiri deletion (with an active subscription) not yet exercised.
 
 ### 2026-09-04 — Mjakazi flow verified end-to-end
 
 - **What was verified (manual)**: the full mjakazi path — register → complete profile →
   upload documents → submit → pay (sandbox) → `pending_review` → staff reject (rejection
-  email) / approve (approval email) → `verified`. Payment-received email confirmed. Account
-  self-deletion confirmed for both a newly registered and an approved mjakazi.
-- **Follow-up (flagged)**: (1) free-resubmissions-exhausted path — after the 2nd rejection the
-  next resubmission must route to `pending_payment` (fresh fee), not straight to review.
-  (2) Re-verification on identity change — editing legal name / photo / document while
-  `verified` must drop to `pending_review`. Neither has been manually exercised yet.
+  email) / approve (approval email) → `verified`. Payment-received email confirmed.
+  Account self-deletion confirmed for both a newly registered and an approved mjakazi.
+- **Follow-up (flagged)**: (1) free-resubmissions-exhausted path — after the 2nd rejection
+  the next resubmission must route to `pending_payment` (fresh fee), not straight to
+  review. (2) Re-verification on identity change — editing legal name / photo / document
+  while `verified` must drop to `pending_review`. Neither has been manually exercised yet.
 
 ### 2026-09-04 — Wajakazi archive block + availability toggle
 
 - **What was built**: (1) `wajakazi-archive` Payload block
-  (`src/payload/blocks/wajakazi-archive/`) showcasing verified, available wajakazi as teaser
-  cards on marketing pages, plus a reusable `WajakaziTeaserCard`
+  (`src/payload/blocks/wajakazi-archive/`) showcasing verified, available wajakazi as
+  teaser cards on marketing pages, plus a reusable `WajakaziTeaserCard`
   (`src/components/web/wajakazi-teaser-card.tsx`). The filter mirrors `DIRECTORY_VISIBLE`
   (`verified` AND `available`), so the marketing page and the Phase 6 directory stay
   consistent; the card matches the `posts-archive` cards (same image aspect, hover zoom,
-  shadcn components, spacing). Registered in `render-blocks.tsx` + `pages/schema.ts`; types
-  regenerated. (2) Self-service availability toggle in mjakazi settings — `updateAvailability`
-  (`profile.service.ts`), `updateAvailabilityAction` (`actions/profile.ts`), `AvailabilityCard`
+  shadcn components, spacing). Registered in `render-blocks.tsx` + `pages/schema.ts`;
+  types regenerated. (2) Self-service availability toggle in mjakazi settings —
+  `updateAvailability` (`profile.service.ts`), `updateAvailabilityAction`
+  (`actions/profile.ts`), `AvailabilityCard`
   (`src/components/dashboard/settings/availability-card.tsx`), rendered on
-  `/dashboard/mjakazi/settings`. `available` shows in directory/archive; `hired`/`on_break`
-  hide the profile.
+  `/dashboard/mjakazi/settings`. `available` shows in directory/archive;
+  `hired`/`on_break` hide the profile.
 - **Decisions**: revalidation hook deferred — the `(web)` route renders per-request
-  (`draftMode()` in `[slug]/page.tsx`), so the archive re-fetches on every render and stays
-  fresh without a hook. "View all" links to `/directory` (404s until Phase 6.1); the block's
-  `showViewAllLink` toggle can hide it meanwhile. Reverted the ngrok-era `EMAIL_LOGO_URL`
-  override (logo resolves from `NEXT_PUBLIC_SERVER_URL`, now Cloudflare); removed the ngrok
-  entry from `next.config.ts` remotePatterns and updated the context docs to Cloudflare.
+  (`draftMode()` in `[slug]/page.tsx`), so the archive re-fetches on every render and
+  stays fresh without a hook. "View all" links to `/directory` (404s until Phase 6.1); the
+  block's `showViewAllLink` toggle can hide it meanwhile. Reverted the ngrok-era
+  `EMAIL_LOGO_URL` override (logo resolves from `NEXT_PUBLIC_SERVER_URL`, now Cloudflare);
+  removed the ngrok entry from `next.config.ts` remotePatterns and updated the context
+  docs to Cloudflare.
 - **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx` (new),
   `src/components/web/wajakazi-teaser-card.tsx` (new),
   `src/components/dashboard/settings/availability-card.tsx` (new),
@@ -736,8 +742,8 @@ finished.
   (detail), both dynamic server components in the `(web)` route group. The list filters by
   job category, location, experience bucket (0–2 / 3–5 / 6–9 / 10+ years) and free-text
   name search, all as URL query params; sorts newest-verified-first
-  (`-verificationReviewedAt`); paginates 9 per numbered page. The detail page shows the full
-  professional profile (photo, name, skills, about, location, experience, education,
+  (`-verificationReviewedAt`); paginates 9 per numbered page. The detail page shows the
+  full professional profile (photo, name, skills, about, location, experience, education,
   languages, work preference, availability, salary) with a "Join as a mwajiri" CTA — and
   **no contact fields anywhere in the response**.
 - **Files touched**: `src/services/directory.service.ts` (new),
@@ -746,8 +752,8 @@ finished.
   `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (new),
   `src/app/(web)/directory/{page,[slug]/page}.tsx` (new),
   `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination,directory-profile-detail,directory-profile-view-tracker}.tsx`
-  (new), `src/components/ui/pagination.tsx` (installed via shadcn CLI), `src/payload-types.ts`
-  (regenerated), `context/ui-registry.md`, `context/ui-rules.md`,
+  (new), `src/components/ui/pagination.tsx` (installed via shadcn CLI),
+  `src/payload-types.ts` (regenerated), `context/ui-registry.md`, `context/ui-rules.md`,
   `_scratch_backfill_profile_slugs.ts` (scratch, deleted after running).
 - **Notes**: Contact protection is payload-level, not UI — the directory read passes
   `overrideAccess: false` + `DIRECTORY_VISIBLE` + an explicit `select` that omits `phone`,
@@ -760,34 +766,34 @@ finished.
   `verification_expired`) resolves to a 404 via the guarded read. PostHog
   `directory_searched` (filters, resultCount) and `profile_viewed` (`isUnlocked: false`)
   wired. `revalidate-profile.ts` mirrors the posts revalidation hook (revalidates
-  `/directory`, `/directory/[slug]`, and a `directory-sitemap` tag) — a no-op today since the
-  directory is dynamic, but future-proofs ISR/sitemap caching. Detail layout uses
+  `/directory`, `/directory/[slug]`, and a `directory-sitemap` tag) — a no-op today since
+  the directory is dynamic, but future-proofs ISR/sitemap caching. Detail layout uses
   `lg:grid-cols-3` + `lg:col-span-1/2` (photo 1/3, content 2/3); the earlier
   `grid-cols-[minmax(...)]` arbitrary value silently generated no CSS, so it was replaced
   with the standard utilities. `pnpm lint` (0 errors) and `pnpm build` pass.
 - **Follow-ups / manual steps — all complete (2026-09-06)**: (1) slug backfill ran in dev
   (`pnpm.cmd exec tsx _scratch_backfill_profile_slugs.ts`) and the scratch file deleted.
-  (2) CMS `/directory` page deleted. (3) Header "Find Wajakazi" nav points at `/directory`.
-  (4) Sitemap wired for `/directory` + detail slugs. **Manual verification — complete**:
-  profiles render newest-verified-first; name search, category/location/experience filters,
-  and 9-per-page pagination all update the URL and results; detail page opens from cards;
-  **view-source + RSC payload confirmed no phone/email leaks**; a shared link to a
-  since-hidden profile returns 404. **Phase 6.1 is fully done** — next is Phase 6.2
-  (Latest Verified Profiles block).
+  (2) CMS `/directory` page deleted. (3) Header "Find Wajakazi" nav points at
+  `/directory`. (4) Sitemap wired for `/directory` + detail slugs. **Manual verification —
+  complete**: profiles render newest-verified-first; name search,
+  category/location/experience filters, and 9-per-page pagination all update the URL and
+  results; detail page opens from cards; **view-source + RSC payload confirmed no
+  phone/email leaks**; a shared link to a since-hidden profile returns 404. **Phase 6.1 is
+  fully done** — next is Phase 6.2 (Latest Verified Profiles block).
 
 ### 2026-09-06 — Phase 6.2: Latest Verified Profiles block
 
-- **What was built**: Refactored the `wajakazi-archive` marketing block so its cards are the
-  directory's `DirectoryCard` and its data comes from the guarded `listDirectoryProfiles`
-  service — the same path `/directory` uses. The block shows the latest 3 verified profiles
-  (sort `-verificationReviewedAt`), links each card to `/directory/[slug]`, and keeps its
-  headline / headline description / "View all wajakazi" button / background variant / empty
-  state. Removed the dead `limit`, `buttonLink`, `buttonText` block fields and deleted the
-  unused `WajakaziTeaserCard`.
+- **What was built**: Refactored the `wajakazi-archive` marketing block so its cards are
+  the directory's `DirectoryCard` and its data comes from the guarded
+  `listDirectoryProfiles` service — the same path `/directory` uses. The block shows the
+  latest 3 verified profiles (sort `-verificationReviewedAt`), links each card to
+  `/directory/[slug]`, and keeps its headline / headline description / "View all wajakazi"
+  button / background variant / empty state. Removed the dead `limit`, `buttonLink`,
+  `buttonText` block fields and deleted the unused `WajakaziTeaserCard`.
 - **Files touched**: `src/payload/blocks/wajakazi-archive/{schema,component}.tsx`,
   `src/services/directory.service.ts` (optional `limit` param),
-  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (also revalidates
-  `/` so the SSG homepage refreshes on verification),
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` (also
+  revalidates `/` so the SSG homepage refreshes on verification),
   `src/components/web/directory/directory-card.tsx` (comment), `src/payload-types.ts`
   (`WajakaziArchive` fields removed), `src/components/web/wajakazi-teaser-card.tsx`
   (deleted), `context/ui-registry.md`.
@@ -795,8 +801,8 @@ finished.
   `overrideAccess: false` + `DIRECTORY_VISIBLE` + the public-field `select` instead of the
   old `overrideAccess: true` hand-rolled query, so the homepage can never leak a non-live
   profile or a contact field. **Manual verification complete** (verify a profile → reload
-  homepage → new profile appears in the block, card links to the detail page).
-  **Phase 6.2 done** — next is Phase 6.3 (Mwajiri browse).
+  homepage → new profile appears in the block, card links to the detail page). **Phase 6.2
+  done** — next is Phase 6.3 (Mwajiri browse).
 
 ### 2026-09-06 — Phase 6.3: Mwajiri browse
 
@@ -804,43 +810,45 @@ finished.
   (list) and `/dashboard/mwajiri/browse/[slug]` (detail). Both read the **same guarded
   directory path** as `/directory` (`listDirectoryProfiles` / `getDirectoryProfile` with
   `DIRECTORY_PUBLIC_FIELDS` + `overrideAccess: false`), so the data is identical and no
-  contact field is ever selected. The detail swaps the public "Join as a mwajiri" CTA for a
-  masked contact area: placeholder phone/email rows plus a subscription-aware affordance —
-  an `active` subscriber sees a disabled "Unlock contact details" button (wired in 6.4),
-  everyone else sees a live "Subscribe to unlock" link to `/dashboard/mwajiri/subscription`.
-  Added "Browse" to the mwajiri nav.
+  contact field is ever selected. The detail swaps the public "Join as a mwajiri" CTA for
+  a masked contact area: placeholder phone/email rows plus a subscription-aware affordance
+  — an `active` subscriber sees a disabled "Unlock contact details" button (wired in 6.4),
+  everyone else sees a live "Subscribe to unlock" link to
+  `/dashboard/mwajiri/subscription`. Added "Browse" to the mwajiri nav.
 - **Files touched**: `src/app/(saas)/dashboard/mwajiri/browse/{page.tsx,[slug]/page.tsx}`
   (new), `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` (new),
   `src/components/web/directory/{directory-card,directory-filter-bar,directory-pagination}.tsx`
-  (added inert-by-default `basePath` prop), `src/components/web/directory/directory-profile-detail.tsx`
-  (`backHref` + `contactSlot` props), `src/lib/dashboard-nav.ts`, `context/ui-registry.md`.
-- **Notes**: The shared `web/directory` components are parameterized, not forked — each new
-  prop defaults to the public-directory behavior, so `/directory` cannot regress. Masking is
-  UX only; enforcement is the guarded read that never selects `phone`/`user`/legal fields.
-  Reuses `DirectoryProfileViewTracker` (`profile_viewed`, `isUnlocked: false`; 6.4 flips it).
-  No schema change, so no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings)
-  and `pnpm build` pass; `/dashboard/mwajiri/browse` and `.../[slug]` build as `ƒ (Dynamic)`.
-  **Manual verification complete (2026-09-07)**: non-subscriber → masked + subscribe CTA
-  routes to `/subscription`; subscriber (`active`) → masked + disabled unlock; non-mwajiri →
+  (added inert-by-default `basePath` prop),
+  `src/components/web/directory/directory-profile-detail.tsx` (`backHref` + `contactSlot`
+  props), `src/lib/dashboard-nav.ts`, `context/ui-registry.md`.
+- **Notes**: The shared `web/directory` components are parameterized, not forked — each
+  new prop defaults to the public-directory behavior, so `/directory` cannot regress.
+  Masking is UX only; enforcement is the guarded read that never selects
+  `phone`/`user`/legal fields. Reuses `DirectoryProfileViewTracker` (`profile_viewed`,
+  `isUnlocked: false`; 6.4 flips it). No schema change, so no `generate:types`.
+  `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass;
+  `/dashboard/mwajiri/browse` and `.../[slug]` build as `ƒ (Dynamic)`. **Manual
+  verification complete (2026-09-07)**: non-subscriber → masked + subscribe CTA routes to
+  `/subscription`; subscriber (`active`) → masked + disabled unlock; non-mwajiri →
   redirected by the existing guard; view-source/RSC payload contains no phone/email.
   **Phase 6.3 done** — next is Phase 6.4 (Contact unlock).
 
 ### 2026-09-06 — Mwajiri dashboard overview
 
 - **What was built**: A real `/dashboard/mwajiri` overview replacing the
-  `dashboard/[role]` placeholder — a `SubscriptionStatusCard` (the no-subscription notice +
-  plan CTA, days-remaining/expiry for `active`, honest pending/restricted states), a "Browse
-  wajakazi" card with a live verified+available count, and a "Quick actions" card (Manage
-  subscription / Settings).
+  `dashboard/[role]` placeholder — a `SubscriptionStatusCard` (the no-subscription
+  notice + plan CTA, days-remaining/expiry for `active`, honest pending/restricted
+  states), a "Browse wajakazi" card with a live verified+available count, and a "Quick
+  actions" card (Manage subscription / Settings).
 - **Files touched**: `src/app/(saas)/dashboard/mwajiri/page.tsx` (new),
   `src/components/dashboard/mwajiri/subscription-status-card.tsx` (new),
   `context/ui-registry.md`.
-- **Notes**: The live count reuses `listDirectoryProfiles` with `limit: 1` (only `totalDocs`
-  is needed), so it reads the same guarded path and can never count a non-live profile.
-  No schema change, no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) and
-  `pnpm build` pass; `/dashboard/mwajiri` builds as `ƒ (Dynamic)`. **Manual verification
-  complete (2026-09-07)**: a mwajiri with no subscription sees the "no subscription" notice +
-  plan CTA; an active subscriber sees tier + days remaining.
+- **Notes**: The live count reuses `listDirectoryProfiles` with `limit: 1` (only
+  `totalDocs` is needed), so it reads the same guarded path and can never count a non-live
+  profile. No schema change, no `generate:types`. `pnpm lint` (0 errors, 2 pre-existing
+  warnings) and `pnpm build` pass; `/dashboard/mwajiri` builds as `ƒ (Dynamic)`. **Manual
+  verification complete (2026-09-07)**: a mwajiri with no subscription sees the "no
+  subscription" notice + plan CTA; an active subscriber sees tier + days remaining.
 
 ### 2026-09-06 — Saved wajakazi (shortlist)
 
@@ -860,13 +868,13 @@ finished.
   `src/app/(saas)/dashboard/mwajiri/saved/page.tsx` (new), `src/lib/dashboard-nav.ts`,
   `src/payload-types.ts` (regenerated), `context/code-standards.md` (`profile_saved`
   event), `context/ui-registry.md`.
-- **Notes**: Saves write no audit entry (a user preference, not a domain state transition);
-  the `profile_saved` PostHog event (`saved` boolean) tracks the behaviour. All
-  `saved-wajakazi` reads use `depth: 0` so the `mjakazi`/`user` relationships stay id
-  strings and never pull contact fields. The saved list reads through the guarded directory
-  path (`listDirectoryProfilesByIds` = `DIRECTORY_VISIBLE` + public select), so a saved
-  profile that leaves the directory (hired / on_break / expired) silently drops out of the
-  list. `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass;
+- **Notes**: Saves write no audit entry (a user preference, not a domain state
+  transition); the `profile_saved` PostHog event (`saved` boolean) tracks the behaviour.
+  All `saved-wajakazi` reads use `depth: 0` so the `mjakazi`/`user` relationships stay id
+  strings and never pull contact fields. The saved list reads through the guarded
+  directory path (`listDirectoryProfilesByIds` = `DIRECTORY_VISIBLE` + public select), so
+  a saved profile that leaves the directory (hired / on_break / expired) silently drops
+  out of the list. `pnpm lint` (0 errors, 2 pre-existing warnings) and `pnpm build` pass;
   `/dashboard/mwajiri/saved` builds as `ƒ (Dynamic)`. **Manual verification complete
   (2026-09-07)**: save/unsave from a browse detail, saved list updates, cards link back to
   the browse detail.
@@ -896,33 +904,36 @@ finished.
   enable. A new sealed `contact-unlocks` collection (one row per mwajiri+mjakazi, compound
   unique index; `mwajiri → users`, `mjakazi → wajakazi-profiles`, `tierAtUnlock`,
   `unlockedAt`, `subscription → subscriptions`; `create`/`update`/`delete` restricted,
-  `read` = `isAdminOrOwner("mwajiri")`). A new `services/contact.service.ts` — the **only**
-  place phone/email are read — with `hasUnlock`, `getContact` (permanent: does not re-check
-  directory visibility), and `revealContact` (role + active-subscription gate + a
-  `DIRECTORY_VISIBLE` re-check + idempotent create behind the unique index + `contact_unlocked`
-  audit entry). A `revealContactAction` Server Action; `BrowseContactCard` converted to a
-  three-state client component; the browse detail pre-fetches an already-unlocked contact
-  server-side; `DirectoryProfileViewTracker` gained an `isUnlocked` prop.
+  `read` = `isAdminOrOwner("mwajiri")`). A new `services/contact.service.ts` — the
+  **only** place phone/email are read — with `hasUnlock`, `getContact` (permanent: does
+  not re-check directory visibility), and `revealContact` (role + active-subscription
+  gate + a `DIRECTORY_VISIBLE` re-check + idempotent create behind the unique index +
+  `contact_unlocked` audit entry). A `revealContactAction` Server Action;
+  `BrowseContactCard` converted to a three-state client component; the browse detail
+  pre-fetches an already-unlocked contact server-side; `DirectoryProfileViewTracker`
+  gained an `isUnlocked` prop.
 - **Files touched**: `src/payload/collections/contact-unlocks/schema.ts` (new),
   `src/payload/collections/index.ts`, `src/services/contact.service.ts` (new),
   `src/app/actions/contact.ts` (new),
   `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`,
   `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`,
   `src/components/web/directory/directory-profile-view-tracker.tsx`, `src/lib/audit.ts`
-  (`contact_unlocked`), `src/payload/collections/audit-logs/schema.ts`, `src/payload-types.ts`
-  (regenerated), `context/architecture.md` (invariant #15 + contact-vault exemption now
-  name `contact.service.ts`), `context/ui-registry.md`.
+  (`contact_unlocked`), `src/payload/collections/audit-logs/schema.ts`,
+  `src/payload-types.ts` (regenerated), `context/architecture.md` (invariant #15 +
+  contact-vault exemption now name `contact.service.ts`), `context/ui-registry.md`.
 - **Notes**: Deviates from the build plan's literal `api/actions/contact/reveal` route —
-  `revealContactAction` is a Server Action per the Server-Action-first rule. `contact.service.ts`
-  reads phone + email via `overrideAccess: true` because email lives on `users`, which a
-  mwajiri cannot read through access control; it is the named fourth exemption to invariant
-  #15. The reveal returns contact only to the mwajiri who just unlocked it (the deliverable,
-  not a leak). `contact_unlocked` PostHog fires client-side   (`tierAtUnlock`); `profile_viewed`
-  fires `isUnlocked: true` when already unlocked. No `payment` relation on unlocks (the
-  activating payment is on `subscription.lastPaymentId` + the audit metadata). `pnpm lint`
-  (0 errors, 2 pre-existing warnings) and `pnpm build` pass. **Manual verification complete
-  (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact appears,
-   `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock funnel working.
+  `revealContactAction` is a Server Action per the Server-Action-first rule.
+  `contact.service.ts` reads phone + email via `overrideAccess: true` because email lives
+  on `users`, which a mwajiri cannot read through access control; it is the named fourth
+  exemption to invariant #15. The reveal returns contact only to the mwajiri who just
+  unlocked it (the deliverable, not a leak). `contact_unlocked` PostHog fires client-side
+  (`tierAtUnlock`); `profile_viewed` fires `isUnlocked: true` when already unlocked. No
+  `payment` relation on unlocks (the activating payment is on
+  `subscription.lastPaymentId` + the audit metadata). `pnpm lint` (0 errors, 2
+  pre-existing warnings) and `pnpm build` pass. **Manual verification complete
+  (2026-09-07)**: an active mwajiri can unlock a mjakazi's contact details (contact
+  appears, `contact_unlocked` audit + PostHog fire); the rest of the browse/save/unlock
+  funnel working.
 
 ### 2026-09-07 — Phase 7.1: Verification expiry task
 
@@ -934,41 +945,44 @@ finished.
   `sendVerificationExpiredEmail` ("renew to stay visible") through the existing
   `notifyWorker` helper. Registered the task in `payload.config.ts`.
 - **Files touched**: `src/jobs/verification-expiry.ts` (new),
-  `src/services/verification.service.ts` (`expireExpiredVerifications`, `expireVerification`
-  now notifies), `src/lib/email.ts` (`sendVerificationExpiredEmail`),
+  `src/services/verification.service.ts` (`expireExpiredVerifications`,
+  `expireVerification` now notifies), `src/lib/email.ts` (`sendVerificationExpiredEmail`),
   `src/payload.config.ts` (`jobs.tasks`).
 - **Notes**: Hiding is automatic — `DIRECTORY_VISIBLE` requires `verified`, so a profile
   transitions to `verification_expired` and drops out of the directory and the saved list
-  with no extra work; the `revalidateProfile` afterChange hook fires on the job's update and
-  invalidates the SSG homepage. The expiry email was pulled forward out of the 12.1
+  with no extra work; the `revalidateProfile` afterChange hook fires on the job's update
+  and invalidates the SSG homepage. The expiry email was pulled forward out of the 12.1
   notifications sweep (7.1's "Done when" requires it); a pre-expiry reminder is still
   deferred. No schema change, so no `generate:types`. `pnpm lint` (0 errors, 3 warnings —
   the new `TaskConfig<any>` warning matches the other two jobs) and `pnpm build` pass.
-- **Bug fixed during manual verification**: the `revalidateProfile` / `revalidateProfileDelete`
-  afterChange hooks called `revalidatePath`/`revalidateTag` unguarded. Outside a Next.js
-  request context (the expiry job runs in Payload's background queue, and the throwaway
-  `tsx` script has no request store), `revalidatePath("/")` throws
-  `Invariant: static generation store missing`. Payload captured that throw and returned
-  `docs: []` + an error, so `applyTransition` read `docs.length === 0` as a `conflict` and
-  skipped the `verification_expired` audit entry **and** the worker email — even though the
-  state write had already committed. Fixed by wrapping the revalidate calls in try/catch
-  (revalidation is best-effort; the directory is dynamic anyway). This also un-breaks any
-  other non-request write to `wajakazi-profiles`.
-- **Files touched (bug fix)**: `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts`
-- **Manual verification done**: backdated a verified profile's `verificationExpiry` and ran
-  the task via the throwaway `tsx` script — `expireExpiredVerifications` expired 2 eligible
-  profiles (the target plus a second past-expiry profile), the target's state became
-  `verification_expired`, and the success path (audit entry + worker email) fired. Verify the
-  `verification_expired` email actually arrived (check inbox/spam) to close the loop.
+- **Bug fixed during manual verification**: the `revalidateProfile` /
+  `revalidateProfileDelete` afterChange hooks called `revalidatePath`/`revalidateTag`
+  unguarded. Outside a Next.js request context (the expiry job runs in Payload's
+  background queue, and the throwaway `tsx` script has no request store),
+  `revalidatePath("/")` throws `Invariant: static generation store missing`. Payload
+  captured that throw and returned `docs: []` + an error, so `applyTransition` read
+  `docs.length === 0` as a `conflict` and skipped the `verification_expired` audit entry
+  **and** the worker email — even though the state write had already committed. Fixed by
+  wrapping the revalidate calls in try/catch (revalidation is best-effort; the directory
+  is dynamic anyway). This also un-breaks any other non-request write to
+  `wajakazi-profiles`.
+- **Files touched (bug fix)**:
+  `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts`
+- **Manual verification done**: backdated a verified profile's `verificationExpiry` and
+  ran the task via the throwaway `tsx` script — `expireExpiredVerifications` expired 2
+  eligible profiles (the target plus a second past-expiry profile), the target's state
+  became `verification_expired`, and the success path (audit entry + worker email) fired.
+  Verify the `verification_expired` email actually arrived (check inbox/spam) to close the
+  loop.
 
 ### 2026-09-07 — Wajakazi archive button style parity (minor UI fix)
 
 - **What was built**: The wajakazi archive block's "View all wajakazi" buttons (desktop
   header + mobile bottom) now match the posts archive block's "View All Articles" button
-  styling — replaced the `buttonVariants({ variant: "outline", size: "lg" })` treatment with
-  the posts block's explicit classes (`rounded-lg border border-primary/20 text-primary
-  hover:bg-primary/10 px-6 py-3 font-medium transition-all duration-200`, arrow `ml-2
-  h-4 w-4`).
+  styling — replaced the `buttonVariants({ variant: "outline", size: "lg" })` treatment
+  with the posts block's explicit classes
+  (`rounded-lg border border-primary/20 text-primary hover:bg-primary/10 px-6 py-3 font-medium transition-all duration-200`,
+  arrow `ml-2 h-4 w-4`).
 - **Files touched**: `src/payload/blocks/wajakazi-archive/component.tsx`
 - **Notes**: Removed the now-unused `buttonVariants` import. No schema change, no
   `generate:types`. `pnpm lint` (0 errors, 2 pre-existing warnings) passes.
@@ -979,28 +993,27 @@ finished.
   `expressions-of-interest` collection (`mwajiri → users`, `mjakazi → wajakazi-profiles`,
   `batchId`, `pendingKey` (unique), `state` = `sent | accepted | rejected | expired`,
   `sentAt`, `respondedAt`; compound index on `(mwajiri, mjakazi)`). A new
-  `services/eoi.service.ts` with
-  `sendEoiBatch` (role + active-subscription gate, 3–5 batch bound, directory-visibility
-  recheck, per-pair outstanding-interest guard, minted `batchId`, one `eoi_sent` audit
-  entry + one received email per recipient), `listSentEois`, `listReceivedEois`, and
-  `respondToEoi` (ownership check + CAS `sent → accepted | rejected` + `eoi_responded`
-  audit entry + response emails). Four EOI email templates in `lib/email.ts`
-  (`sendEoiReceivedEmail`, `sendEoiBatchSentEmail`, `sendEoiRespondedEmail`,
-  `sendEoiResponseConfirmedEmail`). Server Actions `sendEoiBatchAction` /
-  `respondToEoiAction` in `app/actions/eoi.ts`. The send UI (`EoiSend`) on the mwajiri
-  saved page; the mjakazi inbox (`EoiInbox`) at `/dashboard/mjakazi/opportunities`; a
-  "Sent interests" card on the mwajiri overview; the "Opportunities" mjakazi nav item.
+  `services/eoi.service.ts` with `sendEoiBatch` (role + active-subscription gate, 3–5
+  batch bound, directory-visibility recheck, per-pair outstanding-interest guard, minted
+  `batchId`, one `eoi_sent` audit entry + one received email per recipient),
+  `listSentEois`, `listReceivedEois`, and `respondToEoi` (ownership check + CAS
+  `sent → accepted | rejected` + `eoi_responded` audit entry + response emails). Four EOI
+  email templates in `lib/email.ts` (`sendEoiReceivedEmail`, `sendEoiBatchSentEmail`,
+  `sendEoiRespondedEmail`, `sendEoiResponseConfirmedEmail`). Server Actions
+  `sendEoiBatchAction` / `respondToEoiAction` in `app/actions/eoi.ts`. The send UI
+  (`EoiSend`) on the mwajiri saved page; the mjakazi inbox (`EoiInbox`) at
+  `/dashboard/mjakazi/opportunities`; a "Sent interests" card on the mwajiri overview; the
+  "Opportunities" mjakazi nav item.
 - **Files touched**: `src/payload/collections/expressions-of-interest/schema.ts` (new),
   `src/payload/collections/index.ts`, `src/lib/audit.ts` (`eoi_responded`),
   `src/payload/collections/audit-logs/schema.ts` (`eoi_responded`),
   `src/services/eoi.service.ts` (new), `src/lib/email.ts` (4 templates),
-  `src/app/actions/eoi.ts` (new),
-  `src/components/dashboard/mwajiri/saved/eoi-send.tsx` (new),
-  `src/components/dashboard/mjakazi/opportunities/eoi-inbox.tsx` (new),
+  `src/app/actions/eoi.ts` (new), `src/components/dashboard/mwajiri/saved/eoi-send.tsx`
+  (new), `src/components/dashboard/mjakazi/opportunities/eoi-inbox.tsx` (new),
   `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx` (new),
-  `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`, `src/app/(saas)/dashboard/mwajiri/page.tsx`,
-  `src/lib/dashboard-nav.ts`, `src/payload-types.ts` (regenerated),
-  `context/ui-registry.md`.
+  `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/lib/dashboard-nav.ts`,
+  `src/payload-types.ts` (regenerated), `context/ui-registry.md`.
 - **Notes**: PostHog `interest_sent` (`count`) and `interest_responded` (`response`) fire
   client-side (already in the code-standards event list). `eoi_sent` audit action already
   existed; `eoi_responded` was added. `expired` is declared in the enum but no code
@@ -1010,13 +1023,13 @@ finished.
   `eoi.service.ts` with explicit `select`s that never touch contact fields — sender
   name/location are resolved for display, and no phone/email is ever exposed in either
   direction. `eoi.service.ts` is now a named exemption under invariant #15 (non-contact
-  display fields only), documented in `architecture.md` and `code-standards.md`. Post-review
-  hardening: `pendingKey` (unique) is the DB backstop for "one outstanding interest per
-  pair" — a concurrent duplicate send fails on the unique index and rolls back its batch;
-  rejection frees the key so re-send is allowed, acceptance keeps it. The duplicated
-  `loadPayerEmail`/`loadWorkerEmail`/`loadUserEmail` helpers were consolidated into
-  `lib/user-email.ts` (subscription + verification + eoi now share it). `pnpm lint` (0
-  errors, 3 pre-existing `TaskConfig<any>` warnings) and `pnpm build` pass. **Manual
+  display fields only), documented in `architecture.md` and `code-standards.md`.
+  Post-review hardening: `pendingKey` (unique) is the DB backstop for "one outstanding
+  interest per pair" — a concurrent duplicate send fails on the unique index and rolls
+  back its batch; rejection frees the key so re-send is allowed, acceptance keeps it. The
+  duplicated `loadPayerEmail`/`loadWorkerEmail`/`loadUserEmail` helpers were consolidated
+  into `lib/user-email.ts` (subscription + verification + eoi now share it). `pnpm lint`
+  (0 errors, 3 pre-existing `TaskConfig<any>` warnings) and `pnpm build` pass. **Manual
   verification pending**: as an active mwajiri, save 4 wajakazi, send a batch of 4, accept
   one and reject one from the mjakazi side, and check both inboxes for the send + response
   emails; attempt a 2-profile batch and confirm it is refused.
@@ -1029,20 +1042,20 @@ finished.
   `pending_agreement | agreed | reversed`, `sourceEoi → expressions-of-interest`; compound
   unique index on `(mwajiri, mjakazi)`). A new `services/hire.service.ts` with a single
   write path `confirmHireCore` — a first confirmation (either side) creates a pending hire
-  and flips the mjakazi's availability to `hired` immediately; the counterpart re-confirming
-  flips it to `agreed`; a `reversed` hire re-opens — plus `confirmHire` (mwajiri),
-  `confirmHireByMjakazi` (mjakazi, auto-links an accepted EOI), `reverseHire` (either
-  party), `reverseHiresForMjakazi` (system path), `listHireCandidatesForMwajiri` (accepted
-  EOIs ∪ unlocked wajakazi), `listHireCandidatesForMjakazi` (unlockers ∪ EOI senders), and
-  `listHires`. Three email templates (`sendHireConfirmedEmail`, `sendHireAgreedEmail`,
-  `sendHireReversedEmail`). Server Actions `confirmHireAction` / `confirmHireByMjakaziAction`
-  / `reverseHireAction`. UI: the mwajiri overview "Confirm a hire" card (`HireConfirmCard`),
-  the mjakazi availability toggle asks "who hired you" when set to Hired (platform waajiri +
-  a "not listed — hired elsewhere" fallback), and the mjakazi's hire confirmations surface
-  on the opportunities screen (`HireInbox`).
+  and flips the mjakazi's availability to `hired` immediately; the counterpart
+  re-confirming flips it to `agreed`; a `reversed` hire re-opens — plus `confirmHire`
+  (mwajiri), `confirmHireByMjakazi` (mjakazi, auto-links an accepted EOI), `reverseHire`
+  (either party), `reverseHiresForMjakazi` (system path), `listHireCandidatesForMwajiri`
+  (accepted EOIs ∪ unlocked wajakazi), `listHireCandidatesForMjakazi` (unlockers ∪ EOI
+  senders), and `listHires`. Three email templates (`sendHireConfirmedEmail`,
+  `sendHireAgreedEmail`, `sendHireReversedEmail`). Server Actions `confirmHireAction` /
+  `confirmHireByMjakaziAction` / `reverseHireAction`. UI: the mwajiri overview "Confirm a
+  hire" card (`HireConfirmCard`), the mjakazi availability toggle asks "who hired you"
+  when set to Hired (platform waajiri + a "not listed — hired elsewhere" fallback), and
+  the mjakazi's hire confirmations surface on the opportunities screen (`HireInbox`).
 - **Files touched**: `src/payload/collections/hires/schema.ts` (new),
-  `src/payload/collections/index.ts`, `src/lib/audit.ts` (`hire_confirmed`,
-  `hire_agreed`, `hire_reversed`), `src/payload/collections/audit-logs/schema.ts`,
+  `src/payload/collections/index.ts`, `src/lib/audit.ts` (`hire_confirmed`, `hire_agreed`,
+  `hire_reversed`), `src/payload/collections/audit-logs/schema.ts`,
   `src/lib/payload-helpers.ts` (new — shared `toId`/`userLabel`/`loadUserName`/
   `loadProfileDisplay`/`loadSenderInfo`), `src/services/hire.service.ts` (new),
   `src/lib/email.ts` (3 templates), `src/app/actions/hire.ts` (new),
@@ -1051,28 +1064,28 @@ finished.
   `src/app/(saas)/dashboard/mwajiri/page.tsx`,
   `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`,
   `src/components/dashboard/settings/availability-card.tsx` (who-hired-you picker),
-  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx`,
-  `src/services/profile.service.ts` (reverses active hires when a mjakazi leaves `hired`),
+  `src/app/(saas)/dashboard/mjakazi/settings/page.tsx`, `src/services/profile.service.ts`
+  (reverses active hires when a mjakazi leaves `hired`),
   `src/services/{eoi,contact,subscription}.service.ts` (import shared helpers;
   `getSubscriptionByUser` exported), `src/payload-types.ts` (regenerated),
   `context/architecture.md`, `context/code-standards.md`, `context/ui-registry.md`.
-- **Notes**: Deviates from the architecture's literal `hires` field list by adding a `state`
-  enum + `reversedAt` (the product requires "how to reverse it", which the base fields do
-  not capture) and omitting `sourceConciergeCase` (the `concierge-cases` collection lands
-  in Phase 11). Confirmation from either side sets availability → `hired` immediately; the
-  other party is emailed and can reverse. Reversal marks the record `reversed`, frees the
-  mjakazi back to `available`, and notifies the counterpart — leaving `hired` via the toggle
-  also reverses any active hire (dynamic import avoids a `profile ↔ hire` service cycle).
-  Confirmation is gated on a prior relationship: `confirmHire` requires an active
-  subscription plus an accepted EOI or contact unlock; `confirmHireByMjakazi` requires an
-  unlock or sent EOI — no arbitrary counterpart ids. `hire.service.ts` is a named exemption
-  under invariant #15 (trusted profile read with an explicit non-contact `select`, writes
-  `availabilityStatus`). PostHog `hire_confirmed` (`confirmedBy`) fires client-side (already
-  in the code-standards event list). `pnpm lint` (0 errors, 3 pre-existing warnings) and
-  `pnpm build` pass. **Manual verification complete (2026-09-08)**: all ten scenarios
-  passed — confirm from both sides, agree, reverse restores directory visibility,
-  off-platform fallback, re-open reversed, authorization gates, idempotency, dedup, and
-   emails/audit.
+- **Notes**: Deviates from the architecture's literal `hires` field list by adding a
+  `state` enum + `reversedAt` (the product requires "how to reverse it", which the base
+  fields do not capture) and omitting `sourceConciergeCase` (the `concierge-cases`
+  collection lands in Phase 11). Confirmation from either side sets availability → `hired`
+  immediately; the other party is emailed and can reverse. Reversal marks the record
+  `reversed`, frees the mjakazi back to `available`, and notifies the counterpart —
+  leaving `hired` via the toggle also reverses any active hire (dynamic import avoids a
+  `profile ↔ hire` service cycle). Confirmation is gated on a prior relationship:
+  `confirmHire` requires an active subscription plus an accepted EOI or contact unlock;
+  `confirmHireByMjakazi` requires an unlock or sent EOI — no arbitrary counterpart ids.
+  `hire.service.ts` is a named exemption under invariant #15 (trusted profile read with an
+  explicit non-contact `select`, writes `availabilityStatus`). PostHog `hire_confirmed`
+  (`confirmedBy`) fires client-side (already in the code-standards event list).
+  `pnpm lint` (0 errors, 3 pre-existing warnings) and `pnpm build` pass. **Manual
+  verification complete (2026-09-08)**: all ten scenarios passed — confirm from both
+  sides, agree, reverse restores directory visibility, off-platform fallback, re-open
+  reversed, authorization gates, idempotency, dedup, and emails/audit.
 
 ### 2026-09-08 — Phase 8.3: EOI nudge task
 
@@ -1082,38 +1095,39 @@ finished.
   whether the interest resulted in a hire, two nudges then silence. The
   `expressions-of-interest` collection gained `nudgesSent` (number, default 0) and
   `lastNudgedAt` (date) to track the count; a new `sendEoiNudgeEmail` template in
-  `lib/email.ts` varies the copy by recipient role (mwajiri → "confirm the hire",
-  mjakazi → "mark yourself hired"); and a new `eoi_nudged` audit action.
+  `lib/email.ts` varies the copy by recipient role (mwajiri → "confirm the hire", mjakazi
+  → "mark yourself hired"); and a new `eoi_nudged` audit action.
 - **Files touched**: `src/payload/collections/expressions-of-interest/schema.ts`
-  (`nudgesSent`, `lastNudgedAt`), `src/services/eoi.service.ts`
-  (`sendAcceptedEoiNudges` + `loadMjakaziOwner`/`hasActiveHire`/`applyNudge`/`notifyNudge`),
-  `src/lib/email.ts` (`sendEoiNudgeEmail`), `src/lib/audit.ts` (`eoi_nudged`),
+  (`nudgesSent`, `lastNudgedAt`), `src/services/eoi.service.ts` (`sendAcceptedEoiNudges` +
+  `loadMjakaziOwner`/`hasActiveHire`/`applyNudge`/`notifyNudge`), `src/lib/email.ts`
+  (`sendEoiNudgeEmail`), `src/lib/audit.ts` (`eoi_nudged`),
   `src/payload/collections/audit-logs/schema.ts` (`eoi_nudged`), `src/jobs/eoi-nudge.ts`
   (new), `src/payload.config.ts` (`jobs.tasks`), `src/payload-types.ts` (regenerated).
 - **Notes**: The job polls `state: accepted` and filters the 7/14-day window plus the
   `nudgesSent` count in JS (same pattern as the expiry jobs) so a missed window
   self-corrects. Idempotency is a compare-and-swap on the exact prior `nudgesSent` — with
-  an `exists: false` clause to cover pre-8.3 accepted records that predate the field — so a
-  concurrent run cannot double-send. A non-reversed hire (`pending_agreement | agreed`) for
-  the pair suppresses the nudge: the question is already answered. The nudge is email +
-  `eoi_nudged` audit only (no PostHog event — it is a system job, not a user action).
-  Schedule is `0 8 * * *` (8am) rather than midnight so the ask lands in the morning.
-  `pnpm lint` (0 errors, 4 warnings — the new `TaskConfig<any>` matches the three existing
-  jobs) and `pnpm build` pass. **Manual verification done (2026-09-08)**: verified after the
-  windows were tightened to 3/5 days — see the follow-up entry below; both nudges fire once
-  each and then silence.
+  an `exists: false` clause to cover pre-8.3 accepted records that predate the field — so
+  a concurrent run cannot double-send. A non-reversed hire (`pending_agreement | agreed`)
+  for the pair suppresses the nudge: the question is already answered. The nudge is
+  email + `eoi_nudged` audit only (no PostHog event — it is a system job, not a user
+  action). Schedule is `0 8 * * *` (8am) rather than midnight so the ask lands in the
+  morning. `pnpm lint` (0 errors, 4 warnings — the new `TaskConfig<any>` matches the three
+  existing jobs) and `pnpm build` pass. **Manual verification done (2026-09-08)**:
+  verified after the windows were tightened to 3/5 days — see the follow-up entry below;
+  both nudges fire once each and then silence.
 
 ### 2026-09-08 — EOI auto-expire + nudge timing change
 
 - **What was built**: (1) Unanswered expressions of interest now auto-expire — a new
   `eoi-expire` job (daily, `0 0 * * *`) delegates to `expireUnansweredEois` in
-  `eoi.service.ts`, which polls `state: sent` interests older than 7 days from `sentAt` and
-  transitions each to `expired` via a compare-and-swap on `state === "sent"` (plus a new
-  `eoi_expired` audit entry); the `pendingKey` is uniquified on expiry (rejection-style) so
-  the mwajiri can send a fresh batch to that mjakazi again. (2) The hire-nudge windows were
-  tightened from 7/14 days to 3/5 days after `respondedAt` (the `NUDGE_WINDOWS_MS` constant
-  and the job comment). (3) The mwajiri "Sent interests" card now shows an `Expired` badge,
-  matching the mjakazi inbox, and the audit-log viewer gained an `eoi_expired` label.
+  `eoi.service.ts`, which polls `state: sent` interests older than 7 days from `sentAt`
+  and transitions each to `expired` via a compare-and-swap on `state === "sent"` (plus a
+  new `eoi_expired` audit entry); the `pendingKey` is uniquified on expiry
+  (rejection-style) so the mwajiri can send a fresh batch to that mjakazi again. (2) The
+  hire-nudge windows were tightened from 7/14 days to 3/5 days after `respondedAt` (the
+  `NUDGE_WINDOWS_MS` constant and the job comment). (3) The mwajiri "Sent interests" card
+  now shows an `Expired` badge, matching the mjakazi inbox, and the audit-log viewer
+  gained an `eoi_expired` label.
 - **Files touched**: `src/services/eoi.service.ts` (`NUDGE_WINDOWS_MS` → `[3, 5]`;
   `EOI_EXPIRY_MS`; `expireEoi`; `expireUnansweredEois`), `src/jobs/eoi-expire.ts` (new),
   `src/jobs/eoi-nudge.ts` (comment), `src/payload.config.ts` (`jobs.tasks`),
@@ -1122,24 +1136,25 @@ finished.
   `src/app/(saas)/dashboard/mwajiri/page.tsx` (expired badge),
   `src/components/dashboard/audit-logs/audit-log-table.tsx` (label + variant),
   `context/{project-overview,architecture,build-plan}.md`.
-- **Notes**: Resolves the long-open "should a sent interest auto-expire" question from 8.1 —
-  an unanswered interest expires 7 days after `sentAt`. Expiry is a system transition with an
-  audit entry and no email (neither party is notified; the mwajiri sees `Expired` on their
-  dashboard). The nudge windows (3/5) and expiry window (7) are independent: nudge covers
-  *accepted* interests only, expiry covers *sent* (unanswered) interests only, so the two
-  jobs never touch the same record. Both jobs poll eligible records (missed windows
-  self-correct). No schema shape change (the `expired` state and `sentAt` already existed), so
-  no `generate:types` was needed for these fields — but the audit action option changed, so
-  types were regenerated. **Manual verification done**: backdated a `sent` EOI's `sentAt`
-  8 days, ran `eoi-expire` — it became `expired` with an `eoi_expired` audit entry and a fresh
-  batch to the same mjakazi was accepted; backdated an accepted EOI's `respondedAt` 4 days,
-  ran `eoi-nudge` — the first nudge fired at 3 days and the second at 5, then silence.
+- **Notes**: Resolves the long-open "should a sent interest auto-expire" question from 8.1
+  — an unanswered interest expires 7 days after `sentAt`. Expiry is a system transition
+  with an audit entry and no email (neither party is notified; the mwajiri sees `Expired`
+  on their dashboard). The nudge windows (3/5) and expiry window (7) are independent:
+  nudge covers _accepted_ interests only, expiry covers _sent_ (unanswered) interests
+  only, so the two jobs never touch the same record. Both jobs poll eligible records
+  (missed windows self-correct). No schema shape change (the `expired` state and `sentAt`
+  already existed), so no `generate:types` was needed for these fields — but the audit
+  action option changed, so types were regenerated. **Manual verification done**:
+  backdated a `sent` EOI's `sentAt` 8 days, ran `eoi-expire` — it became `expired` with an
+  `eoi_expired` audit entry and a fresh batch to the same mjakazi was accepted; backdated
+  an accepted EOI's `respondedAt` 4 days, ran `eoi-nudge` — the first nudge fired at 3
+  days and the second at 5, then silence.
 
 ### 2026-09-08 — Verification payment: editable M-Pesa number
 
 - **What was built**: The mjakazi verification fee screen now lets the worker pay from any
-  M-Pesa number, matching the mwajiri subscription flow. The `PayVerification` card gained an
-  editable "M-Pesa phone number" input that defaults to the profile's on-file number;
+  M-Pesa number, matching the mwajiri subscription flow. The `PayVerification` card gained
+  an editable "M-Pesa phone number" input that defaults to the profile's on-file number;
   `initiateVerificationPaymentAction` now accepts and normalizes that phone (zod +
   `normalizeKenyanPhone`) and passes it to `initiatePayment` instead of always using the
   profile phone.
@@ -1147,33 +1162,96 @@ finished.
   `src/components/dashboard/mjakazi/verification/pay-verification.tsx` (phone input),
   `src/app/(saas)/dashboard/mjakazi/verification/page.tsx` (pass `phone` prop).
 - **Notes**: The payment phone is deliberately **not** persisted back to
-  `wajakazi-profiles.phone` — that field is the worker's own contact number (shown to waajiri
-  after a contact unlock), and the payer may be a different person (a relative paying on the
-  worker's behalf). The mwajiri flow persists the phone because there the payer is always the
-  mwajiri themself. The chosen number is still recorded on the `payments.phoneNumber` record
-  for audit. No schema change, so no `generate:types`. **Manual verification done**: as a
-  mjakazi in `pending_payment`, the field prefilled the profile number; edited it to a
-  different valid number, paid in the sandbox, and the STK prompt arrived on the edited
-  number while the profile phone was unchanged.
+  `wajakazi-profiles.phone` — that field is the worker's own contact number (shown to
+  waajiri after a contact unlock), and the payer may be a different person (a relative
+  paying on the worker's behalf). The mwajiri flow persists the phone because there the
+  payer is always the mwajiri themself. The chosen number is still recorded on the
+  `payments.phoneNumber` record for audit. No schema change, so no `generate:types`.
+  **Manual verification done**: as a mjakazi in `pending_payment`, the field prefilled the
+  profile number; edited it to a different valid number, paid in the sandbox, and the STK
+  prompt arrived on the edited number while the profile phone was unchanged.
 
 ### 2026-09-08 — Reverification is replace-only (delete trigger removed)
 
 - **What was built**: Re-verification is now triggered **only** by replacing evidence, not
   removing it. `deleteVaultDocument` (`vault.service.ts`) refuses deletion of a `verified`
-  profile's documents (`replace_required`, "Replace this document instead of removing it…")
-  and no longer calls `revertToReview` on delete — the previous delete-trigger left a
-  verified worker stuck in `pending_review` with a missing document and no way to re-upload
-  (the review lock blocks upload). The document vault UI also hides the `Remove` button
-  while `verified` (only `Replace` is shown), so the affordance matches the rule.
+  profile's documents (`replace_required`, "Replace this document instead of removing
+  it…") and no longer calls `revertToReview` on delete — the previous delete-trigger left
+  a verified worker stuck in `pending_review` with a missing document and no way to
+  re-upload (the review lock blocks upload). The document vault UI also hides the `Remove`
+  button while `verified` (only `Replace` is shown), so the affordance matches the rule.
 - **Files touched**: `src/services/vault.service.ts` (`deleteVaultDocument`),
   `src/components/dashboard/mjakazi/document-vault/index.tsx` (`isVerified` prop),
   `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` (passes `isVerified`).
 - **Notes**: Replace still triggers reverification via the existing `uploadVaultDocument`
-  `wasVerified → revertToReview` path, and legal-name / photo changes keep their triggers in
-  `profile.service.ts`. `pending_review` documents remain locked (unchanged). No schema
-  change, so no `generate:types`. **Manual verification done**: on a `verified` profile the
-  `Remove` button was gone; replacing one document dropped the profile to `pending_review`
-  (and out of the directory), and staff re-approval returned it to `verified`.
+  `wasVerified → revertToReview` path, and legal-name / photo changes keep their triggers
+  in `profile.service.ts`. `pending_review` documents remain locked (unchanged). No schema
+  change, so no `generate:types`. **Manual verification done**: on a `verified` profile
+  the `Remove` button was gone; replacing one document dropped the profile to
+  `pending_review` (and out of the directory), and staff re-approval returned it to
+  `verified`.
+
+### 2026-09-08 — Phase 9.1: Reviews
+
+- **What was built**: The reviews trust loop. `reviews` collection (sealed, unique
+  `[mwajiri, mjakazi]`) + `review.service.ts` as its single authority. A mwajiri can leave
+  one 1–5 star review with a comment for a worker they both **unlocked** and **hired
+  (`agreed`)**; it lands `pending` for moderation and only appears on the worker's public
+  profile after staff approve (rejection is terminal with a reason). The worker can
+  hide/show each published review; hidden reviews are excluded from the public list and
+  the aggregate (avg + count). Reviewer attribution is a first-name + last-initial
+  snapshot. Staff get a moderation queue at `/dashboard/staff/reviews` (+ nav + overview
+  stat). Five `review_*` audit actions.
+- **Files touched**: `src/payload/collections/reviews/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/services/review.service.ts` (new),
+  `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` (`review_*`),
+  `src/app/actions/reviews.ts` (new), `src/components/rating-stars.tsx` (new),
+  `src/components/dashboard/mwajiri/browse/leave-review-form.tsx` (new),
+  `src/components/dashboard/mjakazi/reviews/reviews-panel.tsx` (new),
+  `src/components/dashboard/staff/reviews/review-queue.tsx` (new),
+  `src/components/web/directory/profile-reviews.tsx` (new),
+  `src/app/(saas)/dashboard/staff/reviews/page.tsx` (new),
+  `src/app/(saas)/dashboard/staff/page.tsx` + `src/lib/dashboard-nav.ts` (queue link),
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (form + existing-review
+  state), `src/app/(saas)/dashboard/mjakazi/page.tsx` (reviews panel),
+  `src/app/(web)/directory/[slug]/page.tsx` (public reviews + aggregate).
+- **Notes**: The gate was tightened from the plan's "unlock only" to **unlock + `agreed`
+  hire** (a hire that never held earns no review), and the worker show/hide toggle was
+  added, both per the approved blueprint. `review.service` is a named invariant-#15
+  exemption (trusted reads with explicit non-contact `select`). Fires `review_submitted`
+  (`rating`). **Manual verification done**: as a mwajiri with an unlock + a reviewable
+  hire, a submitted review did not appear until a staff member approved it; a mjakazi
+  hiding a published review dropped it from the public profile + aggregate; a mwajiri with
+  an unlock but no reviewable hire could not submit.
+
+### 2026-09-08 — End-contract flow: release + review from "Your hires"
+
+- **What was built**: The review entry point for hired wajakazi. A new hire terminal state
+  `ended` (+ `endedAt`) and an `endHire` service action (`hire.service.ts`): **either
+  party** ends a completed `agreed` hire (CAS → `ended`, `hire_ended` audit) and the
+  mjakazi is released back to `available` so they re-enter the directory. On an `agreed`
+  hire the **Reverse** button is gone on both sides — it is replaced by **End contract**
+  (mwajiri and mjakazi both see it). The mwajiri overview's `HireConfirmCard` opens the
+  `LeaveReviewForm` inline after ending and shows **Leave a review** on `ended` hires;
+  reviewed hires show a Reviewed badge. The review step is mwajiri-only. The review gate
+  was broadened from `agreed` to `agreed | ended` (a hire that actually held, active or
+  completed — never `pending_agreement` or `reversed`).
+- **Files touched**: `src/payload/collections/hires/schema.ts` (`ended`, `endedAt`),
+  `src/services/hire.service.ts` (`endHire`, `listHiresForMwajiri`),
+  `src/services/review.service.ts` (`hasReviewableHire`, `listReviewedMjakaziIds`),
+  `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` (`hire_ended`),
+  `src/app/actions/hire.ts` (`endHireAction`), `src/app/actions/reviews.ts` (revalidate
+  overview), `src/components/dashboard/mwajiri/hire-confirm-card.tsx` (end/review UI),
+  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx` (End contract on agreed),
+  `src/app/(saas)/dashboard/mwajiri/page.tsx` (enrich hires with reviewed).
+- **Notes**: `listHires` is now mjakazi-only; the mwajiri overview uses the new
+  `listHiresForMwajiri` (includes `ended`). `Reverse` remains only for `pending_agreement`
+  (the "this hire is wrong" case before agreement). No PostHog event for `hire_ended` (not
+  in the fixed list). No email is sent on end (no "contract ended" template yet). **Manual
+  verification done**: on an `agreed` hire Reverse was absent and End contract present on
+  both sides; ending it marked the hire `ended` and the worker reappeared in the directory;
+  the review form opened for the mwajiri (not the mjakazi) and a submitted review went to
+  moderation.
 
 ---
 
@@ -1184,6 +1262,7 @@ Agreed 2026-09-04. Permanent at-a-glance fixtures for each role's overview. Add 
 placeholder) as each is built. Data is already available unless marked "later phase".
 
 ### Admin (`/dashboard/admin`)
+
 - [x] Pending verifications (`pending_review` count) → links to queue
 - [x] Verified wajakazi count
 - [x] Active subscriptions count
@@ -1194,6 +1273,7 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [ ] Quick actions (queue / settings / staff)
 
 ### Staff (`/dashboard/staff`)
+
 - [x] Pending verifications (`pending_review` count) → links to queue
 - [x] Awaiting payment (`pending_payment` count)
 - [x] Verified wajakazi count
@@ -1201,14 +1281,16 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [ ] Queue preview (next 5 oldest submissions)
 
 ### Wajakazi (`/dashboard/mjakazi`) — already has completeness + status
+
 - [ ] Verification expiry countdown (N days left when `verified`)
-- [x] Expressions of interest received — built 2026-09-07 (Phase 8.1, `/dashboard/mjakazi/opportunities`)
+- [x] Expressions of interest received — built 2026-09-07 (Phase 8.1,
+      `/dashboard/mjakazi/opportunities`)
 - [ ] Directory visibility toggle — later (Phase 6.x)
 
 ### Waajiri (`/dashboard/mwajiri`) — built 2026-09-06
+
 - [x] Subscription status + days remaining → links to subscription
 - [x] Renew/upgrade CTA when expiring (in the subscription status card)
 - [x] Directory CTA ("browse verified wajakazi") — live verified count + CTA
 - [x] Saved wajakazi (shortlist) — built 2026-09-06
 - [x] EOIs sent — built 2026-09-07 (Phase 8.1, "Sent interests" card)
-

@@ -34,6 +34,12 @@ type AuditAction =
 	| "hire_confirmed"
 	| "hire_agreed"
 	| "hire_reversed"
+	| "hire_ended"
+	| "review_submitted"
+	| "review_published"
+	| "review_rejected"
+	| "review_hidden"
+	| "review_shown"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

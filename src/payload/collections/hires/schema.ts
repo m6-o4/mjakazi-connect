@@ -5,7 +5,9 @@ import { isAdminOrStaff, isRestricted } from "@/payload/access/access-control";
 // one hire per (mwajiri, mjakazi) — the match the whole product exists to
 // produce. either party may confirm first (`confirmedBy`), which flips the
 // mjakazi's availability to `hired`; the other party then agrees (`agreedAt`) or
-// the placement is reversed (`reversedAt`). the collection is sealed —
+// the placement is reversed (`reversedAt`). either party may end a completed
+// contract (`endedAt`), which releases the mjakazi back to `available`. the
+// collection is sealed —
 // create/update/delete are refused at payload's surface and happen only through
 // the hire service, which authorizes every write. reads are service-owned for
 // the two SaaS surfaces, so collection read is staff/admin only for the panel.
@@ -83,6 +85,14 @@ const Hires: CollectionConfig = {
 			admin: { readOnly: true, position: "sidebar" },
 		},
 		{
+			// set when the mwajiri ends a completed contract (agreed → ended) — the
+			// natural close, distinct from `reversed` (which means "did not hold")
+			name: "endedAt",
+			type: "date",
+			label: "Ended At",
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
 			name: "state",
 			type: "select",
 			label: "State",
@@ -94,6 +104,7 @@ const Hires: CollectionConfig = {
 				{ label: "Pending Agreement", value: "pending_agreement" },
 				{ label: "Agreed", value: "agreed" },
 				{ label: "Reversed", value: "reversed" },
+				{ label: "Ended", value: "ended" },
 			],
 		},
 		{

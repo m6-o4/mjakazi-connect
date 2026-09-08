@@ -71,6 +71,13 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Hire Confirmed", value: "hire_confirmed" },
 				{ label: "Hire Agreed", value: "hire_agreed" },
 				{ label: "Hire Reversed", value: "hire_reversed" },
+				{ label: "Hire Ended", value: "hire_ended" },
+				// review lifecycle
+				{ label: "Review Submitted", value: "review_submitted" },
+				{ label: "Review Published", value: "review_published" },
+				{ label: "Review Rejected", value: "review_rejected" },
+				{ label: "Review Hidden", value: "review_hidden" },
+				{ label: "Review Shown", value: "review_shown" },
 				// document vault
 				{ label: "Document Uploaded", value: "document_uploaded" },
 				{ label: "Document Deleted", value: "document_deleted" },

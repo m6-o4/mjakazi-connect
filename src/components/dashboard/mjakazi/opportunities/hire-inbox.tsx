@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useState } from "react";
 
-import { confirmHireByMjakaziAction, reverseHireAction } from "@/app/actions/hire";
+import { confirmHireByMjakaziAction, endHireAction, reverseHireAction } from "@/app/actions/hire";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +70,23 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 		}
 	};
 
+	const endContract = async (hire: HireItem) => {
+		setBusy(`end-${hire.id}`);
+		setError(null);
+		try {
+			const result = await endHireAction({ hireId: hire.id });
+			if (!result.success) {
+				setError(result.error ?? "Could not end the contract.");
+				return;
+			}
+			router.refresh();
+		} catch {
+			setError("Network error. Please try again.");
+		} finally {
+			setBusy(null);
+		}
+	};
+
 	if (hires.length === 0) return null;
 
 	return (
@@ -111,15 +128,26 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 									{busy === `agree-${hire.id}` ? "Confirming…" : "Agree"}
 								</Button>
 							) : null}
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => reverse(hire)}
-								disabled={busy === `reverse-${hire.id}`}
-							>
-								{hire.awaitingYou ? "Not correct" : "Reverse"}
-							</Button>
+							{hire.state === "agreed" ? (
+								<Button
+									type="button"
+									size="sm"
+									onClick={() => endContract(hire)}
+									disabled={busy === `end-${hire.id}`}
+								>
+									{busy === `end-${hire.id}` ? "Ending…" : "End contract"}
+								</Button>
+							) : (
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									onClick={() => reverse(hire)}
+									disabled={busy === `reverse-${hire.id}`}
+								>
+									{hire.awaitingYou ? "Not correct" : "Reverse"}
+								</Button>
+							)}
 						</div>
 					</div>
 				))}

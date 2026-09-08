@@ -304,9 +304,9 @@ relying on one party remembering.
   immediately — being marked Hired stops irrelevant interest arriving. The Mwajiri has no
   comparable incentive, which is why "honour bound" alone is not enough to build a metric
   on.
-- **Both are nudged.** Three and five days after an accepted expression of interest,
-  both parties receive a single email asking whether it resulted in a hire. Two nudges,
-  then silence.
+- **Both are nudged.** Three and five days after an accepted expression of interest, both
+  parties receive a single email asking whether it resulted in a hire. Two nudges, then
+  silence.
 - **Confirmation from either side sets the same state**: the Mjakazi's availability
   becomes Hired, they leave the public directory, and the match is recorded against the
   Mwajiri's subscription. Confirmation by one side is surfaced to the other for agreement,

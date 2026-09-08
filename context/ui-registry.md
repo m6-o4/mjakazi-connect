@@ -133,12 +133,12 @@ codebase.
 - **Purpose**: The two document slots (National ID + Certificate of Good Conduct) —
   upload, replace, view and remove, each remove guarded by a confirmation
 - **Props**:
-  `{ documents: { id: string; documentType: string; filename: string | null }[] }`
+  `{ documents: { id: string; documentType: string; filename: string | null }[]; isVerified?: boolean }`
 - **Visual pattern**: two shadcn `Card`s in a `grid gap-4 md:grid-cols-2`; `Badge`
   "Uploaded" + truncated filename; `Button` outline/ghost actions with a
   `buttonVariants`-styled "View" link; empty state with a `FileText`/`ShieldCheck` lucide
-  icon; remove guarded by shadcn `AlertDialog`; fires `documents_uploaded` PostHog event
-  when both slots fill
+  icon; remove guarded by shadcn `AlertDialog` and hidden entirely while `isVerified`
+  (only `Replace` shows); fires `documents_uploaded` PostHog event when both slots fill
 - **Used in**: `(saas)/dashboard/mjakazi/documents/page.tsx`
 
 ### `VerificationStatusCard`
@@ -182,13 +182,13 @@ codebase.
 ### `PayVerification`
 
 - **Location**: `src/components/dashboard/mjakazi/verification/pay-verification.tsx`
-- **Purpose**: The `pending_payment` pay flow — sends the M-Pesa STK push via
-  `initiateVerificationPaymentAction`, then polls `router.refresh()` until the callback
-  flips the profile into review
-- **Props**: `{ fee: number | null }`
-- **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Button`
-  (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy while awaiting; fires
-  `payment_initiated` (`paymentType: "verification"`) on success
+- **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
+  the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
+  `router.refresh()` until the callback flips the profile into review
+- **Props**: `{ fee: number | null; phone: string }`
+- **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
+  `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
+  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `PurchaseSubscription`
@@ -345,8 +345,8 @@ codebase.
 ### `DevPaymentSimulate`
 
 - **Location**: `src/components/dashboard/dev/dev-payment-simulate.tsx`
-- **Purpose**: Dev-only control (gated on `MPESA_ENVIRONMENT !== "production"`) that fires a
-  synthetic Daraja callback through the real handler so a sandbox payment can complete
+- **Purpose**: Dev-only control (gated on `MPESA_ENVIRONMENT !== "production"`) that fires
+  a synthetic Daraja callback through the real handler so a sandbox payment can complete
 - **Props**: none
 - **Visual pattern**: shadcn `Card` with a `FlaskConical` icon in `text-accent`; outline
   `Button` "Simulate payment confirmation"; calls `simulatePaymentCallbackAction` then
@@ -370,8 +370,8 @@ codebase.
 - **Purpose**: Type-to-confirm self-deletion of a wajakazi/waajiri account and all data
 - **Props**: `{ role: "mjakazi" | "mwajiri" }`
 - **Visual pattern**: `border-destructive/30` bordered panel; `text-destructive` warning;
-  `Input` requiring the phrase "delete my account"; `Button variant="destructive"` confirm;
-  on success `useClerk().signOut()` → `/`
+  `Input` requiring the phrase "delete my account"; `Button variant="destructive"`
+  confirm; on success `useClerk().signOut()` → `/`
 - **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`,
   `(saas)/dashboard/mwajiri/settings/page.tsx`
 
@@ -399,9 +399,9 @@ codebase.
 - **Props**: `{ profile: DirectoryProfile; basePath?: string }` (`basePath` defaults
   `/directory`)
 - **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
-  `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`, `text-heading`
-  name, job `Badge variant="outline"`; accent `buttonVariants` "View Profile" →
-  `{basePath}/{slug}`
+  `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`,
+  `text-heading` name, job `Badge variant="outline"`; accent `buttonVariants` "View
+  Profile" → `{basePath}/{slug}`
 - **Used in**: `src/app/(web)/directory/page.tsx`,
   `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
 
@@ -413,8 +413,8 @@ codebase.
 - **Props**:
   `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number; basePath?: string }`
 - **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
-  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count; navigation
-  via `useRouter` + `URLSearchParams`
+  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count;
+  navigation via `useRouter` + `URLSearchParams`
 - **Used in**: `src/app/(web)/directory/page.tsx`
 
 ### `DirectoryPagination`
@@ -437,8 +437,8 @@ codebase.
   `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
 - **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
   content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
-  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; CTA
-  `Card` with accent "Join as a mwajiri" + outline "Sign in"
+  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s;
+  CTA `Card` with accent "Join as a mwajiri" + outline "Sign in"
 - **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
 
 ### `DirectoryProfileViewTracker`
@@ -456,23 +456,25 @@ codebase.
 - **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
 - **Purpose**: The contact area on a mwajiri browse detail, three states — live contact
   (already unlocked), an "Unlock contact details" reveal button (active subscriber), or a
-  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores the
-  returned phone/email locally, and fires `contact_unlocked`.
+  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores
+  the returned phone/email locally, and fires `contact_unlocked`.
 - **Props**: `{ mjakaziId: string; isActive: boolean; contact: Contact | null }`
 - **Visual pattern**: shadcn `Card`; a live `ContactRow` (border, `Phone`/`Mail` icon,
   value or "Not provided") or a `MaskedRow` (`Lock` icon + `••••••••` placeholder) —
-  placeholders only, never real values; `Button` reveal (active) or accent `buttonVariants`
-  link to `/dashboard/mwajiri/subscription`; errors in `text-destructive text-xs`
+  placeholders only, never real values; `Button` reveal (active) or accent
+  `buttonVariants` link to `/dashboard/mwajiri/subscription`; errors in
+  `text-destructive text-xs`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `contactSlot`)
 
 ### `SubscriptionStatusCard`
 
 - **Location**: `src/components/dashboard/mwajiri/subscription-status-card.tsx`
-- **Purpose**: The first card on the mwajiri overview — subscription status with the CTA that
-  follows from it (no-subscription/expired notice + plan CTA, active tier + days remaining,
-  honest pending/restricted states)
-- **Props**: `{ state: SubscriptionState; tierName: string | null; tierExpiry: string | null }`
+- **Purpose**: The first card on the mwajiri overview — subscription status with the CTA
+  that follows from it (no-subscription/expired notice + plan CTA, active tier + days
+  remaining, honest pending/restricted states)
+- **Props**:
+  `{ state: SubscriptionState; tierName: string | null; tierExpiry: string | null }`
 - **Visual pattern**: shadcn `Card`; active state `ring-primary/40` with `CheckCircle2` in
   `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
   `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
@@ -496,7 +498,8 @@ codebase.
 - **Purpose**: The batch expression-of-interest send control on the saved page — a mwajiri
   selects 3–5 of their saved wajakazi and sends each an interest as one batch (gated on an
   active subscription)
-- **Props**: `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
+- **Props**:
+  `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
 - **Visual pattern**: shadcn `Card` with a `Send` icon in `text-accent`; bordered checkbox
   rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
   muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
@@ -511,23 +514,25 @@ codebase.
   Accept/Decline on pending ones and an outcome badge otherwise
 - **Props**: `{ eois: { id; mwajiriName; mwajiriLocation | null; state; sentAtLabel }[] }`
 - **Visual pattern**: `divide`-free stacked shadcn `Card`s; sender name in `text-heading`
-  + muted `location · sentAtLabel` line; `Badge` Accepted (default) / Declined
-  (secondary) / Pending or Expired (outline); `Button` "Accept" (default, `Check` icon) +
-  "Decline" (outline, `X` icon) on `sent`; `Inbox` empty state; fires `interest_responded`
-  (`response`) then `router.refresh()`
+  - muted `location · sentAtLabel` line; `Badge` Accepted (default) / Declined (secondary)
+    / Pending or Expired (outline); `Button` "Accept" (default, `Check` icon) + "Decline"
+    (outline, `X` icon) on `sent`; `Inbox` empty state; fires `interest_responded`
+    (`response`) then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
 
 ### `HireInbox`
 
 - **Location**: `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx`
-- **Purpose**: The mjakazi's hire confirmations on the opportunities screen — pending hires
-  where the mwajiri confirmed first (Agree / Not correct) and agreed hires (Reverse)
+- **Purpose**: The mjakazi's hire confirmations on the opportunities screen — pending
+  hires where the mwajiri confirmed first (Agree / Not correct) and agreed hires (**End
+  contract**, no review — reviews are mwajiri-only)
 - **Props**: `{ hires: { id; counterpartId; counterpartName; state; awaitingYou }[] }`
 - **Visual pattern**: single shadcn `Card` with a `Briefcase` icon in `text-accent`; each
   hire is a bordered row with `Badge` Hired (default) / Confirming (secondary) / Awaiting
-  their agreement (outline) and Agree / Not correct / Reverse `Button`s; returns `null`
-  when empty; calls `confirmHireByMjakaziAction` / `reverseHireAction`; fires
-  `hire_confirmed` (`confirmedBy: "mjakazi"`) then `router.refresh()`
+  their agreement (outline); `pending_agreement` shows Agree / Not correct, `agreed` shows
+  **End contract**; returns `null` when empty; calls `confirmHireByMjakaziAction` /
+  `reverseHireAction` / `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mjakazi"`)
+  then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
 
 ### `OpportunitiesCard`
@@ -547,12 +552,76 @@ codebase.
 - **Location**: `src/components/dashboard/mwajiri/hire-confirm-card.tsx`
 - **Purpose**: The mwajiri hire-confirmation card — records a hire against candidates
   (wajakazi whose interest they accepted or whose contact they unlocked) and shows their
-  active hires with agree/reverse actions
+  hires with agree/reverse/end-contract actions; ending a completed contract opens the
+  review form inline
 - **Props**:
-  `{ candidates: { mjakaziId; displayName; location | null; sourceEoiId | null }[]; hires: { id; counterpartId; counterpartName; state; awaitingYou }[] }`
+  `{ candidates: { mjakaziId; displayName; location | null; sourceEoiId | null }[]; hires: { id; mjakaziId; counterpartName; state: "pending_agreement" | "agreed" | "ended"; awaitingYou; reviewed }[] }`
 - **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; "Mark as
-  hired" bordered candidate rows each with a `Button`; "Your hires" list with `Badge` Hired
-  (default) / Confirming (secondary) / Awaiting their agreement (outline) and Agree /
-  Reverse / Not correct `Button`s; calls `confirmHireAction` / `reverseHireAction`; fires
-  `hire_confirmed` (`confirmedBy: "mwajiri"`) then `router.refresh()`
+  hired" bordered candidate rows each with a `Button`; "Your hires" list with `Badge`
+  Hired (default) / Completed + Confirming (secondary) / Awaiting their agreement
+  (outline) and Agree / Reverse / Not correct / **End contract** `Button`s, a **Leave a
+  review** `Button` on ended hires, and a Reviewed `Badge`; ending a contract reveals
+  `LeaveReviewForm` inline; calls `confirmHireAction` / `reverseHireAction` /
+  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) then
+  `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
+
+### `RatingStars`
+
+- **Location**: `src/components/rating-stars.tsx`
+- **Purpose**: Read-only 1–5 star display shared by every review surface (filled stars in
+  `text-warning`, empty in `text-muted-foreground`)
+- **Props**: `{ rating: number }`
+- **Visual pattern**: inline `Star` icons (`size-4`), filled via
+  `text-warning fill-current`; `aria-label` "N out of 5 stars"
+- **Used in**: `ReviewsPanel`, `ReviewQueue`, `ProfileReviews`, mwajiri browse detail
+
+### `LeaveReviewForm`
+
+- **Location**: `src/components/dashboard/mwajiri/browse/leave-review-form.tsx`
+- **Purpose**: The mwajiri leave-a-review form on a browse detail (star picker + comment)
+  for an unlocked + hired worker; the gate lives server-side
+- **Props**: `{ mjakaziId: string }`
+- **Visual pattern**: shadcn `Card`; five clickable `Star` buttons (`size-6`, hover
+  preview, `text-warning fill-current` when selected) + rating word label; `Textarea` (max
+  1000); `Button` disabled until a rating + comment are set; inline "Review submitted"
+  success card; calls `submitReviewAction`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`
+
+### `ReviewsPanel`
+
+- **Location**: `src/components/dashboard/mjakazi/reviews/reviews-panel.tsx`
+- **Purpose**: The worker's published reviews (shown + hidden) with a show/hide toggle so
+  they choose what appears on their public profile
+- **Props**:
+  `{ reviews: { id; reviewerName | null; rating; comment; hidden; publishedAt | null }[] }`
+- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name;
+  `Button` "Hide from profile" (ghost) / "Show on profile" (outline) calling
+  `setReviewVisibilityAction` then `router.refresh()`; "Hidden from your public profile."
+  muted note; `Star` empty state
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`
+
+### `ReviewQueue`
+
+- **Location**: `src/components/dashboard/staff/reviews/review-queue.tsx`
+- **Purpose**: The staff review-moderation queue — approve publishes, reject requires a
+  reason and is terminal
+- **Props**:
+  `{ items: { id; reviewerName | null; rating; comment; mjakaziDisplayName | null; submittedAt | null }[] }`
+- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + reviewer name + "reviewing
+  {worker}"; `Clock` submitted date; Approve `Button` (default) + Reject (outline); inline
+  `Textarea` reason + Confirm/Cancel on reject; `Inbox` empty state; calls
+  `approveReviewAction` / `rejectReviewAction` then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/staff/reviews/page.tsx`
+
+### `ProfileReviews`
+
+- **Location**: `src/components/web/directory/profile-reviews.tsx`
+- **Purpose**: The published, worker-visible reviews on a public profile, with the
+  aggregate (average + count) heading
+- **Props**:
+  `{ reviews: { average: number | null; count: number; reviews: { reviewerName | null; rating; comment; publishedAt | null }[] } }`
+- **Visual pattern**: `text-heading` "Reviews" heading + `RatingStars` + muted "N.N · N
+  reviews" aggregate; per-review `bg-card` bordered rows (`RatingStars`, reviewer name,
+  date, comment); renders `null` when empty
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`

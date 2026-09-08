@@ -1,6 +1,5 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +8,8 @@ import { deleteOwnAccountAction } from "@/app/actions/account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { useClerk } from "@clerk/nextjs";
 
 // the user must type this phrase to confirm deletion
 const CONFIRMATION_PHRASE = "delete my account";
@@ -58,8 +59,8 @@ const DeleteAccountCard = ({ role }: DeleteAccountCardProps) => {
 				<div>
 					<p className="text-foreground text-sm font-semibold">Delete Account</p>
 					<p className="text-muted-foreground mt-1 text-sm">
-						Permanently removes your account and all associated data from Mjakazi
-						Connect. This action cannot be undone.
+						Permanently removes your account and all associated data from Mjakazi Connect.
+						This action cannot be undone.
 					</p>
 				</div>
 			</div>
@@ -74,8 +75,8 @@ const DeleteAccountCard = ({ role }: DeleteAccountCardProps) => {
 						<>
 							<li>— Your worker profile and verification records</li>
 							<li>
-								— All uploaded documents including National ID and Certificate of
-								Good Conduct
+								— All uploaded documents including National ID and Certificate of Good
+								Conduct
 							</li>
 							<li>— Your profile photo</li>
 						</>
@@ -103,7 +104,9 @@ const DeleteAccountCard = ({ role }: DeleteAccountCardProps) => {
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="confirm-delete" className="text-xs">
 							Type{" "}
-							<span className="text-destructive font-semibold">{CONFIRMATION_PHRASE}</span>{" "}
+							<span className="text-destructive font-semibold">
+								{CONFIRMATION_PHRASE}
+							</span>{" "}
 							to confirm
 						</Label>
 						<Input

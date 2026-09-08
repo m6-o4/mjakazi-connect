@@ -2,7 +2,10 @@ import { addDays, isAfter } from "date-fns";
 import type { Payload } from "payload";
 
 import { writeAuditLog, type AuditAction } from "@/lib/audit";
-import { sendSubscriptionActivatedEmail, sendSubscriptionReceiptEmail } from "@/lib/email";
+import {
+	sendSubscriptionActivatedEmail,
+	sendSubscriptionReceiptEmail,
+} from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import { toId, userLabel } from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";

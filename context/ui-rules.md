@@ -25,9 +25,9 @@ Three rules apply to every component, no exceptions:
 - **Always use shadcn components where relevant.** Check `components/ui/` first; never
   hand-roll what shadcn already provides (`Card`, `Button`, `Select`, `Badge`, `Input`,
   `Pagination`, `Separator`, etc.). Add new ones with `pnpm dlx shadcn@latest add <name>`.
-- **Always ensure components are mobile responsive.** Test at narrow widths: grids collapse
-  to a single column below the breakpoint, controls wrap instead of overflow, and nothing
-  overflows the viewport.
+- **Always ensure components are mobile responsive.** Test at narrow widths: grids
+  collapse to a single column below the breakpoint, controls wrap instead of overflow, and
+  nothing overflows the viewport.
 
 ### Tokens
 

@@ -6,8 +6,10 @@ import { cache } from "react";
 import { Container } from "@/components/container";
 import { DirectoryProfileDetail } from "@/components/web/directory/directory-profile-detail";
 import { DirectoryProfileViewTracker } from "@/components/web/directory/directory-profile-view-tracker";
+import { ProfileReviews } from "@/components/web/directory/profile-reviews";
 import config from "@/payload-config";
 import { getDirectoryProfile } from "@/services/directory.service";
+import { getPublicReviews } from "@/services/review.service";
 
 type Args = {
 	params: Promise<{ slug: string }>;
@@ -38,11 +40,17 @@ const Page = async ({ params }: Args) => {
 
 	if (!profile) notFound();
 
+	const payload = await getPayload({ config });
+	const reviews = await getPublicReviews(payload, profile.id);
+
 	return (
 		<section className="pt-32 pb-24">
 			<Container>
 				<DirectoryProfileViewTracker slug={slug} />
 				<DirectoryProfileDetail profile={profile} />
+				<div className="mt-10">
+					<ProfileReviews reviews={reviews} />
+				</div>
 			</Container>
 		</section>
 	);

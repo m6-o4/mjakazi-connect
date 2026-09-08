@@ -9,6 +9,7 @@ import { Pages } from "@/payload/collections/pages/schema";
 import { Payments } from "@/payload/collections/payments/schema";
 import { Posts } from "@/payload/collections/posts/schema";
 import { ProfilePhotos } from "@/payload/collections/profile-photos/schema";
+import { Reviews } from "@/payload/collections/reviews/schema";
 import { SavedWajakazi } from "@/payload/collections/saved-wajakazi/schema";
 import { Subscriptions } from "@/payload/collections/subscriptions/schema";
 import { Users } from "@/payload/collections/users/schema";
@@ -34,6 +35,7 @@ const collections = [
 	ContactUnlocks,
 	ExpressionsOfInterest,
 	Hires,
+	Reviews,
 ];
 
 export { collections };

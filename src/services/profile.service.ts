@@ -212,10 +212,7 @@ const updateProfile = async (
 			const { revertToReview } = await import("@/services/verification.service");
 			const reverted = await revertToReview(payload, profile.id);
 			if (!reverted.success) {
-				console.warn(
-					"[services/profile] reverification trigger failed:",
-					reverted.error,
-				);
+				console.warn("[services/profile] reverification trigger failed:", reverted.error);
 			}
 		}
 
@@ -290,10 +287,7 @@ const uploadProfilePhoto = async (
 			const { revertToReview } = await import("@/services/verification.service");
 			const reverted = await revertToReview(payload, profile.id);
 			if (!reverted.success) {
-				console.warn(
-					"[services/profile] reverification trigger failed:",
-					reverted.error,
-				);
+				console.warn("[services/profile] reverification trigger failed:", reverted.error);
 			}
 		}
 

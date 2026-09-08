@@ -9,10 +9,16 @@ import {
 	sendEoiRespondedEmail,
 	sendEoiResponseConfirmedEmail,
 } from "@/lib/email";
-import { loadProfileDisplay, loadSenderInfo, loadUserName, toId, userLabel } from "@/lib/payload-helpers";
+import {
+	loadProfileDisplay,
+	loadSenderInfo,
+	loadUserName,
+	toId,
+	userLabel,
+} from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
-import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import type { ExpressionsOfInterest, User, WajakaziProfile } from "@/payload-types";
+import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 import { getOwnProfile } from "@/services/profile.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
@@ -60,7 +66,10 @@ const sendEoiBatch = async (
 
 	const subscription = await getOwnSubscription(payload, actor);
 	if (!subscription || subscription.subscriptionState !== "active") {
-		return fail("An active subscription is required to send interest.", "subscription_required");
+		return fail(
+			"An active subscription is required to send interest.",
+			"subscription_required",
+		);
 	}
 
 	// only live, directory-visible profiles can receive interest — read through
@@ -76,10 +85,7 @@ const sendEoiBatch = async (
 	});
 
 	if (profilesResult.docs.length !== ids.length) {
-		return fail(
-			"One or more wajakazi are no longer available.",
-			"not_found",
-		);
+		return fail("One or more wajakazi are no longer available.", "not_found");
 	}
 
 	const outstanding = await payload.find({
@@ -347,7 +353,7 @@ const respondToEoi = async (
 			return fail("Interest changed. Please refresh and try again.", "conflict");
 		}
 
-		const mwajiriName = mwajiriId ? (await loadUserName(payload, mwajiriId)) : null;
+		const mwajiriName = mwajiriId ? await loadUserName(payload, mwajiriId) : null;
 
 		await writeAuditLog({
 			action: "eoi_responded",
@@ -422,7 +428,10 @@ const NUDGE_WINDOWS_MS = [3, 5].map((days) => days * 24 * 60 * 60 * 1000);
 const loadMjakaziOwner = async (
 	payload: Payload,
 	profileId: string,
-): Promise<{ user?: string | { id?: string | number } | null; displayName?: string | null } | null> => {
+): Promise<{
+	user?: string | { id?: string | number } | null;
+	displayName?: string | null;
+} | null> => {
 	try {
 		const result = await payload.find({
 			collection: "wajakazi-profiles",
@@ -485,11 +494,7 @@ const applyNudge = async (
 		const result = await payload.update({
 			collection: "expressions-of-interest",
 			where: {
-				and: [
-					{ id: { equals: eoi.id } },
-					{ state: { equals: "accepted" } },
-					countClause,
-				],
+				and: [{ id: { equals: eoi.id } }, { state: { equals: "accepted" } }, countClause],
 			},
 			data: { nudgesSent: count + 1, lastNudgedAt: new Date().toISOString() },
 			overrideAccess: true,
@@ -561,9 +566,7 @@ const notifyNudge = async (
 // window has elapsed and nudges each idempotently (two nudges, then silence).
 // a missed window self-corrects on the next run because the query polls for
 // eligible records rather than relying on being woken at the right moment
-const sendAcceptedEoiNudges = async (
-	payload: Payload,
-): Promise<{ nudged: number }> => {
+const sendAcceptedEoiNudges = async (payload: Payload): Promise<{ nudged: number }> => {
 	const now = Date.now();
 
 	let candidates: ExpressionsOfInterest[];
@@ -648,9 +651,7 @@ const expireEoi = async (
 // than 7 days and expires each idempotently. a missed window self-corrects on
 // the next run because the query polls for eligible records rather than relying
 // on being woken at the right moment
-const expireUnansweredEois = async (
-	payload: Payload,
-): Promise<{ expired: number }> => {
+const expireUnansweredEois = async (payload: Payload): Promise<{ expired: number }> => {
 	const now = Date.now();
 
 	let candidates: ExpressionsOfInterest[];
