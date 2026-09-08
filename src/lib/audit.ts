@@ -28,6 +28,11 @@ type AuditAction =
 	| "subscription_blacklisted"
 	| "contact_unlocked"
 	| "eoi_sent"
+	| "eoi_responded"
+	| "eoi_nudged"
+	| "hire_confirmed"
+	| "hire_agreed"
+	| "hire_reversed"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

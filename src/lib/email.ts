@@ -321,7 +321,311 @@ const sendSubscriptionActivatedEmail = async ({
 	});
 };
 
+type SendEoiReceivedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+};
+
+// expression of interest received — sent to the mjakazi when a mwajiri includes
+// them in a batch
+const sendEoiReceivedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+}: SendEoiReceivedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("New Interest in You")}
+    ${p(`Hi ${escapeHtml(firstName)}, <strong>${escapeHtml(mwajiriName)}</strong> is interested in hiring you and has sent you an expression of interest.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Log in to your dashboard and open Opportunities to accept or reject this interest.</p>
+    `)}
+    ${muted("Accepting an interest lets the employer know you're open to being contacted.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "New interest in you on Mjakazi Connect",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiBatchSentEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	count: number;
+};
+
+// batch sent — confirmation to the mwajiri that their interest went out
+const sendEoiBatchSentEmail = async ({
+	payload,
+	to,
+	firstName,
+	count,
+}: SendEoiBatchSentEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Interest Sent")}
+    ${p(`Hi ${escapeHtml(firstName)}, you sent an expression of interest to <strong>${count}</strong> wajakazi.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">You will be emailed as each wajakazi responds, and you can track their responses from your dashboard.</p>
+    `)}
+    ${muted("Only the wajakazi you selected received this interest.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your interest was sent",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiRespondedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mjakaziName: string;
+	response: "accepted" | "rejected";
+};
+
+// response received — notifies the mwajiri whether a wajakazi accepted or rejected
+const sendEoiRespondedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mjakaziName,
+	response,
+}: SendEoiRespondedEmailArgs): Promise<void> => {
+	const accepted = response === "accepted";
+	const nextCopy = accepted
+		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Great news — unlock ${escapeHtml(mjakaziName)}'s contact details to reach them directly.</p>`
+		: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">No problem — browse more verified wajakazi and send interest to others who may be a better fit.</p>`;
+
+	const content = `
+    ${h1(accepted ? "Interest Accepted" : "Interest Declined")}
+    ${p(`Hi ${escapeHtml(firstName)}, <strong>${escapeHtml(mjakaziName)}</strong> has ${accepted ? "accepted" : "declined"} your expression of interest.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      ${nextCopy}
+    `)}
+    ${muted("Log in to your dashboard to see all your responses.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: accepted ? "A wajakazi accepted your interest" : "A wajakazi declined your interest",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiResponseConfirmedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+	response: "accepted" | "rejected";
+};
+
+// response confirmation — sent to the mjakazi after they accept or reject
+const sendEoiResponseConfirmedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+	response,
+}: SendEoiResponseConfirmedEmailArgs): Promise<void> => {
+	const accepted = response === "accepted";
+	const nextCopy = accepted
+		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The employer has been notified and may reach out to you directly.</p>`
+		: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The employer has been notified that you are not interested.</p>`;
+
+	const content = `
+    ${h1(accepted ? "Interest Accepted" : "Interest Declined")}
+    ${p(`Hi ${escapeHtml(firstName)}, you ${accepted ? "accepted" : "declined"} the expression of interest from <strong>${escapeHtml(mwajiriName)}</strong>.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      ${nextCopy}
+    `)}
+    ${muted("You can review all your opportunities from your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: accepted ? "You accepted an interest" : "You declined an interest",
+		html: baseTemplate(content),
+	});
+};
+
+type SendEoiNudgeEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+	role: "mwajiri" | "mjakazi";
+};
+
+// hire nudge — sent 7 and 14 days after an accepted expression of interest to
+// both parties, asking whether it resulted in a hire. two nudges, then silence
+// (enforced by the 8.3 eoi-nudge job)
+const sendEoiNudgeEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+	role,
+}: SendEoiNudgeEmailArgs): Promise<void> => {
+	const isMwajiri = role === "mwajiri";
+	const opening = isMwajiri
+		? `Hi ${escapeHtml(firstName)}, you connected with <strong>${escapeHtml(otherPartyName)}</strong> after they accepted your expression of interest.`
+		: `Hi ${escapeHtml(firstName)}, you accepted an expression of interest from <strong>${escapeHtml(otherPartyName)}</strong>.`;
+	const question = isMwajiri
+		? "If you have hired them, confirm the hire from your dashboard so the match is recorded correctly."
+		: "If they have hired you, mark yourself as hired from your dashboard so the match is recorded correctly.";
+
+	const content = `
+    ${h1("Did It Result in a Hire?")}
+    ${p(opening)}
+    ${p(question)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What To Do</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">${isMwajiri ? "Log in to your dashboard and confirm the hire." : "Log in to your dashboard and set your availability to Hired."}</p>
+    `)}
+    ${muted("If the placement did not happen, you can ignore this message.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Did your interest result in a hire?",
+		html: baseTemplate(content),
+	});
+};
+
+type SendHireConfirmedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+	otherPartyRole: "mwajiri" | "mjakazi";
+};
+
+// hire confirmed — notifies the other party that a hire was recorded involving
+// them, and that they can reverse it from their dashboard if it did not happen
+const sendHireConfirmedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+	otherPartyRole,
+}: SendHireConfirmedEmailArgs): Promise<void> => {
+	const otherCopy =
+		otherPartyRole === "mwajiri"
+			? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>${escapeHtml(otherPartyName)}</strong> has confirmed they hired you.</p>`
+			: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>${escapeHtml(otherPartyName)}</strong> has confirmed that you hired them.</p>`;
+
+	const content = `
+    ${h1("Hire Confirmed")}
+    ${p(`Hi ${escapeHtml(firstName)}, a hire has been recorded on Mjakazi Connect.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      ${otherCopy}
+    `)}
+    ${p("If this placement did not happen, you can reverse it from your dashboard so the record is corrected.")}
+    ${muted("Log in to review the hire and confirm it is correct.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was confirmed on Mjakazi Connect",
+		html: baseTemplate(content),
+	});
+};
+
+type SendHireAgreedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire agreed — sent to both parties once the second side confirms, so the match
+// is on the record as agreed by everyone involved
+const sendHireAgreedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireAgreedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Hire Confirmed by Both Sides")}
+    ${p(`Hi ${escapeHtml(firstName)}, you and <strong>${escapeHtml(otherPartyName)}</strong> have both confirmed the hire.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The hire is now recorded on both your dashboards.</p>
+    `)}
+    ${p("If the placement does not hold, you can reverse it from your dashboard.")}
+    ${muted("Log in to review the hire.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Hire confirmed by both sides",
+		html: baseTemplate(content),
+	});
+};
+
+type SendHireReversedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	otherPartyName: string;
+};
+
+// hire reversed — notifies the other party that a previously recorded hire was
+// reversed, so they are not left thinking a match still stands
+const sendHireReversedEmail = async ({
+	payload,
+	to,
+	firstName,
+	otherPartyName,
+}: SendHireReversedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Hire Reversed")}
+    ${p(`Hi ${escapeHtml(firstName)}, the hire with <strong>${escapeHtml(otherPartyName)}</strong> has been reversed.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The match is no longer recorded as active.</p>
+    `)}
+    ${muted("If this is unexpected, log in to review your dashboard.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "A hire was reversed",
+		html: baseTemplate(content),
+	});
+};
+
 export {
+	sendEoiBatchSentEmail,
+	sendEoiNudgeEmail,
+	sendEoiReceivedEmail,
+	sendEoiRespondedEmail,
+	sendEoiResponseConfirmedEmail,
+	sendHireAgreedEmail,
+	sendHireConfirmedEmail,
+	sendHireReversedEmail,
 	sendPaymentConfirmedEmail,
 	sendSubscriptionActivatedEmail,
 	sendSubscriptionReceiptEmail,

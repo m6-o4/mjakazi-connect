@@ -1,11 +1,13 @@
-import { Compass, Users } from "lucide-react";
+import { Compass, Send, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { HireConfirmCard } from "@/components/dashboard/mwajiri/hire-confirm-card";
 import { SubscriptionStatusCard } from "@/components/dashboard/mwajiri/subscription-status-card";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
 	Card,
@@ -16,6 +18,8 @@ import {
 } from "@/components/ui/card";
 import config from "@/payload-config";
 import { listDirectoryProfiles } from "@/services/directory.service";
+import { listSentEois } from "@/services/eoi.service";
+import { listHireCandidatesForMwajiri, listHires } from "@/services/hire.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -28,9 +32,12 @@ const MwajiriDashboardPage = async () => {
 
 	// limit: 1 keeps the fetch cheap — only totalDocs (the live verified+available
 	// count) is needed, which comes from the same guarded path as the directory
-	const [subscription, directory] = await Promise.all([
+	const [subscription, directory, sentEois, hireCandidates, hires] = await Promise.all([
 		getOwnSubscription(payload, user),
 		listDirectoryProfiles(payload, { limit: 1 }),
+		listSentEois(payload, user),
+		listHireCandidatesForMwajiri(payload, user),
+		listHires(payload, user),
 	]);
 
 	const availableCount = directory.totalDocs;
@@ -96,6 +103,43 @@ const MwajiriDashboardPage = async () => {
 					</CardContent>
 				</Card>
 			</div>
+
+			<HireConfirmCard candidates={hireCandidates} hires={hires} />
+
+			<Card>
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Send className="text-accent size-5 shrink-0" />
+						Sent interests
+					</CardTitle>
+					<CardDescription>
+						The wajakazi you have expressed interest in, and how they responded.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{sentEois.length === 0 ? (
+						<p className="text-muted-foreground text-sm">
+							You have not sent any interest yet. Save wajakazi, then send a batch
+							from your saved list.
+						</p>
+					) : (
+						<ul className="divide-border divide-y">
+							{sentEois.slice(0, 10).map((eoi) => (
+								<li key={eoi.id} className="flex items-center justify-between gap-3 py-2.5">
+									<span className="text-sm font-medium">{eoi.mjakaziName}</span>
+									{eoi.state === "accepted" ? (
+										<Badge>Accepted</Badge>
+									) : eoi.state === "rejected" ? (
+										<Badge variant="secondary">Declined</Badge>
+									) : (
+										<Badge variant="outline">Pending</Badge>
+									)}
+								</li>
+							))}
+						</ul>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 };

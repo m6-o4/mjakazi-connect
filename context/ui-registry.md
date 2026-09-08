@@ -379,11 +379,16 @@ codebase.
 
 - **Location**: `src/components/dashboard/settings/availability-card.tsx`
 - **Purpose**: Controls whether a wajakazi appears in the directory/archive (available /
-  hired / on_break)
-- **Props**: `{ currentStatus: "available" | "hired" | "on_break" }`
+  hired / on_break); choosing Hired asks who hired them (offering the waajiri who unlocked
+  their contact or sent interest) and records the hire
+- **Props**:
+  `{ currentStatus: "available" | "hired" | "on_break"; hireCandidates?: { mwajiriId; name; location | null }[] }`
 - **Visual pattern**: shadcn `Card`; current-status indicator (icon in `text-success` for
   available, `text-muted-foreground` otherwise); three `Button` options (selected =
-  `default`, others = `outline`); calls `updateAvailabilityAction` then `router.refresh()`
+  `default`, others = `outline`); a "Who hired you?" bordered picker panel (candidate rows
+  with `MapPin` location + "Not listed — hired elsewhere" outline `Button`) when Hired is
+  chosen with candidates; calls `updateAvailabilityAction` / `confirmHireByMjakaziAction`;
+  fires `hire_confirmed` (`confirmedBy: "mjakazi"`) then `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`
 
 ### `DirectoryCard`
@@ -484,3 +489,70 @@ codebase.
   `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `headerAction`)
+
+### `EoiSend`
+
+- **Location**: `src/components/dashboard/mwajiri/saved/eoi-send.tsx`
+- **Purpose**: The batch expression-of-interest send control on the saved page — a mwajiri
+  selects 3–5 of their saved wajakazi and sends each an interest as one batch (gated on an
+  active subscription)
+- **Props**: `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
+- **Visual pattern**: shadcn `Card` with a `Send` icon in `text-accent`; bordered checkbox
+  rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
+  muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
+  disabled `Button` until 3–5 selected; accent `buttonVariants` "Subscribe to send
+  interest" link when not active; fires `interest_sent` (`count`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`
+
+### `EoiInbox`
+
+- **Location**: `src/components/dashboard/mjakazi/opportunities/eoi-inbox.tsx`
+- **Purpose**: The mjakazi opportunities inbox — received expressions of interest, with
+  Accept/Decline on pending ones and an outcome badge otherwise
+- **Props**: `{ eois: { id; mwajiriName; mwajiriLocation | null; state; sentAtLabel }[] }`
+- **Visual pattern**: `divide`-free stacked shadcn `Card`s; sender name in `text-heading`
+  + muted `location · sentAtLabel` line; `Badge` Accepted (default) / Declined
+  (secondary) / Pending or Expired (outline); `Button` "Accept" (default, `Check` icon) +
+  "Decline" (outline, `X` icon) on `sent`; `Inbox` empty state; fires `interest_responded`
+  (`response`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
+
+### `HireInbox`
+
+- **Location**: `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx`
+- **Purpose**: The mjakazi's hire confirmations on the opportunities screen — pending hires
+  where the mwajiri confirmed first (Agree / Not correct) and agreed hires (Reverse)
+- **Props**: `{ hires: { id; counterpartId; counterpartName; state; awaitingYou }[] }`
+- **Visual pattern**: single shadcn `Card` with a `Briefcase` icon in `text-accent`; each
+  hire is a bordered row with `Badge` Hired (default) / Confirming (secondary) / Awaiting
+  their agreement (outline) and Agree / Not correct / Reverse `Button`s; returns `null`
+  when empty; calls `confirmHireByMjakaziAction` / `reverseHireAction`; fires
+  `hire_confirmed` (`confirmedBy: "mjakazi"`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
+
+### `OpportunitiesCard`
+
+- **Location**: `src/components/dashboard/mjakazi/opportunities-card.tsx`
+- **Purpose**: The opportunities summary on the mjakazi overview — a count of pending
+  expressions of interest and a link into the full opportunities inbox (mirrors the
+  verification box)
+- **Props**: `{ pendingCount: number }`
+- **Visual pattern**: shadcn `Card`; `Inbox` icon in `text-accent`; description swaps
+  between "You have N interest(s) awaiting your response." and "Waajiri interested in
+  hiring you will appear here."; `buttonVariants` "Review opportunities" link
+- **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`
+
+### `HireConfirmCard`
+
+- **Location**: `src/components/dashboard/mwajiri/hire-confirm-card.tsx`
+- **Purpose**: The mwajiri hire-confirmation card — records a hire against candidates
+  (wajakazi whose interest they accepted or whose contact they unlocked) and shows their
+  active hires with agree/reverse actions
+- **Props**:
+  `{ candidates: { mjakaziId; displayName; location | null; sourceEoiId | null }[]; hires: { id; counterpartId; counterpartName; state; awaitingYou }[] }`
+- **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; "Mark as
+  hired" bordered candidate rows each with a `Button`; "Your hires" list with `Badge` Hired
+  (default) / Confirming (secondary) / Awaiting their agreement (outline) and Agree /
+  Reverse / Not correct `Button`s; calls `confirmHireAction` / `reverseHireAction`; fires
+  `hire_confirmed` (`confirmedBy: "mwajiri"`) then `router.refresh()`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`

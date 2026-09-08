@@ -1,70 +1,73 @@
-# Memory — Phase 7.1 verification expiry complete (critical path done)
+# Memory — Phase 8.3 EOI nudge task + job type cleanup
 
-Last updated: 2026-09-07 10:58
+Last updated: 2026-09-08 13:58
 
 ## What was built
 
-**Phase 7.1 — verification expiry job** (the last step of the revenue critical path):
-- `src/jobs/verification-expiry.ts` — daily job (`0 0 * * *`, `TaskConfig<any>`) delegating
-  to the service.
-- `src/services/verification.service.ts` — new `expireExpiredVerifications` (polls `verified`
-  profiles past `verificationExpiry`, expires each idempotently by reusing the existing
-  `expireVerification` CAS transition). `expireVerification` now emails the worker on
-  success via the `notifyWorker` helper.
-- `src/lib/email.ts` — new `sendVerificationExpiredEmail` ("renew to stay visible").
-- `src/payload.config.ts` — registered `verificationExpiryTask` in `jobs.tasks`.
-- `src/payload/collections/wajakazi-profiles/hooks/revalidate-profile.ts` — wrapped
-  `revalidatePath`/`revalidateTag` calls in try/catch (bug fix, see below).
+**Phase 8.3 — EOI nudge task, end to end:**
+- `src/jobs/eoi-nudge.ts` (new) — daily (`0 8 * * *`) job delegating to the service.
+- `src/services/eoi.service.ts` — `sendAcceptedEoiNudges` plus helpers
+  `loadMjakaziOwner`, `hasActiveHire`, `applyNudge`, `notifyNudge` (exported).
+- `src/payload/collections/expressions-of-interest/schema.ts` — added `nudgesSent`
+  (number, default 0) and `lastNudgedAt` (date).
+- `src/lib/email.ts` — `sendEoiNudgeEmail` (role-aware copy: mwajiri → "confirm the
+  hire", mjakazi → "mark yourself hired").
+- `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` — new `eoi_nudged`
+  action.
+- `src/payload.config.ts` — registered `eoiNudgeTask`; `src/payload-types.ts` regenerated.
 
-**Minor UI fix** — `src/payload/blocks/wajakazi-archive/component.tsx`: the two "View all
-wajakazi" buttons now use the posts archive block's explicit button styling (dropped the
-`buttonVariants` outline/lg treatment; removed the unused import).
+**Job type cleanup (this session):**
+- All four job files (`payment-timeout.ts`, `subscription-expiry.ts`, `verification-expiry.ts`,
+  `eoi-nudge.ts`) had `TaskConfig<any>`. Replaced with the typed `TaskInputOutput` form:
+  `TaskConfig<{ input: object; output: { expired: number } }>` (and `{ nudged: number }` for
+  eoi-nudge). `pnpm lint` now 0 errors / 0 warnings; `tsc --noEmit` clean.
 
 ## Decisions made
 
-- The worker expiry email was pulled forward out of the Phase 12.1 notifications sweep
-  because 7.1's "Done when" requires "worker emailed"; a **pre-expiry reminder** email is
-  still deferred to 12.1.
-- Revalidation in `wajakazi-profiles` hooks is best-effort: the directory pages are
-  dynamic (no cache), only the SSG homepage `/` matters, and outside a request context
-  there is nothing to invalidate — so a missing request store is swallowed, not thrown.
+- **Nudge at 7 and 14 days after `respondedAt`** of an accepted EOI, two nudges then
+  silence, tracked by `nudgesSent` (0–2).
+- **Idempotency via compare-and-swap on the exact prior `nudgesSent`**, with an
+  `exists: false` clause so pre-8.3 accepted records (which predate the field) still match.
+- **A non-reversed hire (`pending_agreement | agreed`) suppresses the nudge** — the
+  question "did it result in a hire?" is already answered.
+- Nudge is **email + `eoi_nudged` audit only, no PostHog event** (system job, not a user
+  action). Schedule is 8am, not midnight, since it is a user-facing ask.
+- **Job `TaskConfig` typed via the `TaskInputOutput` form**, not the slug-key form — the
+  slug-key form references `TypedJobs['tasks']`, which is generated from
+  `payload.config.ts` that imports the task (circular for standalone task files).
 
 ## Problems solved
 
-- **`revalidatePath` throws `Invariant: static generation store missing` outside a request
-  context.** The `verification-expiry` job runs in Payload's background queue (no request
-  store), so the `revalidateProfile` after-change hook threw. Payload captured the throw and
-  returned `docs: []` + an error, so `applyTransition` misread the CAS as a `"conflict"` and
-  skipped the `verification_expired` audit entry **and** the worker email — even though the
-  state write had already committed. Fixed by try/catching the revalidate calls. Recorded in
-  `context/library-docs.md` (Next.js 16 traps).
-- Confirmed the **subscription** (`subscription-expiry`) and **payment** (`payment-timeout`)
-  jobs are NOT affected — `subscriptions` and `payments` have no revalidate hooks, unlike
-  `wajakazi-profiles`/`pages`/`posts`.
+- **`TaskConfig<any>` eslint warning** — resolved by typing as
+  `TaskConfig<{ input: object; output: … }>` instead of a slug key.
+- **`Where` type union error** in the nudge CAS (`or`/`equals` branches widened with
+  `undefined` keys and failed Payload's `Where` index signature) — fixed by annotating the
+  count clause `const countClause: Where` and giving both branches a single `or` shape.
 
 ## Current state
 
-- Phase 7.1 **complete and manually verified**: backdated a verified profile's
-  `verificationExpiry`, ran the task via a throwaway `tsx` script — `verified →
-  verification_expired`, 2 eligible profiles expired, `verification_expired` audit entry
-  written, worker expiry email delivered. The scratch script has been deleted.
-- The revenue **critical path is now complete end to end** (identity → profile → documents →
-  verification → payment → review → directory → subscription → contact unlock → verification
-  expiry).
-- `pnpm lint` 0 errors; `pnpm build` green.
-- Docs updated: `progress-tracker.md`, `build-plan.md`, `library-docs.md`.
+- **Phase 8.2 was committed** by Michael before this session's work started.
+- **Phase 8.3 complete and compiled** — `pnpm lint` 0/0, `pnpm build` green (only the known
+  harmless Windows `sharp`/`detect-libc` `EPERM` symlink warnings), `tsc --noEmit` clean.
+- **Phase 8.3 changes are UNCOMMITTED** in the working tree.
+- Docs updated: `progress-tracker.md` (8.3 entry), `build-plan.md` (8.3 "Built" note).
 
 ## Next session starts with
 
-- **Phase 8 — Expressions of Interest and Hires**: 8.1 EOI, 8.2 availability/hire
-  confirmation, 8.3 nudge task. Re-check `context/build-plan.md` (Phase 8 section) and
-  `context/progress-tracker.md`.
+- **Commit the uncommitted Phase 8.3 changes**, then **manually verify the nudge task**:
+  backdate an accepted EOI's `respondedAt` 8 days, run the task, confirm both parties get
+  one email and a second run is silent; backdate 15 days and confirm the second nudge fires
+  once then silence.
+- Then **Phase 9.1 — Reviews** (`reviews` collection, submission gated on an unlock, one
+  per unlock, staff moderation queue at `/dashboard/staff/reviews`). Re-check
+  `context/build-plan.md` (9.1) and `context/progress-tracker.md`.
 
 ## Open questions
 
-- Phase 5 deferred manual sandbox verification (STK push, callback replay idempotency,
-  subscription expiry) may still be outstanding.
-- Pre-expiry verification reminder email still deferred (12.1).
-- Minor: "Extend" button in the subscription status card is still the outline variant.
-- `getContact` returns contact for a `blacklisted` (not deleted) profile — permanent-unlock
-  vs moderation is un-designed (Phase 10.1).
+- The EOI `expired` state is still unused — 8.3 nudges *accepted* interests only, so the
+  "should an unanswered `sent` EOI ever auto-expire, and on what trigger?" question remains
+  open.
+- Carried forward, still unresolved: Phase 5 deferred manual sandbox verification (STK
+  push, callback replay idempotency, subscription expiry); pre-expiry verification reminder
+  email (12.1); "Extend" button in the subscription status card still uses the outline
+  variant; `getContact` returns contact for a `blacklisted` (not deleted) profile (10.1).

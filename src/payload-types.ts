@@ -82,6 +82,8 @@ export interface Config {
     subscriptions: Subscription;
     'saved-wajakazi': SavedWajakazi;
     'contact-unlocks': ContactUnlock;
+    'expressions-of-interest': ExpressionsOfInterest;
+    hires: Hire;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -106,6 +108,8 @@ export interface Config {
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'saved-wajakazi': SavedWajakaziSelect<false> | SavedWajakaziSelect<true>;
     'contact-unlocks': ContactUnlocksSelect<false> | ContactUnlocksSelect<true>;
+    'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
+    hires: HiresSelect<false> | HiresSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -141,6 +145,7 @@ export interface Config {
       'payment-timeout': TaskPaymentTimeout;
       'subscription-expiry': TaskSubscriptionExpiry;
       'verification-expiry': TaskVerificationExpiry;
+      'eoi-nudge': TaskEoiNudge;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -681,6 +686,11 @@ export interface AuditLog {
     | 'subscription_blacklisted'
     | 'contact_unlocked'
     | 'eoi_sent'
+    | 'eoi_responded'
+    | 'eoi_nudged'
+    | 'hire_confirmed'
+    | 'hire_agreed'
+    | 'hire_reversed'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -1005,6 +1015,42 @@ export interface ContactUnlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expressions-of-interest".
+ */
+export interface ExpressionsOfInterest {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  batchId?: string | null;
+  pendingKey?: string | null;
+  state: 'sent' | 'accepted' | 'rejected' | 'expired';
+  sentAt?: string | null;
+  respondedAt?: string | null;
+  nudgesSent?: number | null;
+  lastNudgedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hires".
+ */
+export interface Hire {
+  id: string;
+  mwajiri: string | User;
+  mjakazi: string | WajakaziProfile;
+  subscription?: (string | null) | Subscription;
+  confirmedBy: 'mwajiri' | 'mjakazi';
+  confirmedAt?: string | null;
+  agreedAt?: string | null;
+  reversedAt?: string | null;
+  state: 'pending_agreement' | 'agreed' | 'reversed';
+  sourceEoi?: (string | null) | ExpressionsOfInterest;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1098,7 +1144,13 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish';
+        taskSlug:
+          | 'inline'
+          | 'payment-timeout'
+          | 'subscription-expiry'
+          | 'verification-expiry'
+          | 'eoi-nudge'
+          | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1131,7 +1183,9 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'schedulePublish') | null;
+  taskSlug?:
+    | ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'eoi-nudge' | 'schedulePublish')
+    | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1213,6 +1267,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'contact-unlocks';
         value: string | ContactUnlock;
+      } | null)
+    | ({
+        relationTo: 'expressions-of-interest';
+        value: string | ExpressionsOfInterest;
+      } | null)
+    | ({
+        relationTo: 'hires';
+        value: string | Hire;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1882,6 +1944,40 @@ export interface ContactUnlocksSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expressions-of-interest_select".
+ */
+export interface ExpressionsOfInterestSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  batchId?: T;
+  pendingKey?: T;
+  state?: T;
+  sentAt?: T;
+  respondedAt?: T;
+  nudgesSent?: T;
+  lastNudgedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hires_select".
+ */
+export interface HiresSelect<T extends boolean = true> {
+  mwajiri?: T;
+  mjakazi?: T;
+  subscription?: T;
+  confirmedBy?: T;
+  confirmedAt?: T;
+  agreedAt?: T;
+  reversedAt?: T;
+  state?: T;
+  sourceEoi?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects_select".
  */
 export interface RedirectsSelect<T extends boolean = true> {
@@ -2365,6 +2461,14 @@ export interface TaskSubscriptionExpiry {
  * via the `definition` "TaskVerification-expiry".
  */
 export interface TaskVerificationExpiry {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskEoi-nudge".
+ */
+export interface TaskEoiNudge {
   input?: unknown;
   output?: unknown;
 }

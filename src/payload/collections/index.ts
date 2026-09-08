@@ -2,6 +2,8 @@ import { AuditLogs } from "@/payload/collections/audit-logs/schema";
 import { CallsToAction } from "@/payload/collections/calls-to-action/schema";
 import { Categories } from "@/payload/collections/categories/schema";
 import { ContactUnlocks } from "@/payload/collections/contact-unlocks/schema";
+import { ExpressionsOfInterest } from "@/payload/collections/expressions-of-interest/schema";
+import { Hires } from "@/payload/collections/hires/schema";
 import { Media } from "@/payload/collections/media/schema";
 import { Pages } from "@/payload/collections/pages/schema";
 import { Payments } from "@/payload/collections/payments/schema";
@@ -30,6 +32,8 @@ const collections = [
 	Subscriptions,
 	SavedWajakazi,
 	ContactUnlocks,
+	ExpressionsOfInterest,
+	Hires,
 ];
 
 export { collections };

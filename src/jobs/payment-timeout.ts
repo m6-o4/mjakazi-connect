@@ -7,7 +7,7 @@ import { expireTimedOutPayments } from "@/services/payment.service";
 // payments that passed the confirmation window without a callback. the transition
 // and audit entry live in the payment service — the handler only resolves payload
 // and delegates.
-const paymentTimeoutTask: TaskConfig<any> = {
+const paymentTimeoutTask: TaskConfig<{ input: object; output: { expired: number } }> = {
 	slug: "payment-timeout",
 	label: "Payment Timeout",
 	schedule: [{ cron: "* * * * *", queue: "default" }],

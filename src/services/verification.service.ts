@@ -9,6 +9,7 @@ import {
 	sendVerificationRejectedEmail,
 } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
+import { loadUserEmail } from "@/lib/user-email";
 import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
 import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
@@ -150,26 +151,15 @@ const loadProfileByUserId = async (
 };
 
 // the worker who owns the profile, resolved for a notification send. a trusted
-// read: the email is used only as a send destination, never returned to the client
+// read via the shared helper (see lib/user-email.ts): the email is used only as a
+// send destination, never returned to the client
 const loadWorkerEmail = async (
 	payload: Payload,
 	profile: WajakaziProfile,
 ): Promise<{ email: string; firstName: string } | null> => {
 	const userId = toId(profile.user);
 	if (!userId) return null;
-
-	try {
-		const user = await payload.findByID({
-			collection: "users",
-			id: userId,
-			depth: 0,
-			overrideAccess: true,
-		});
-		if (!user?.email) return null;
-		return { email: user.email, firstName: user.firstName ?? "there" };
-	} catch {
-		return null;
-	}
+	return loadUserEmail(payload, userId);
 };
 
 // fire-and-forget notification. the transition is already committed by the time
