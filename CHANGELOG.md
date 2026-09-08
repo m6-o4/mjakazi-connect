@@ -1,3 +1,12 @@
+# [2.10.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.9.0...v2.10.0) (2026-09-08)
+
+
+### Features
+
+* **eoi:** add 7/14-day hire nudges for accepted interests ([b52d773](https://github.com/m6-o4/mjakazi-connect/commit/b52d773064026e5265657492789efe0010ac30b4))
+* **eoi:** add end-to-end expressions of interest flow ([b2b0f47](https://github.com/m6-o4/mjakazi-connect/commit/b2b0f47d7a1c0b498c0a01a59a47c55c78f4db47))
+* **hires:** add end-to-end hire confirmation flow ([f248f8e](https://github.com/m6-o4/mjakazi-connect/commit/f248f8e4bd648b3f3782d1a4deeaa6f45d861a52))
+
 # [2.9.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.8.0...v2.9.0) (2026-09-07)
 
 ### Bug Fixes
