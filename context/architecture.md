@@ -682,7 +682,8 @@ scheduler presenting `CRON_SECRET` as a bearer token against `/api/payload-jobs/
 | `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email               |
 | `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                         |
 | `payment-timeout`     | every minute | `stk_sent` → `expired` past the window                                             |
-| `eoi-nudge`           | daily        | hire-confirmation prompt at 7 and 14 days after an accepted expression of interest |
+| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest |
+| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair   |
 
 Every task calls a domain service. None writes to the database directly. Every one is
 idempotent, writes an audit entry per transition, and must survive running twice against

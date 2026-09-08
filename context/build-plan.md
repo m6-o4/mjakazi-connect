@@ -394,17 +394,22 @@ the Mwajiri side. Then, with another pair, from the Mjakazi side.
 
 ### 8.3 — Nudge task
 
-**Builds**: `jobs/eoi-nudge.ts`, daily, at 7 and 14 days after an accepted expression of
+**Builds**: `jobs/eoi-nudge.ts`, daily, at 3 and 5 days after an accepted expression of
 interest. Two nudges, then silence. **Verify**: backdate an acceptance, run the task,
 confirm one email and no repeats.
 
 **Built 2026-09-08.** `jobs/eoi-nudge.ts` (daily, `0 8 * * *`) delegates to
 `sendAcceptedEoiNudges` in `eoi.service.ts`. `expressions-of-interest` gained `nudgesSent`
-+ `lastNudgedAt`; each accepted interest is nudged once at 7 and once at 14 days (email to
++ `lastNudgedAt`; each accepted interest is nudged once at 3 and once at 5 days (email to
 both parties + `eoi_nudged` audit), idempotently via a CAS on the exact prior `nudgesSent`
 (with an `exists: false` clause for pre-8.3 records). A non-reversed hire for the pair
-suppresses the nudge. The `expired` EOI state remains unused — 8.3 nudges *accepted*
-interests only, so the "should a sent interest auto-expire" question is still open.
+suppresses the nudge. The nudge windows were later tightened from 7/14 to 3/5 days.
+
+**Expiry added 2026-09-08.** `jobs/eoi-expire.ts` (daily, `0 0 * * *`) delegates to
+`expireUnansweredEois` in `eoi.service.ts`, which expires unanswered (`sent`) interests
+7 days after `sentAt` (CAS on `state === "sent"` + `eoi_expired` audit, pendingKey
+uniquified so the pair can be re-sent). This resolves the previously-open
+"should a sent interest auto-expire" question.
 
 ---
 

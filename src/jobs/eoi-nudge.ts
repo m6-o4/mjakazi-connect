@@ -4,7 +4,7 @@ import config from "@/payload-config";
 import { sendAcceptedEoiNudges } from "@/services/eoi.service";
 
 // polled by the payload job queue daily (jobs.autoRun). emails both parties of an
-// accepted expression of interest at 7 and 14 days after acceptance, asking whether
+// accepted expression of interest at 3 and 5 days after acceptance, asking whether
 // it resulted in a hire — two nudges, then silence. the nudge, CAS and email live
 // in the eoi service — the handler only resolves payload and delegates. 8am so the
 // ask lands in the morning rather than at midnight.

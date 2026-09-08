@@ -131,6 +131,8 @@ const MwajiriDashboardPage = async () => {
 										<Badge>Accepted</Badge>
 									) : eoi.state === "rejected" ? (
 										<Badge variant="secondary">Declined</Badge>
+									) : eoi.state === "expired" ? (
+										<Badge variant="outline">Expired</Badge>
 									) : (
 										<Badge variant="outline">Pending</Badge>
 									)}

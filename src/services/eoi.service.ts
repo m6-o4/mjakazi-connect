@@ -412,10 +412,10 @@ const notifyResponse = async (
 	}
 };
 
-// the 7- and 14-day windows after an accepted interest, one nudge each. the
+// the 3- and 5-day windows after an accepted interest, one nudge each. the
 // array index is the number of nudges already sent, so `NUDGE_WINDOWS_MS[0]` is
-// the first nudge (7 days) and `[1]` the second (14 days)
-const NUDGE_WINDOWS_MS = [7, 14].map((days) => days * 24 * 60 * 60 * 1000);
+// the first nudge (3 days) and `[1]` the second (5 days)
+const NUDGE_WINDOWS_MS = [3, 5].map((days) => days * 24 * 60 * 60 * 1000);
 
 // trusted read of a mjakazi profile's owner + display name for the nudge email.
 // an explicit select keeps contact and identity fields out of this read
@@ -608,4 +608,101 @@ const sendAcceptedEoiNudges = async (
 	return { nudged };
 };
 
-export { listReceivedEois, listSentEois, respondToEoi, sendAcceptedEoiNudges, sendEoiBatch };
+// an unanswered (sent) interest expires 7 days after it was sent — the window in
+// which a mjakazi is expected to respond. expiry frees the pair so the mwajiri
+// may send a fresh batch, and is polled daily by the eoi-expire job
+const EOI_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+// compare-and-swap one unanswered interest to expired. the where-clause pins
+// `state === "sent"` so a response or a concurrent run cannot double-apply; the
+// pendingKey is uniquified (rejection-style) so the pair can be re-sent later
+const expireEoi = async (
+	payload: Payload,
+	eoi: ExpressionsOfInterest,
+): Promise<boolean> => {
+	const mwajiriId = toId(eoi.mwajiri);
+	const mjakaziId = toId(eoi.mjakazi);
+
+	try {
+		const result = await payload.update({
+			collection: "expressions-of-interest",
+			where: {
+				and: [{ id: { equals: eoi.id } }, { state: { equals: "sent" } }],
+			},
+			data: {
+				state: "expired",
+				...(mwajiriId && mjakaziId
+					? { pendingKey: `${mwajiriId}:${mjakaziId}:${eoi.id}` }
+					: {}),
+			},
+			overrideAccess: true,
+		});
+		return result.docs.length > 0;
+	} catch (error) {
+		console.error("[services/eoi] expiry CAS failed:", error);
+		return false;
+	}
+};
+
+// polled daily by the eoi-expire job. finds unanswered (sent) interests older
+// than 7 days and expires each idempotently. a missed window self-corrects on
+// the next run because the query polls for eligible records rather than relying
+// on being woken at the right moment
+const expireUnansweredEois = async (
+	payload: Payload,
+): Promise<{ expired: number }> => {
+	const now = Date.now();
+
+	let candidates: ExpressionsOfInterest[];
+	try {
+		const result = await payload.find({
+			collection: "expressions-of-interest",
+			where: { state: { equals: "sent" } },
+			limit: 200,
+			depth: 0,
+			overrideAccess: true,
+		});
+		candidates = result.docs;
+	} catch (error) {
+		console.error("[services/eoi] expiry lookup failed:", error);
+		return { expired: 0 };
+	}
+
+	let expired = 0;
+
+	for (const eoi of candidates) {
+		if (!eoi.sentAt) continue;
+
+		const elapsed = now - new Date(eoi.sentAt).getTime();
+		if (elapsed < EOI_EXPIRY_MS) continue;
+
+		const applied = await expireEoi(payload, eoi);
+		if (!applied) continue;
+
+		const mwajiriId = toId(eoi.mwajiri);
+		const mjakaziId = toId(eoi.mjakazi);
+
+		await writeAuditLog({
+			action: "eoi_expired",
+			targetId: mwajiriId,
+			targetLabel: mwajiriId ? await loadUserName(payload, mwajiriId) : null,
+			previousState: "sent",
+			newState: "expired",
+			metadata: { eoiId: eoi.id, mjakaziProfileId: mjakaziId },
+			source: "system",
+		});
+
+		expired += 1;
+	}
+
+	return { expired };
+};
+
+export {
+	expireUnansweredEois,
+	listReceivedEois,
+	listSentEois,
+	respondToEoi,
+	sendAcceptedEoiNudges,
+	sendEoiBatch,
+};

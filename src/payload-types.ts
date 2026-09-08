@@ -146,6 +146,7 @@ export interface Config {
       'subscription-expiry': TaskSubscriptionExpiry;
       'verification-expiry': TaskVerificationExpiry;
       'eoi-nudge': TaskEoiNudge;
+      'eoi-expire': TaskEoiExpire;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -688,6 +689,7 @@ export interface AuditLog {
     | 'eoi_sent'
     | 'eoi_responded'
     | 'eoi_nudged'
+    | 'eoi_expired'
     | 'hire_confirmed'
     | 'hire_agreed'
     | 'hire_reversed'
@@ -1150,6 +1152,7 @@ export interface PayloadJob {
           | 'subscription-expiry'
           | 'verification-expiry'
           | 'eoi-nudge'
+          | 'eoi-expire'
           | 'schedulePublish';
         taskID: string;
         input?:
@@ -1184,7 +1187,15 @@ export interface PayloadJob {
       }[]
     | null;
   taskSlug?:
-    | ('inline' | 'payment-timeout' | 'subscription-expiry' | 'verification-expiry' | 'eoi-nudge' | 'schedulePublish')
+    | (
+        | 'inline'
+        | 'payment-timeout'
+        | 'subscription-expiry'
+        | 'verification-expiry'
+        | 'eoi-nudge'
+        | 'eoi-expire'
+        | 'schedulePublish'
+      )
     | null;
   queue?: string | null;
   waitUntil?: string | null;
@@ -2469,6 +2480,14 @@ export interface TaskVerificationExpiry {
  * via the `definition` "TaskEoi-nudge".
  */
 export interface TaskEoiNudge {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskEoi-expire".
+ */
+export interface TaskEoiExpire {
   input?: unknown;
   output?: unknown;
 }

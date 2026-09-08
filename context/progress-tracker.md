@@ -1100,8 +1100,40 @@ finished.
   Schedule is `0 8 * * *` (8am) rather than midnight so the ask lands in the morning.
   `pnpm lint` (0 errors, 4 warnings — the new `TaskConfig<any>` matches the three existing
   jobs) and `pnpm build` pass. **Manual verification pending**: backdate an accepted EOI's
-  `respondedAt` 8 days, run the task, confirm both parties are emailed once and a second run
-  does not repeat; backdate 15 days and confirm the second nudge fires once and then silence.
+   `respondedAt` 8 days, run the task, confirm both parties are emailed once and a second run
+   does not repeat; backdate 15 days and confirm the second nudge fires once and then silence.
+
+### 2026-09-08 — EOI auto-expire + nudge timing change
+
+- **What was built**: (1) Unanswered expressions of interest now auto-expire — a new
+  `eoi-expire` job (daily, `0 0 * * *`) delegates to `expireUnansweredEois` in
+  `eoi.service.ts`, which polls `state: sent` interests older than 7 days from `sentAt` and
+  transitions each to `expired` via a compare-and-swap on `state === "sent"` (plus a new
+  `eoi_expired` audit entry); the `pendingKey` is uniquified on expiry (rejection-style) so
+  the mwajiri can send a fresh batch to that mjakazi again. (2) The hire-nudge windows were
+  tightened from 7/14 days to 3/5 days after `respondedAt` (the `NUDGE_WINDOWS_MS` constant
+  and the job comment). (3) The mwajiri "Sent interests" card now shows an `Expired` badge,
+  matching the mjakazi inbox, and the audit-log viewer gained an `eoi_expired` label.
+- **Files touched**: `src/services/eoi.service.ts` (`NUDGE_WINDOWS_MS` → `[3, 5]`;
+  `EOI_EXPIRY_MS`; `expireEoi`; `expireUnansweredEois`), `src/jobs/eoi-expire.ts` (new),
+  `src/jobs/eoi-nudge.ts` (comment), `src/payload.config.ts` (`jobs.tasks`),
+  `src/lib/audit.ts` (`eoi_expired`), `src/payload/collections/audit-logs/schema.ts`
+  (`eoi_expired`), `src/payload/collections/expressions-of-interest/schema.ts` (comment),
+  `src/app/(saas)/dashboard/mwajiri/page.tsx` (expired badge),
+  `src/components/dashboard/audit-logs/audit-log-table.tsx` (label + variant),
+  `context/{project-overview,architecture,build-plan}.md`.
+- **Notes**: Resolves the long-open "should a sent interest auto-expire" question from 8.1 —
+  an unanswered interest expires 7 days after `sentAt`. Expiry is a system transition with an
+  audit entry and no email (neither party is notified; the mwajiri sees `Expired` on their
+  dashboard). The nudge windows (3/5) and expiry window (7) are independent: nudge covers
+  *accepted* interests only, expiry covers *sent* (unanswered) interests only, so the two
+  jobs never touch the same record. Both jobs poll eligible records (missed windows
+  self-correct). No schema shape change (the `expired` state and `sentAt` already existed), so
+  no `generate:types` was needed for these fields — but the audit action option changed, so
+  types were regenerated. **Manual verification pending**: backdate a `sent` EOI's `sentAt`
+  8 days, run `eoi-expire`, confirm it becomes `expired` with an `eoi_expired` audit entry and
+  that a fresh batch to the same mjakazi is accepted; backdate an accepted EOI's `respondedAt`
+  4 days, run `eoi-nudge`, confirm the first nudge fires at 3 days and the second at 5.
 
 ---
 

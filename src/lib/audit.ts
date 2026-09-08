@@ -30,6 +30,7 @@ type AuditAction =
 	| "eoi_sent"
 	| "eoi_responded"
 	| "eoi_nudged"
+	| "eoi_expired"
 	| "hire_confirmed"
 	| "hire_agreed"
 	| "hire_reversed"
