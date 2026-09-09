@@ -13,6 +13,7 @@ type WajakaziAccount = {
 	displayName: string;
 	email: string;
 	verificationState: string;
+	accountState: string;
 	profileComplete: boolean;
 	createdAt: string;
 };
@@ -23,6 +24,7 @@ type WaajiriAccount = {
 	lastName: string;
 	email: string;
 	blacklistState: string;
+	accountState: string;
 	createdAt: string;
 };
 
@@ -55,6 +57,9 @@ const relationFirstName = (rel: UserRelation): string =>
 const relationLastName = (rel: UserRelation): string =>
 	rel && typeof rel === "object" ? rel.lastName : "";
 
+const relationAccountState = (rel: UserRelation): string =>
+	rel && typeof rel === "object" ? rel.accountState : "active";
+
 // lists all mjakazi accounts (name + email + verification state). admin + staff
 const listWajakaziAccounts = async (
 	payload: Payload,
@@ -81,6 +86,7 @@ const listWajakaziAccounts = async (
 			displayName: profile.displayName,
 			email: relationEmail(profile.user),
 			verificationState: profile.verificationState,
+			accountState: relationAccountState(profile.user),
 			profileComplete: profile.profileComplete ?? false,
 			createdAt: profile.createdAt,
 		}));
@@ -117,6 +123,7 @@ const listWaajiriAccounts = async (
 			lastName: relationLastName(profile.user),
 			email: relationEmail(profile.user),
 			blacklistState: profile.blacklistState,
+			accountState: relationAccountState(profile.user),
 			createdAt: profile.createdAt,
 		}));
 
@@ -277,14 +284,19 @@ const deleteAccountData = async (payload: Payload, user: User): Promise<void> =>
 };
 
 // deletes a SaaS account, cascading through profile, documents and clerk. admin
-// only — staff never delete
+// only — staff never delete. a reason is mandatory, following the moderation
+// procedure (suspend as the warning, delete only after no repentance)
 const deleteAccount = async (
 	payload: Payload,
 	actor: User,
 	userId: string,
+	reason: string,
 ): Promise<Result> => {
 	if (actor.role !== "admin") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
+	}
+	if (!reason.trim()) {
+		return { success: false, error: "A deletion reason is required.", code: "reason_required" };
 	}
 
 	try {
@@ -310,6 +322,7 @@ const deleteAccount = async (
 			actorLabel: userLabel(actor),
 			targetId: target.id,
 			targetLabel: userLabel(target),
+			reason: reason.trim(),
 			metadata: { role: target.role, email: target.email },
 		});
 

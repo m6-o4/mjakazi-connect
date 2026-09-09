@@ -121,13 +121,15 @@ const isAdminOrStaffOrPublished: Access = ({ req: { user } }) => {
 // directory gate
 // ---------------------------------------------------------------------------
 
-// a wajakazi profile is publicly visible only when verified AND available.
+// a wajakazi profile is publicly visible only when verified AND available AND
+// not suspended (nor blacklisted/deactivated, which fall outside `verified`).
 // any other combination means fully invisible, not partially — see the
 // visibility rule in project-overview.md
 const DIRECTORY_VISIBLE: Where = {
 	and: [
 		{ verificationState: { equals: "verified" } },
 		{ availabilityStatus: { equals: "available" } },
+		{ suspended: { not_equals: true } },
 	],
 };
 

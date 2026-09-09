@@ -455,12 +455,16 @@ hires, with a Reviewed badge once submitted; the review step is mwajiri-only.
 
 # Phase 10 — Admin and Moderation
 
-### 10.1 — Moderation
+### 10.1 — Moderation — DONE 2026-09-09
 
-**Builds**: suspend, reinstate, delete, blacklist per the authority matrix in
-`project-overview.md`. Staff suspend only. Mandatory reason. Audit entry on every action.
-**Done when**: staff can suspend and cannot reinstate. **Verify**: as staff, suspend an
-account, then try to reinstate. The second must fail.
+**Builds**: suspend, reinstate, delete for wajakazi + waajiri per the authority matrix in
+`project-overview.md` (blacklist dropped; staff moderation handled outside the system).
+Staff suspend only; admin reinstates and deletes. Mandatory reason on every action; audit
+entry on every action. A suspended wajakazi leaves the directory and can no longer be
+contact-revealed; a suspended mwajiri's subscription is suspended. Suspended users are
+redirected to a `/suspended` notice showing the reason. **Done when**: staff can suspend
+and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate — the
+second must fail.
 
 ### 10.2 — Admin dashboard
 

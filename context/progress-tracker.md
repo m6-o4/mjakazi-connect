@@ -1275,6 +1275,40 @@ finished.
   build is green (see session); the `hire_ended` event and the accent Extend CTA are
   visual/analytics-only changes to confirm in a running dev environment.
 
+### 2026-09-09 — Phase 10.1: Moderation (suspend / reinstate / delete)
+
+- **What was built**: Account moderation for wajakazi + waajiri. Staff can suspend; admin
+  can suspend, reinstate and delete. Every action requires a reason and writes an audit
+  entry (`account_suspended`, `account_reinstated`, `account_deleted` + the
+  `subscription_suspended`/`subscription_reinstated` sub-transitions). A suspended wajakazi
+  leaves the directory and can no longer be contact-revealed (new `suspended` flag on
+  `wajakazi-profiles`, folded into `DIRECTORY_VISIBLE`); a suspended mwajiri's subscription
+  is suspended. Suspended users are redirected to `/suspended`, which shows the reason.
+  Deletion is the existing hard recursive cascade, now reason-required. A single
+  `/dashboard/moderation` screen (staff + admin, linked from both overviews + the sidebar)
+  replaces the two `/dashboard/accounts/*` pages.
+- **Files touched**: `src/services/moderation.service.ts` (new),
+  `src/app/actions/moderation.ts` (new), `src/app/(saas)/dashboard/moderation/page.tsx`
+  (new), `src/app/(web)/suspended/page.tsx` (new),
+  `src/components/dashboard/moderation/moderation-table.tsx` (new),
+  `src/payload/collections/wajakazi-profiles/schema.ts` (`suspended` field),
+  `src/payload/access/access-control.ts` (`DIRECTORY_VISIBLE`),
+  `src/services/subscription.service.ts` (`reinstateSubscription`, open
+  `TRANSITIONS.suspended`), `src/services/accounts.service.ts` (`deleteAccount` reason +
+  `accountState` in list DTOs), `src/app/actions/accounts.ts`,
+  `src/app/(saas)/dashboard/layout.tsx` + `src/app/(payload)/layout.tsx` (suspension
+  guard), `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` (new
+  actions), `src/lib/dashboard-nav.ts`, staff/admin overview pages. Removed
+  `dashboard/accounts/*` pages and `accounts-table.tsx`.
+- **Notes**: Blacklist dropped from moderation — the existing blacklist state machine
+  (`blacklistProfile`, `blacklistSubscription`, `verificationState: blacklisted`,
+  `blacklistState`, `subscriptionState: blacklisted`) is left inert, not wired. Staff
+  moderation is out of scope (internal HR). Suspension email stays deferred to Phase 12.1;
+  the reason is shown on `/suspended` instead. `pnpm generate:types`, `pnpm lint` and
+  `pnpm build` are green. **Manual verification** (deferred sandbox): suspend as staff then
+  attempt reinstate (must fail), admin reinstate restores directory + subscription, admin
+  delete cascades, suspended wajakazi absent from directory and contact reveal refused.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

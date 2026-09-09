@@ -79,22 +79,26 @@ Four roles. One role per person, never more.
 
 `admin` and `staff` differ in authority, not in day-to-day work. Both do verification
 review, concierge cases, moderation and marketing content. Only `admin` sets pricing and
-platform settings, manages staff accounts, blacklists, or overrides a state machine.
+platform settings, manages staff accounts, deletes accounts, or overrides a state machine.
 
 ### Moderation authority
 
-| Action                                       | `admin` | `staff` |
-| -------------------------------------------- | ------- | ------- |
-| Suspend a mwajiri or mjakazi account         | yes     | yes     |
-| Reinstate a suspended mwajiri or mjakazi     | yes     | no      |
-| Delete a mwajiri or mjakazi account          | yes     | no      |
-| Suspend, reinstate or delete a staff account | yes     | no      |
-| Blacklist any account                        | yes     | no      |
-| Create a staff account                       | yes     | no      |
+| Action                               | `admin` | `staff` |
+| ------------------------------------ | ------- | ------- |
+| Suspend a mwajiri or mjakazi account | yes     | yes     |
+| Reinstate a suspended mwajiri/mjakazi| yes     | no      |
+| Delete a mwajiri or mjakazi account  | yes     | no      |
 
 The asymmetry is deliberate. Staff can stop something happening immediately, which is what
-moderation needs. Undoing it, and anything terminal, requires `admin`. Every action in
-this table writes an audit entry with a mandatory reason.
+moderation needs. Undoing it, and anything terminal, requires `admin`. Every action writes
+an audit entry with a mandatory reason.
+
+A suspension is for bad behaviour, harassment or similar offences, and is reversible.
+Deletion happens only after a warning (the suspension) and no sign of repentance. The
+affected user is told the reason on the `/suspended` notice they are redirected to.
+
+Staff accounts are an internal human-resources matter handled outside the system — they are
+never suspended, reinstated or deleted through moderation.
 
 ### Admin panel access
 
@@ -431,10 +435,11 @@ The Verified badge is the entire product. Everything else is delivery mechanism.
   Conduct and matched them to the profile.
 - The badge is valid 12 months, matching Certificate of Good Conduct validity.
 - Expiry is automatic and unforgiving. An expired profile disappears from the directory.
-- Blacklisting is terminal. Only `admin` can reverse it.
+- A suspended account is hidden from the directory and blocked from revealing contacts;
+  reinstatement restores both.
 - A profile is publicly visible only when verification is `verified` **and** availability
-  is `available` **and** the account is neither blacklisted nor deactivated. Any other
-  combination means fully invisible, not partially.
+  is `available` **and** the account is neither suspended, blacklisted nor deactivated. Any
+  other combination means fully invisible, not partially.
 
 ---
 
@@ -526,8 +531,7 @@ part of building the feature, not an afterthought.
 - Verification review queue with document viewer
 - Concierge case queue and shortlist builder
 - Review moderation
-- Account moderation: suspend, reinstate, delete, blacklist, per the authority matrix
-  above
+- Account moderation: suspend, reinstate, delete, per the authority matrix above
 - Audit log viewer
 - Staff management, platform settings and running payment totals (admin only)
 - Marketing content authoring in the Payload panel

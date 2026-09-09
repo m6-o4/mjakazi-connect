@@ -35,6 +35,10 @@ const Layout = async ({ children }: Args) => {
 		redirect("/sign-in");
 	}
 
+	if (user.accountState === "suspended") {
+		redirect("/suspended");
+	}
+
 	if (user.role !== "admin" && user.role !== "staff") {
 		redirect(DASHBOARD_BY_ROLE[user.role]);
 	}

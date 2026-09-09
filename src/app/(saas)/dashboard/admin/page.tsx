@@ -17,28 +17,34 @@ const AdminOverviewPage = async () => {
 
 	// trusted platform-wide counts — admin sees everything, and these numbers
 	// never leave the overview
-	const [pendingReviews, verified, activeSubscriptions, waajiri] = await Promise.all([
-		payload.count({
-			collection: "wajakazi-profiles",
-			where: { verificationState: { equals: "pending_review" } },
-			overrideAccess: true,
-		}),
-		payload.count({
-			collection: "wajakazi-profiles",
-			where: { verificationState: { equals: "verified" } },
-			overrideAccess: true,
-		}),
-		payload.count({
-			collection: "subscriptions",
-			where: { subscriptionState: { equals: "active" } },
-			overrideAccess: true,
-		}),
-		payload.count({
-			collection: "users",
-			where: { role: { equals: "mwajiri" } },
-			overrideAccess: true,
-		}),
-	]);
+	const [pendingReviews, verified, activeSubscriptions, waajiri, suspended] =
+		await Promise.all([
+			payload.count({
+				collection: "wajakazi-profiles",
+				where: { verificationState: { equals: "pending_review" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "wajakazi-profiles",
+				where: { verificationState: { equals: "verified" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "subscriptions",
+				where: { subscriptionState: { equals: "active" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "users",
+				where: { role: { equals: "mwajiri" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "users",
+				where: { accountState: { equals: "suspended" } },
+				overrideAccess: true,
+			}),
+		]);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -59,6 +65,12 @@ const AdminOverviewPage = async () => {
 				<StatCard label="Verified wajakazi" value={verified.totalDocs} />
 				<StatCard label="Active subscriptions" value={activeSubscriptions.totalDocs} />
 				<StatCard label="Waajiri accounts" value={waajiri.totalDocs} />
+				<StatCard
+					label="Suspended accounts"
+					value={suspended.totalDocs}
+					description="Review in moderation"
+					href="/dashboard/moderation"
+				/>
 			</div>
 		</div>
 	);

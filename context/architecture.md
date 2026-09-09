@@ -412,6 +412,9 @@ Professional: `jobsSkills` (multi-select), `about`, `yearsExperience`, `educatio
 
 Availability: `availabilityStatus` — `available | hired | on_break`.
 
+Moderation: `suspended` (checkbox) — mirrors the account-level suspension on `users` so the
+directory guard can exclude a suspended worker without joining `users`.
+
 Verification (authoritative): `verificationState` —
 `draft | pending_payment | pending_review | verified | rejected | verification_expired | blacklisted | deactivated`.
 Plus `verificationSubmittedAt`, `verificationReviewedAt`, `verificationExpiry`,
@@ -796,7 +799,8 @@ ask.
     `displayName` via a trusted read with an explicit non-contact `select`).
 16. Queries touching profiles pass an explicit `select`. Never rely on defaults.
 17. A profile is publicly visible only when `verificationState = verified` **and**
-    `availabilityStatus = available` **and** not blacklisted **and** not deactivated.
+    `availabilityStatus = available` **and** not suspended **and** not blacklisted **and**
+    not deactivated.
 18. `users` read grants `staff` name, email, role and state. `staff` may update SaaS
     accounts (mjakazi / mwajiri) but never back-office accounts, and never reads
     `clerkId`.
