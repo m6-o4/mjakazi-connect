@@ -1,3 +1,12 @@
+# [2.12.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.11.0...v2.12.0) (2026-09-09)
+
+
+### Features
+
+* **admin:** show revenue and verification throughput on overview ([0ef0bc4](https://github.com/m6-o4/mjakazi-connect/commit/0ef0bc4455ce773c70970550a093faf2d37775e3))
+* **analytics:** capture hire_ended event on contract termination ([557f2a6](https://github.com/m6-o4/mjakazi-connect/commit/557f2a6554e2dc7da1602b980c8d0a3fdd3873ad))
+* **moderation:** add account moderation with suspend, reinstate, and delete ([2e80a4e](https://github.com/m6-o4/mjakazi-connect/commit/2e80a4ea85919722e8b65e6c013ea286b219478c))
+
 # [2.11.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.10.0...v2.11.0) (2026-09-08)
 
 ### Features
