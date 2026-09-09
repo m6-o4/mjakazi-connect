@@ -15,6 +15,10 @@ const DashboardLayout = async ({ children }: { children: ReactNode }) => {
 		redirect("/sign-in");
 	}
 
+	if (user.accountState === "suspended") {
+		redirect("/suspended");
+	}
+
 	return (
 		<div className="bg-background flex min-h-screen">
 			<Sidebar role={user.role} />

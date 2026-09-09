@@ -65,7 +65,10 @@ const SubscriptionStatusCard = ({
 				<CardContent className="flex flex-wrap gap-2">
 					<Link
 						href="/dashboard/mwajiri/subscription"
-						className={buttonVariants({ variant: "outline" })}
+						className={buttonVariants({
+							className:
+								"bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
+						})}
 					>
 						Extend
 					</Link>

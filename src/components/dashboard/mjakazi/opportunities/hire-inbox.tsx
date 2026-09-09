@@ -79,6 +79,7 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 				setError(result.error ?? "Could not end the contract.");
 				return;
 			}
+			posthog.capture("hire_ended", { endedBy: "mjakazi" });
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");

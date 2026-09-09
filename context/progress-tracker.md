@@ -1255,6 +1255,95 @@ finished.
   the review form opened for the mwajiri (not the mjakazi) and a submitted review went to
   moderation.
 
+### 2026-09-09 — hire_ended PostHog event + subscription "Extend" CTA variant
+
+- **What was built**: Two small follow-ups. (1) The `hire_ended` PostHog event now fires
+  when either party ends a completed contract — `posthog.capture("hire_ended", { endedBy })`
+  from `HireConfirmCard` (`"mwajiri"`) and `HireInbox` (`"mjakazi"`), mirroring the
+  existing client-side `hire_confirmed` pattern — closing the analytics blind spot at the
+  terminal stage of the hire funnel. (2) The active-subscription **Extend** link in
+  `SubscriptionStatusCard` now uses the accent CTA treatment (`bg-accent
+  text-accent-foreground font-semibold`) instead of the outline variant, matching the
+  "Choose a plan" / "Renew" CTA in the same card.
+- **Files touched**: `context/code-standards.md` (`hire_ended` row),
+  `src/components/dashboard/mwajiri/hire-confirm-card.tsx`,
+  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx`,
+  `src/components/dashboard/mwajiri/subscription-status-card.tsx`.
+- **Notes**: No schema change, so no `generate:types`. The deferred Phase 5 sandbox
+  verification (STK push, callback replay idempotency, subscription expiry) is now recorded
+  as a test item at the end of Phase 10 (`build-plan.md` 10.5). **Manual verification**:
+  build is green (see session); the `hire_ended` event and the accent Extend CTA are
+  visual/analytics-only changes to confirm in a running dev environment.
+
+### 2026-09-09 — Phase 10.1: Moderation (suspend / reinstate / delete)
+
+- **What was built**: Account moderation for wajakazi + waajiri. Staff can suspend; admin
+  can suspend, reinstate and delete. Every action requires a reason and writes an audit
+  entry (`account_suspended`, `account_reinstated`, `account_deleted` + the
+  `subscription_suspended`/`subscription_reinstated` sub-transitions). A suspended wajakazi
+  leaves the directory and can no longer be contact-revealed (new `suspended` flag on
+  `wajakazi-profiles`, folded into `DIRECTORY_VISIBLE`); a suspended mwajiri's subscription
+  is suspended. Suspended users are redirected to `/suspended`, which shows the reason.
+  Deletion is the existing hard recursive cascade, now reason-required. A single
+  `/dashboard/moderation` screen (staff + admin, linked from both overviews + the sidebar)
+  replaces the two `/dashboard/accounts/*` pages.
+- **Files touched**: `src/services/moderation.service.ts` (new),
+  `src/app/actions/moderation.ts` (new), `src/app/(saas)/dashboard/moderation/page.tsx`
+  (new), `src/app/(web)/suspended/page.tsx` (new),
+  `src/components/dashboard/moderation/moderation-table.tsx` (new),
+  `src/payload/collections/wajakazi-profiles/schema.ts` (`suspended` field),
+  `src/payload/access/access-control.ts` (`DIRECTORY_VISIBLE`),
+  `src/services/subscription.service.ts` (`reinstateSubscription`, open
+  `TRANSITIONS.suspended`), `src/services/accounts.service.ts` (`deleteAccount` reason +
+  `accountState` in list DTOs), `src/app/actions/accounts.ts`,
+  `src/app/(saas)/dashboard/layout.tsx` + `src/app/(payload)/layout.tsx` (suspension
+  guard), `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` (new
+  actions), `src/lib/dashboard-nav.ts`, staff/admin overview pages. Removed
+  `dashboard/accounts/*` pages and `accounts-table.tsx`.
+- **Notes**: Blacklist dropped from moderation — the existing blacklist state machine
+  (`blacklistProfile`, `blacklistSubscription`, `verificationState: blacklisted`,
+  `blacklistState`, `subscriptionState: blacklisted`) is left inert, not wired. Staff
+  moderation is out of scope (internal HR). Suspension email stays deferred to Phase 12.1;
+  the reason is shown on `/suspended` instead. `pnpm generate:types`, `pnpm lint` and
+  `pnpm build` are green. **Manual verification** (deferred sandbox): suspend as staff then
+  attempt reinstate (must fail), admin reinstate restores directory + subscription, admin
+  delete cascades, suspended wajakazi absent from directory and contact reveal refused.
+
+### 2026-09-09 — Phase 10.2: Admin dashboard
+
+- **What was built**: The `/dashboard/admin` overview grew into the full 10.2 surface —
+  account counts, verification throughput and a running revenue total split by
+  verification fees vs subscriptions, plus the backlog fixtures. New
+  `services/admin.service.ts` (`getRevenueSnapshot` sums confirmed payments all-time and
+  last 30 days, split by `paymentType`; `getVerificationThroughput` counts
+  `verification_approved`/`verification_rejected` audit entries in the last 30 days). A new
+  server component `RevenueCard` (all-time + 30-day totals, each split verification vs
+  subscription). The overview now renders: pending verifications, verified wajakazi, active
+  subscriptions, waajiri + wajakazi account counts, total profiles, suspended accounts,
+  revenue, verification throughput and quick actions.
+- **Files touched**: `src/services/admin.service.ts` (new),
+  `src/components/dashboard/admin/revenue-card.tsx` (new),
+  `src/app/(saas)/dashboard/admin/page.tsx`, `context/{build-plan,ui-registry}.md`.
+- **Notes**: Revenue reads use `payload.find({ pagination: false })` to sum in one pass;
+  throughput is sourced from `audit-logs` (not `wajakazi-profiles`) so a profile reviewed
+  more than once counts each decision. Both are trusted reads for an admin-only page — no
+  audit entry, no actor gate. No schema change, so no `generate:types`. **Manual
+  verification**: confirm the revenue total matches the `payments` collection by hand (sum
+  `confirmed` amounts), and that approving/rejecting a verification moves the throughput
+  numbers.
+
+### 2026-09-09 — Phase 10.5: Sandbox verification pass (deferred from Phase 5)
+
+- **What was built**: No build — a verification pass carried forward from Phase 5, run
+  before the Phase 11 concierge work. All three checks passed in the sandbox: STK push end
+  to end (prompt reached the handset, record moved `stk_sent` → `confirmed` on a real
+  callback); callback replay idempotency (second replay refused and audit-logged, access
+  never granted twice); subscription expiry (backdated active subscription flipped to
+  `expired`, new reveals blocked, previously unlocked contacts stayed visible).
+- **Files touched**: none.
+- **Notes**: Payment correctness now proven in the sandbox before the funnel expands. No
+  schema change, so no `generate:types`.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
@@ -1269,10 +1358,10 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [x] Verified wajakazi count
 - [x] Active subscriptions count
 - [x] Waajiri accounts count
-- [ ] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
-- [ ] Platform totals (wajakazi accounts, total profiles)
+- [x] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
+- [x] Platform totals (wajakazi accounts, total profiles)
 - [ ] Recent activity feed (latest `audit-logs` entries)
-- [ ] Quick actions (queue / settings / staff)
+- [x] Quick actions (queue / settings / staff)
 
 ### Staff (`/dashboard/staff`)
 

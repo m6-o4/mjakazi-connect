@@ -21,13 +21,14 @@ type SubscriptionState = NonNullable<Subscription["subscriptionState"]>;
 // its key; anything not listed — including a no-op from === to — is refused.
 // `none → active` and `expired → active` are defensive edges: a confirmed payment
 // always grants access, even if the caller skipped the normal beginPurchase step.
-// suspended and blacklisted are terminal (reinstate lands in Phase 10.1).
+// `suspended` restores to `active` (window still in force) or `expired` (window
+// lapsed) on reinstate; `blacklisted` is terminal.
 const TRANSITIONS: Record<SubscriptionState, SubscriptionState[]> = {
 	none: ["pending_payment", "active", "suspended", "blacklisted"],
 	pending_payment: ["active", "suspended", "blacklisted"],
 	active: ["expired", "suspended", "blacklisted"],
 	expired: ["pending_payment", "active", "suspended", "blacklisted"],
-	suspended: [],
+	suspended: ["active", "expired"],
 	blacklisted: [],
 };
 
@@ -584,6 +585,38 @@ const blacklistSubscription = async (
 	});
 };
 
+// suspended → active | expired. reverses a moderation suspension. admin only,
+// with a mandatory reason captured by the caller's account-level audit. the
+// restored state follows the window: an unexpired tier resumes as active, a
+// lapsed (or never-purchased) one settles at expired
+const reinstateSubscription = async (
+	payload: Payload,
+	actor: User,
+	subscriptionId: string,
+): Promise<Result<Subscription>> => {
+	if (actor.role !== "admin") return fail("Forbidden", "forbidden");
+
+	const subscription = await loadSubscriptionById(payload, subscriptionId);
+	if (!subscription) return fail("Subscription not found.", "not_found");
+	if (subscription.subscriptionState !== "suspended") {
+		return fail("Subscription is not suspended.", "wrong_state");
+	}
+
+	const resuming =
+		!subscription.tierExpiry || !isAfter(new Date(subscription.tierExpiry), new Date())
+			? "expired"
+			: "active";
+
+	return applyTransition({
+		payload,
+		subscription,
+		nextState: resuming,
+		data: { suspendedAt: null, suspensionReason: null },
+		action: "subscription_reinstated",
+		actor,
+	});
+};
+
 export {
 	activateSubscriptionOnPayment,
 	beginPurchase,
@@ -593,5 +626,6 @@ export {
 	expireSubscription,
 	getOwnSubscription,
 	getSubscriptionByUser,
+	reinstateSubscription,
 	suspendSubscription,
 };

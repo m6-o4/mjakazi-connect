@@ -104,6 +104,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 				setError(result.error ?? "Could not end the contract.");
 				return;
 			}
+			posthog.capture("hire_ended", { endedBy: "mwajiri" });
 			setReviewingId(hire.mjakaziId);
 			router.refresh();
 		} finally {

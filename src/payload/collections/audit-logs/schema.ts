@@ -34,6 +34,8 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Account Created", value: "account_created" },
 				{ label: "Account Updated", value: "account_updated" },
 				{ label: "Account Deleted", value: "account_deleted" },
+				{ label: "Account Suspended", value: "account_suspended" },
+				{ label: "Account Reinstated", value: "account_reinstated" },
 				// verification lifecycle
 				{ label: "Verification Submitted", value: "verification_submitted" },
 				{ label: "Verification Advanced to Review", value: "verification_advanced" },
@@ -60,6 +62,7 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Subscription Expired", value: "subscription_expired" },
 				{ label: "Subscription Suspended", value: "subscription_suspended" },
 				{ label: "Subscription Blacklisted", value: "subscription_blacklisted" },
+				{ label: "Subscription Reinstated", value: "subscription_reinstated" },
 				// contact vault
 				{ label: "Contact Unlocked", value: "contact_unlocked" },
 				// expression of interest lifecycle

@@ -455,18 +455,29 @@ hires, with a Reviewed badge once submitted; the review step is mwajiri-only.
 
 # Phase 10 — Admin and Moderation
 
-### 10.1 — Moderation
+### 10.1 — Moderation — DONE 2026-09-09
 
-**Builds**: suspend, reinstate, delete, blacklist per the authority matrix in
-`project-overview.md`. Staff suspend only. Mandatory reason. Audit entry on every action.
-**Done when**: staff can suspend and cannot reinstate. **Verify**: as staff, suspend an
-account, then try to reinstate. The second must fail.
+**Builds**: suspend, reinstate, delete for wajakazi + waajiri per the authority matrix in
+`project-overview.md` (blacklist dropped; staff moderation handled outside the system).
+Staff suspend only; admin reinstates and deletes. Mandatory reason on every action; audit
+entry on every action. A suspended wajakazi leaves the directory and can no longer be
+contact-revealed; a suspended mwajiri's subscription is suspended. Suspended users are
+redirected to a `/suspended` notice showing the reason. **Done when**: staff can suspend
+and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate — the
+second must fail.
 
-### 10.2 — Admin dashboard
+### 10.2 — Admin dashboard — DONE 2026-09-09
 
 **Builds**: `/dashboard/admin` with account counts, verification throughput and a running
 payment total split by verification fees and subscriptions. **Verify**: compare the total
 against the `payments` collection by hand.
+
+Built: `src/services/admin.service.ts` (`getRevenueSnapshot` — confirmed payments summed
+all-time + last 30 days, split verification vs subscription; `getVerificationThroughput` —
+`verification_approved`/`verification_rejected` in the last 30 days from the audit trail),
+plus the `RevenueCard` component. The overview now shows pending verifications, verified
+wajakazi, active subscriptions, waajiri/wajakazi account counts, total profiles, suspended
+accounts, the revenue card, verification throughput and quick actions.
 
 ### 10.3 — Staff management and platform settings
 
@@ -486,6 +497,27 @@ page.
 
 **Builds**: `/dashboard/staff/audit-logs`, filterable by action, actor and date.
 **Verify**: filter to document views and confirm every entry names a viewer.
+
+### 10.5 — Deferred Phase 5 sandbox verification — DONE 2026-09-09
+
+Not a build task — a verification pass carried forward from Phase 5, run at the end of
+Phase 10 before the concierge work starts. Payment correctness must be proven in the
+sandbox before the product handles more of the funnel.
+
+- **STK push end to end** — initiate a subscription payment in the sandbox, confirm the
+  prompt reaches the handset and the record moves `stk_sent` → `confirmed` on a real
+  callback.
+- **Callback replay idempotency** — replay the same confirmation callback by hand; the
+  second must be refused and audit-logged, and access must never be granted twice.
+- **Subscription expiry** — backdate an active subscription's expiry, run
+  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are blocked,
+  and previously unlocked contacts remain visible.
+
+**Verified 2026-09-09**: all three checks passed in the sandbox — STK push end to end
+(prompt reached the handset, record moved `stk_sent` → `confirmed` on a real callback),
+callback replay idempotency (second replay refused and audit-logged, access never granted
+twice), and subscription expiry (backdated active subscription flipped to `expired`, new
+reveals blocked, previously unlocked contacts stayed visible).
 
 ---
 

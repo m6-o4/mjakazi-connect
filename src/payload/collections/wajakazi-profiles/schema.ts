@@ -213,6 +213,18 @@ const WajakaziProfiles: CollectionConfig = {
 			],
 		},
 		{
+			name: "suspended",
+			type: "checkbox",
+			label: "Suspended",
+			// moderation flag mirroring the account-level suspension so the public
+			// directory guard can exclude a suspended worker without joining users.
+			// written by the moderation service, never by the user directly
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: { readOnly: true, position: "sidebar" },
+			defaultValue: false,
+			index: true,
+		},
+		{
 			name: "profileComplete",
 			type: "checkbox",
 			label: "Profile Complete",

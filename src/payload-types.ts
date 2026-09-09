@@ -667,6 +667,8 @@ export interface AuditLog {
     | 'account_created'
     | 'account_updated'
     | 'account_deleted'
+    | 'account_suspended'
+    | 'account_reinstated'
     | 'verification_submitted'
     | 'verification_advanced'
     | 'verification_resubmitted'
@@ -687,6 +689,7 @@ export interface AuditLog {
     | 'subscription_expired'
     | 'subscription_suspended'
     | 'subscription_blacklisted'
+    | 'subscription_reinstated'
     | 'contact_unlocked'
     | 'eoi_sent'
     | 'eoi_responded'
@@ -857,6 +860,7 @@ export interface WajakaziProfile {
     | 'blacklisted'
     | 'deactivated';
   availabilityStatus: 'available' | 'hired' | 'on_break';
+  suspended?: boolean | null;
   profileComplete?: boolean | null;
   verificationSubmittedAt?: string | null;
   verificationReviewedAt?: string | null;
@@ -1833,6 +1837,7 @@ export interface WajakaziProfilesSelect<T extends boolean = true> {
   location?: T;
   verificationState?: T;
   availabilityStatus?: T;
+  suspended?: T;
   profileComplete?: T;
   verificationSubmittedAt?: T;
   verificationReviewedAt?: T;

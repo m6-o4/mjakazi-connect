@@ -287,26 +287,29 @@ codebase.
   auto-slugified from name
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
-### `AccountsTable`
+### `ModerationTable`
 
-- **Location**: `src/components/dashboard/accounts/accounts-table.tsx`
-- **Purpose**: Shared list for wajakazi/waajiri accounts — rename (staff + admin) and
-  delete (admin only)
-- **Props**: `{ accounts: AccountRow[]; canDelete: boolean }`
+- **Location**: `src/components/dashboard/moderation/moderation-table.tsx`
+- **Purpose**: Moderation list for wajakazi/waajiri accounts — rename (staff + admin),
+  suspend (staff + admin), reinstate and delete (admin only). Every action requires a
+  reason entered in the dialog.
+- **Props**: `{ accounts: ModerationRow[]; canSuspend; canReinstate; canDelete }`
 - **Visual pattern**: same list-row pattern as `StaffTable`; status `Badge` with a
-  page-mapped variant; delete button only rendered when `canDelete`
-- **Used in**: `(saas)/dashboard/accounts/{wajakazi,waajiri}/page.tsx`
+  page-mapped variant (a suspended account overrides the underlying state); action buttons
+  swap between Suspend/Delete (active) and Reinstate (suspended); `AlertDialog` with a
+  required `Textarea` reason field and an inline error.
+- **Used in**: `(saas)/dashboard/moderation/page.tsx`
 
 ### `EditNameForm`
 
 - **Location**: `src/components/dashboard/admin/edit-name-form.tsx`
 - **Purpose**: Small inline first/last-name editor shared by `StaffTable` and
-  `AccountsTable`
+  `ModerationTable`
 - **Props**:
   `{ initialFirstName: string; initialLastName: string; onSave: (first, last) => Promise<string | null>; onCancel: () => void }`
 - **Visual pattern**: two `Input`s + Save/Cancel `Button`s; inline `text-destructive`
   error
-- **Used in**: `StaffTable`, `AccountsTable`
+- **Used in**: `StaffTable`, `ModerationTable`
 
 ### `AuditLogTable`
 
@@ -478,7 +481,9 @@ codebase.
 - **Visual pattern**: shadcn `Card`; active state `ring-primary/40` with `CheckCircle2` in
   `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
   `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
-  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`
+  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`; CTA links (Extend
+  / Choose a plan / Renew) use the accent treatment `bg-accent text-accent-foreground
+  font-semibold`, never `outline`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `SaveToggle`
@@ -625,3 +630,14 @@ codebase.
   reviews" aggregate; per-review `bg-card` bordered rows (`RatingStars`, reviewer name,
   date, comment); renders `null` when empty
 - **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+
+### `RevenueCard`
+
+- **Location**: `src/components/dashboard/admin/revenue-card.tsx`
+- **Purpose**: The admin overview's running revenue total, split by verification fees vs
+  subscriptions, with the same split for the last 30 days
+- **Props**: `{ snapshot: RevenueSnapshot }` (from `services/admin.service.ts`)
+- **Visual pattern**: server component; shadcn `Card`; `text-heading` totals at `text-3xl`
+  (all time) / `text-2xl` (30 days); per-type rows as `flex justify-between`
+  (`text-muted-foreground` label, `font-medium` value); `KSh` thousands-separated format
+- **Used in**: `src/app/(saas)/dashboard/admin/page.tsx`
