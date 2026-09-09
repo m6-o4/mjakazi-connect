@@ -1255,6 +1255,26 @@ finished.
   the review form opened for the mwajiri (not the mjakazi) and a submitted review went to
   moderation.
 
+### 2026-09-09 — hire_ended PostHog event + subscription "Extend" CTA variant
+
+- **What was built**: Two small follow-ups. (1) The `hire_ended` PostHog event now fires
+  when either party ends a completed contract — `posthog.capture("hire_ended", { endedBy })`
+  from `HireConfirmCard` (`"mwajiri"`) and `HireInbox` (`"mjakazi"`), mirroring the
+  existing client-side `hire_confirmed` pattern — closing the analytics blind spot at the
+  terminal stage of the hire funnel. (2) The active-subscription **Extend** link in
+  `SubscriptionStatusCard` now uses the accent CTA treatment (`bg-accent
+  text-accent-foreground font-semibold`) instead of the outline variant, matching the
+  "Choose a plan" / "Renew" CTA in the same card.
+- **Files touched**: `context/code-standards.md` (`hire_ended` row),
+  `src/components/dashboard/mwajiri/hire-confirm-card.tsx`,
+  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx`,
+  `src/components/dashboard/mwajiri/subscription-status-card.tsx`.
+- **Notes**: No schema change, so no `generate:types`. The deferred Phase 5 sandbox
+  verification (STK push, callback replay idempotency, subscription expiry) is now recorded
+  as a test item at the end of Phase 10 (`build-plan.md` 10.5). **Manual verification**:
+  build is green (see session); the `hire_ended` event and the accent Extend CTA are
+  visual/analytics-only changes to confirm in a running dev environment.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures

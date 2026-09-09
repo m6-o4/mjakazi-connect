@@ -478,7 +478,9 @@ codebase.
 - **Visual pattern**: shadcn `Card`; active state `ring-primary/40` with `CheckCircle2` in
   `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
   `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
-  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`
+  date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`; CTA links (Extend
+  / Choose a plan / Renew) use the accent treatment `bg-accent text-accent-foreground
+  font-semibold`, never `outline`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `SaveToggle`

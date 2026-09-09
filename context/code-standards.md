@@ -392,6 +392,7 @@ This is the complete list. **Adding an event means adding it here first.**
 | `interest_sent`                 | expression of interest batch sent      | `count`                  |
 | `interest_responded`            | mjakazi accepts or rejects             | `response`               |
 | `hire_confirmed`                | either party confirms                  | `confirmedBy`            |
+| `hire_ended`                    | either party ends a completed contract | `endedBy`                |
 | `review_submitted`              | mwajiri submits a review               | `rating`                 |
 | `concierge_brief_submitted`     | brief completed                        | —                        |
 | `concierge_shortlist_delivered` | staff delivers                         | `size`, `daysToDeliver`  |

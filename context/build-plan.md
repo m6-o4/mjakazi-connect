@@ -487,6 +487,21 @@ page.
 **Builds**: `/dashboard/staff/audit-logs`, filterable by action, actor and date.
 **Verify**: filter to document views and confirm every entry names a viewer.
 
+### 10.5 — Deferred Phase 5 sandbox verification (test item)
+
+Not a build task — a verification pass carried forward from Phase 5, run at the end of
+Phase 10 before the concierge work starts. Payment correctness must be proven in the
+sandbox before the product handles more of the funnel.
+
+- **STK push end to end** — initiate a subscription payment in the sandbox, confirm the
+  prompt reaches the handset and the record moves `stk_sent` → `confirmed` on a real
+  callback.
+- **Callback replay idempotency** — replay the same confirmation callback by hand; the
+  second must be refused and audit-logged, and access must never be granted twice.
+- **Subscription expiry** — backdate an active subscription's expiry, run
+  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are blocked,
+  and previously unlocked contacts remain visible.
+
 ---
 
 # Phase 11 — Concierge
