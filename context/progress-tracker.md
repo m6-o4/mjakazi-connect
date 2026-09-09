@@ -1309,6 +1309,29 @@ finished.
   attempt reinstate (must fail), admin reinstate restores directory + subscription, admin
   delete cascades, suspended wajakazi absent from directory and contact reveal refused.
 
+### 2026-09-09 — Phase 10.2: Admin dashboard
+
+- **What was built**: The `/dashboard/admin` overview grew into the full 10.2 surface —
+  account counts, verification throughput and a running revenue total split by
+  verification fees vs subscriptions, plus the backlog fixtures. New
+  `services/admin.service.ts` (`getRevenueSnapshot` sums confirmed payments all-time and
+  last 30 days, split by `paymentType`; `getVerificationThroughput` counts
+  `verification_approved`/`verification_rejected` audit entries in the last 30 days). A new
+  server component `RevenueCard` (all-time + 30-day totals, each split verification vs
+  subscription). The overview now renders: pending verifications, verified wajakazi, active
+  subscriptions, waajiri + wajakazi account counts, total profiles, suspended accounts,
+  revenue, verification throughput and quick actions.
+- **Files touched**: `src/services/admin.service.ts` (new),
+  `src/components/dashboard/admin/revenue-card.tsx` (new),
+  `src/app/(saas)/dashboard/admin/page.tsx`, `context/{build-plan,ui-registry}.md`.
+- **Notes**: Revenue reads use `payload.find({ pagination: false })` to sum in one pass;
+  throughput is sourced from `audit-logs` (not `wajakazi-profiles`) so a profile reviewed
+  more than once counts each decision. Both are trusted reads for an admin-only page — no
+  audit entry, no actor gate. No schema change, so no `generate:types`. **Manual
+  verification**: confirm the revenue total matches the `payments` collection by hand (sum
+  `confirmed` amounts), and that approving/rejecting a verification moves the throughput
+  numbers.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
@@ -1323,10 +1346,10 @@ placeholder) as each is built. Data is already available unless marked "later ph
 - [x] Verified wajakazi count
 - [x] Active subscriptions count
 - [x] Waajiri accounts count
-- [ ] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
-- [ ] Platform totals (wajakazi accounts, total profiles)
+- [x] Revenue snapshot (confirmed payments total + last 30 days) — `payments`
+- [x] Platform totals (wajakazi accounts, total profiles)
 - [ ] Recent activity feed (latest `audit-logs` entries)
-- [ ] Quick actions (queue / settings / staff)
+- [x] Quick actions (queue / settings / staff)
 
 ### Staff (`/dashboard/staff`)
 

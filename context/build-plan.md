@@ -466,11 +466,18 @@ redirected to a `/suspended` notice showing the reason. **Done when**: staff can
 and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate — the
 second must fail.
 
-### 10.2 — Admin dashboard
+### 10.2 — Admin dashboard — DONE 2026-09-09
 
 **Builds**: `/dashboard/admin` with account counts, verification throughput and a running
 payment total split by verification fees and subscriptions. **Verify**: compare the total
 against the `payments` collection by hand.
+
+Built: `src/services/admin.service.ts` (`getRevenueSnapshot` — confirmed payments summed
+all-time + last 30 days, split verification vs subscription; `getVerificationThroughput` —
+`verification_approved`/`verification_rejected` in the last 30 days from the audit trail),
+plus the `RevenueCard` component. The overview now shows pending verifications, verified
+wajakazi, active subscriptions, waajiri/wajakazi account counts, total profiles, suspended
+accounts, the revenue card, verification throughput and quick actions.
 
 ### 10.3 — Staff management and platform settings
 

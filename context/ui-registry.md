@@ -630,3 +630,14 @@ codebase.
   reviews" aggregate; per-review `bg-card` bordered rows (`RatingStars`, reviewer name,
   date, comment); renders `null` when empty
 - **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+
+### `RevenueCard`
+
+- **Location**: `src/components/dashboard/admin/revenue-card.tsx`
+- **Purpose**: The admin overview's running revenue total, split by verification fees vs
+  subscriptions, with the same split for the last 30 days
+- **Props**: `{ snapshot: RevenueSnapshot }` (from `services/admin.service.ts`)
+- **Visual pattern**: server component; shadcn `Card`; `text-heading` totals at `text-3xl`
+  (all time) / `text-2xl` (30 days); per-type rows as `flex justify-between`
+  (`text-muted-foreground` label, `font-medium` value); `KSh` thousands-separated format
+- **Used in**: `src/app/(saas)/dashboard/admin/page.tsx`
