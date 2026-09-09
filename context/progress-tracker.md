@@ -1332,6 +1332,18 @@ finished.
   `confirmed` amounts), and that approving/rejecting a verification moves the throughput
   numbers.
 
+### 2026-09-09 — Phase 10.5: Sandbox verification pass (deferred from Phase 5)
+
+- **What was built**: No build — a verification pass carried forward from Phase 5, run
+  before the Phase 11 concierge work. All three checks passed in the sandbox: STK push end
+  to end (prompt reached the handset, record moved `stk_sent` → `confirmed` on a real
+  callback); callback replay idempotency (second replay refused and audit-logged, access
+  never granted twice); subscription expiry (backdated active subscription flipped to
+  `expired`, new reveals blocked, previously unlocked contacts stayed visible).
+- **Files touched**: none.
+- **Notes**: Payment correctness now proven in the sandbox before the funnel expands. No
+  schema change, so no `generate:types`.
+
 ---
 
 ## Backlog — Dashboard Overview Fixtures
