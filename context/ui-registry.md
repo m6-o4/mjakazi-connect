@@ -185,11 +185,12 @@ codebase.
 - **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
   the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
   `router.refresh()` until the callback flips the profile into review
-- **Props**: `{ fee: number | null; phone: string }`
+- **Props**: `{ fee: number | null; phone: string; onAwaitingChange?: (awaiting: boolean) => void }`
 - **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
   `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
-  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success
-- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success;
+  reports its awaiting state up so `VerificationPaymentFlow` can show the success notice
+- **Used in**: `VerificationPaymentFlow`
 
 ### `PurchaseSubscription`
 
@@ -197,15 +198,16 @@ codebase.
 - **Purpose**: The mwajiri subscription purchase flow — live tier cards, M-Pesa phone
   input, STK-push payment, and confirmation polling
 - **Props**:
-  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; phone: string | null }`
+  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
   (`TierOption` = `{ tierId, name, price, durationDays, description, isConcierge }`)
 - **Visual pattern**: tier cards are clickable `<button>`s (`bg-card`, selected =
   `ring-2 ring-primary`, unselected = `ring-1 ring-border`); `Badge variant="outline"`
   "Concierge" with a `Crown` icon; active banner `Card` with `CheckCircle2` in
-  `text-primary`; phone `Label` + `Input`; `Button` (default) "Pay KSh {price}" / "Extend
-  — KSh {price}"; `Loader2` spinner + muted copy while awaiting; fires `plan_selected`
-  (`tierId`) and `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog
-  events
+  `text-primary`; `PaymentSuccessNotice` shown once the newest payment (matched by id, so
+  renewals/upgrades are detected too) settles at `confirmed`; phone `Label` + `Input`;
+  `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2` spinner + muted
+  copy while awaiting; fires `plan_selected` (`tierId`) and `payment_initiated`
+  (`paymentType: "subscription"`, `tierId`) PostHog events
 - **Used in**: `(saas)/dashboard/mwajiri/subscription/page.tsx`
 
 ### `VerificationQueue`
@@ -345,17 +347,30 @@ codebase.
   `verification_resubmitted` PostHog event on success then `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
-### `DevPaymentSimulate`
+### `VerificationPaymentFlow`
 
-- **Location**: `src/components/dashboard/dev/dev-payment-simulate.tsx`
-- **Purpose**: Dev-only control (gated on `MPESA_ENVIRONMENT !== "production"`) that fires
-  a synthetic Daraja callback through the real handler so a sandbox payment can complete
-- **Props**: none
-- **Visual pattern**: shadcn `Card` with a `FlaskConical` icon in `text-accent`; outline
-  `Button` "Simulate payment confirmation"; calls `simulatePaymentCallbackAction` then
-  `router.refresh()`
-- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`,
-  `(saas)/dashboard/mwajiri/subscription/page.tsx`
+- **Location**: `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx`
+- **Purpose**: Always-mounted wrapper for the non-draft verification states. Renders the pay
+  card while `pending_payment`; once the callback flips the state (and the pay card
+  unmounts) it shows an explicit "payment received" notice above the status card, because
+  the transition detection must survive the pay card's unmount
+- **Props**:
+  `{ state: VerificationState; fee: number | null; phone: string; verificationExpiry?: string | null; rejectionReason?: string | null; freeResubmissionsRemaining?: number | null }`
+- **Visual pattern**: delegates to `PayVerification` (pending) or
+  `VerificationStateCard` + optional `ResubmitVerification`; renders `PaymentSuccessNotice`
+  once a payment that was awaiting confirmation leaves `pending_payment`
+- **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
+
+### `PaymentSuccessNotice`
+
+- **Location**: `src/components/dashboard/payments/payment-success-notice.tsx`
+- **Purpose**: Explicit "payment received" confirmation shared by both pay flows
+- **Props**: `{ title: string; description: string }`
+- **Visual pattern**: neutral shadcn `Card` (`border-success/40`) with the success colour
+  carried only by a `CheckCircle2` icon in `text-success` and a `text-heading` semibold
+  title — card surface stays neutral per `ui-rules.md`
+- **Used in**: `VerificationPaymentFlow`,
+  `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx`
 
 ### `StatCard`
 
@@ -641,3 +656,35 @@ codebase.
   (all time) / `text-2xl` (30 days); per-type rows as `flex justify-between`
   (`text-muted-foreground` label, `font-medium` value); `KSh` thousands-separated format
 - **Used in**: `src/app/(saas)/dashboard/admin/page.tsx`
+
+### `ConciergeBriefForm`
+
+- **Location**: `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx`
+- **Purpose**: The Mwajiri requirements brief intake form for Concierge matching
+- **Props**: `{ caseId: string; initialValues?: Partial<BriefFormValues> | null }`
+- **Visual pattern**: react-hook-form + zod; two-column grid fields; `Select` for role, location, work arrangement; `Textarea` for duties and special requirements; calls `submitConciergeBriefAction`
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
+
+### `ConciergeStatusCard`
+
+- **Location**: `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx`
+- **Purpose**: Status summary card for a Concierge case on the Mwajiri dashboard and concierge page
+- **Props**: `{ conciergeCase: ConciergeCase; eligibleForReplacement?: boolean }`
+- **Visual pattern**: shadcn `Card` with `Crown` icon; status `Badge`; shortlist cards with candidate names and match notes; record outcome buttons; 1-time replacement guarantee button
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
+
+### `ConciergeQueue`
+
+- **Location**: `src/components/dashboard/staff/concierge/concierge-queue.tsx`
+- **Purpose**: The staff queue list of open, in-review, or delivered Concierge cases
+- **Props**: `{ cases: ConciergeCase[] }`
+- **Visual pattern**: stacked shadcn `Card`s; `Crown` icon; status `Badge`; brief summary details; assigned staff indicator; "Manage Case" button
+- **Used in**: `src/app/(saas)/dashboard/staff/concierge/page.tsx`
+
+### `ConciergeCaseDetail`
+
+- **Location**: `src/components/dashboard/staff/concierge/concierge-case-detail.tsx`
+- **Purpose**: Staff case management detail view with case claim and 3–5 candidate shortlist builder
+- **Props**: `{ conciergeCase: ConciergeCase; availableCandidates: CandidateOption[]; currentUserId: string }`
+- **Visual pattern**: Brief summary grid; "Claim Case" button; shortlist builder with search input, candidate picker, match note textareas, and "Deliver Shortlist to Mwajiri" button
+- **Used in**: `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx`

@@ -43,6 +43,12 @@ type AuditAction =
 	| "review_rejected"
 	| "review_hidden"
 	| "review_shown"
+	| "concierge_case_created"
+	| "concierge_brief_submitted"
+	| "concierge_case_claimed"
+	| "concierge_shortlist_delivered"
+	| "concierge_outcome_recorded"
+	| "concierge_replacement_requested"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

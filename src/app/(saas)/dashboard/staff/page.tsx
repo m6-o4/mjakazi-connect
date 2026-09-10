@@ -17,11 +17,16 @@ const StaffOverviewPage = async () => {
 
 	// trusted platform-wide counts — staff read the whole queue, and these
 	// numbers never leave the overview
-	const [pendingReviews, awaitingPayment, verified, pendingModeration, suspended] =
+	const [pendingReviews, openConciergeCases, awaitingPayment, verified, pendingModeration, suspended] =
 		await Promise.all([
 			payload.count({
 				collection: "wajakazi-profiles",
 				where: { verificationState: { equals: "pending_review" } },
+				overrideAccess: true,
+			}),
+			payload.count({
+				collection: "concierge-cases",
+				where: { state: { in: ["intake", "in_review", "replacement_requested"] } },
 				overrideAccess: true,
 			}),
 			payload.count({
@@ -61,6 +66,12 @@ const StaffOverviewPage = async () => {
 					value={pendingReviews.totalDocs}
 					description="Awaiting review"
 					href="/dashboard/staff/verifications"
+				/>
+				<StatCard
+					label="Open Concierge cases"
+					value={openConciergeCases.totalDocs}
+					description="Awaiting matching or brief"
+					href="/dashboard/staff/concierge"
 				/>
 				<StatCard
 					label="Awaiting payment"

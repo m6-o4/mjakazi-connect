@@ -8,6 +8,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 	admin: [
 		{ href: "/dashboard/admin", label: "Overview" },
 		{ href: "/dashboard/staff/verifications", label: "Verifications" },
+		{ href: "/dashboard/staff/concierge", label: "Concierge" },
 		{ href: "/dashboard/staff/reviews", label: "Reviews" },
 		{ href: "/dashboard/moderation", label: "Moderation" },
 		{ href: "/dashboard/admin/staff", label: "Staff" },
@@ -17,6 +18,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 	staff: [
 		{ href: "/dashboard/staff", label: "Overview" },
 		{ href: "/dashboard/staff/verifications", label: "Verifications" },
+		{ href: "/dashboard/staff/concierge", label: "Concierge" },
 		{ href: "/dashboard/staff/reviews", label: "Reviews" },
 		{ href: "/dashboard/moderation", label: "Moderation" },
 		{ href: "/dashboard/audit-logs", label: "Audit Logs" },
@@ -25,6 +27,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 		{ href: "/dashboard/mwajiri", label: "Overview" },
 		{ href: "/dashboard/mwajiri/browse", label: "Browse" },
 		{ href: "/dashboard/mwajiri/saved", label: "Saved" },
+		{ href: "/dashboard/mwajiri/concierge", label: "Concierge" },
 		{ href: "/dashboard/mwajiri/subscription", label: "Subscription" },
 		{ href: "/dashboard/mwajiri/settings", label: "Settings" },
 	],

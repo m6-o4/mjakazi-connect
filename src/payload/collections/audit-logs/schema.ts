@@ -81,6 +81,13 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Review Rejected", value: "review_rejected" },
 				{ label: "Review Hidden", value: "review_hidden" },
 				{ label: "Review Shown", value: "review_shown" },
+				// concierge lifecycle
+				{ label: "Concierge Case Created", value: "concierge_case_created" },
+				{ label: "Concierge Brief Submitted", value: "concierge_brief_submitted" },
+				{ label: "Concierge Case Claimed", value: "concierge_case_claimed" },
+				{ label: "Concierge Shortlist Delivered", value: "concierge_shortlist_delivered" },
+				{ label: "Concierge Outcome Recorded", value: "concierge_outcome_recorded" },
+				{ label: "Concierge Replacement Requested", value: "concierge_replacement_requested" },
 				// document vault
 				{ label: "Document Uploaded", value: "document_uploaded" },
 				{ label: "Document Deleted", value: "document_deleted" },

@@ -1,6 +1,7 @@
 import { AuditLogs } from "@/payload/collections/audit-logs/schema";
 import { CallsToAction } from "@/payload/collections/calls-to-action/schema";
 import { Categories } from "@/payload/collections/categories/schema";
+import { ConciergeCases } from "@/payload/collections/concierge-cases/schema";
 import { ContactUnlocks } from "@/payload/collections/contact-unlocks/schema";
 import { ExpressionsOfInterest } from "@/payload/collections/expressions-of-interest/schema";
 import { Hires } from "@/payload/collections/hires/schema";
@@ -36,6 +37,7 @@ const collections = [
 	ExpressionsOfInterest,
 	Hires,
 	Reviews,
+	ConciergeCases,
 ];
 
 export { collections };

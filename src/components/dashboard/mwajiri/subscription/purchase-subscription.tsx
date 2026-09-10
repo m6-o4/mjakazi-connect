@@ -3,9 +3,10 @@
 import { CheckCircle2, Crown, Loader2, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { initiateSubscriptionPaymentAction } from "@/app/actions/subscription";
+import { PaymentSuccessNotice } from "@/components/dashboard/payments/payment-success-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,13 @@ type PurchaseSubscriptionProps = {
 	state: SubscriptionState;
 	expiry: string | null;
 	phone: string | null;
+	// the caller's most recent subscription payment, read server-side. used to
+	// detect — after a poll refresh — that a freshly initiated payment settled,
+	// so the ui can show an explicit "payment received" cue. the payment id is
+	// the anchor, so a renewal/upgrade (where state stays `active`) still detects
+	// the new payment rather than the previous one
+	latestPaymentId?: string | null;
+	latestPaymentStatus?: string | null;
 };
 
 const POLL_INTERVAL_MS = 5000;
@@ -53,12 +61,17 @@ const formatExpiry = (iso: string | null): string | null => {
 
 // the mwajiri purchase flow. renders the live tier list, collects the m-pesa
 // phone, sends the stk push, then polls router.refresh() until the callback
-// flips the subscription into `active` and the server re-renders this component
+// confirms the newest payment and the server re-renders this component. the
+// payment id (not the subscription state) is the anchor, so a mid-cycle renewal
+// or upgrade — where the state is already `active` — still detects the new
+// payment and shows the success cue
 const PurchaseSubscription = ({
 	tiers,
 	state,
 	expiry,
 	phone,
+	latestPaymentId = null,
+	latestPaymentStatus = null,
 }: PurchaseSubscriptionProps) => {
 	const router = useRouter();
 	const [selectedTierId, setSelectedTierId] = useState<string | null>(
@@ -69,14 +82,31 @@ const PurchaseSubscription = ({
 		"idle",
 	);
 	const [error, setError] = useState<string | null>(null);
+	const [paymentReceived, setPaymentReceived] = useState(false);
+	// captured once, at mount: an upgrade/renewal starts from `active`, a fresh
+	// purchase from `none`/`pending_payment`. only affects the success copy
+	const [wasActiveAtMount] = useState(state === "active");
+	const initialPaymentId = useRef<string | null>(latestPaymentId);
 
 	const isActive = state === "active";
 	const restricted = state === "suspended" || state === "blacklisted";
 	const selectedTier = tiers.find((tier) => tier.tierId === selectedTierId) ?? null;
-	// a purchase is "in flight" only while the subscription has not yet flipped to
-	// active. deriving this (rather than resetting state in an effect) means the
-	// callback landing on `active` naturally ends the polling without an extra render
-	const awaiting = status === "awaiting" && state !== "active";
+	// in flight for as long as an stk push is awaiting its callback. the poll
+	// stops when the success effect above flips `status` back to idle, or on the
+	// timeout — not on a state change, since an upgrade never changes the state
+	const awaiting = status === "awaiting";
+
+	useEffect(() => {
+		if (paymentReceived) return;
+		if (
+			latestPaymentId &&
+			latestPaymentId !== initialPaymentId.current &&
+			latestPaymentStatus === "confirmed"
+		) {
+			setPaymentReceived(true);
+			setStatus("idle");
+		}
+	}, [latestPaymentId, latestPaymentStatus, paymentReceived]);
 
 	useEffect(() => {
 		if (!awaiting) return;
@@ -152,6 +182,17 @@ const PurchaseSubscription = ({
 
 	return (
 		<div className="flex flex-col gap-6">
+			{paymentReceived ? (
+				<PaymentSuccessNotice
+					title="Payment received"
+					description={
+						wasActiveAtMount
+							? "Your payment is confirmed and your plan has been extended."
+							: "Your payment is confirmed and your subscription is now active."
+					}
+				/>
+			) : null}
+
 			{isActive ? (
 				<Card className="ring-primary/40">
 					<CardContent className="flex flex-col gap-2 pt-(--card-spacing)">

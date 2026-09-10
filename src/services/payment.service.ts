@@ -544,5 +544,32 @@ const expireTimedOutPayments = async (payload: Payload): Promise<{ expired: numb
 	return { expired };
 };
 
-export { expireTimedOutPayments, handleCallback, initiatePayment };
+// the caller's most recent payment of a given type. the pay pages read this after
+// a poll refresh to detect that a freshly initiated payment has settled at
+// `confirmed`, so the ui can show an explicit "payment received" cue. read-only;
+// the caller supplies their own session user id
+const getLatestPaymentForUser = async (
+	payload: Payload,
+	userId: string,
+	paymentType: PaymentType,
+): Promise<Payment | null> => {
+	try {
+		const result = await payload.find({
+			collection: "payments",
+			where: {
+				and: [{ user: { equals: userId } }, { paymentType: { equals: paymentType } }],
+			},
+			sort: "-createdAt",
+			limit: 1,
+			depth: 0,
+			overrideAccess: true,
+		});
+		return result.docs[0] ?? null;
+	} catch (error) {
+		console.error("[services/payment] latest payment lookup failed:", error);
+		return null;
+	}
+};
+
+export { expireTimedOutPayments, getLatestPaymentForUser, handleCallback, initiatePayment };
 export type { CallbackOutcome, PaymentInput };

@@ -20,6 +20,52 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-10 — Real M-Pesa callbacks in dev + payment success cues
+
+- **What was built**:
+  1. Retired the dev-only "simulate payment callback" workaround entirely — deleted
+     `src/app/actions/dev.ts` and `src/components/dashboard/dev/dev-payment-simulate.tsx`.
+     Development now settles payments from the real Daraja callback over the tunnel, exactly
+     as production does.
+  2. Added an explicit "payment received" cue on both pay flows: a shared
+     `PaymentSuccessNotice` component (neutral card, success colour inside), shown once the
+     poll refresh confirms the payment. Subscription detects the new payment by id (so a
+     mid-cycle renewal/upgrade, where state stays `active`, still fires); verification uses
+     `VerificationPaymentFlow`, an always-mounted wrapper that survives the
+     `pending_payment → pending_review` transition that unmounts the pay card.
+  3. Fixed subscription polling so it runs while a payment is awaiting confirmation
+     regardless of the current state — previously an upgrade/renewal (state already
+     `active`) never polled, so the callback was never observed in the ui.
+  4. Added `getLatestPaymentForUser` (`payment.service.ts`) for the pay pages.
+  5. Confirmed and documented the shared callback parser fix (`src/lib/mpesa.ts`) that makes
+     Daraja 3.0 callbacks parse app-wide (verification + every subscription tier), not
+     concierge-only.
+- **Files touched**: `src/lib/mpesa.ts`, `src/services/payment.service.ts`,
+  `src/components/dashboard/payments/payment-success-notice.tsx` (new),
+  `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` (new),
+  `src/components/dashboard/mjakazi/verification/pay-verification.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
+  deleted `src/app/actions/dev.ts`,
+  deleted `src/components/dashboard/dev/dev-payment-simulate.tsx`.
+- **Notes**: Offline/at-handset workarounds are intentionally gone — M-Pesa is online-only.
+  If the tunnel is down or Safaricom is slow, a payment sits at `stk_sent` and self-expires
+  after the 2-minute timeout. `pnpm lint` (0 errors) and `pnpm build` pass.
+
+### 2026-09-09 — Phase 11: Concierge
+
+- **What was built**: Concierge cases end to end:
+  1. `concierge-cases` Payload collection with states (`intake`, `in_review`, `shortlist_delivered`, `closed`, `replacement_requested`), structured brief group, shortlist candidate array with match notes, and assigned staff tracking.
+  2. Automatic case creation in `concierge.service.ts` on confirmed payment for an `isConcierge` subscription tier.
+  3. Mwajiri brief intake form at `/dashboard/mwajiri/concierge` with Zod validation, plus a `ConciergeStatusCard` on both `/dashboard/mwajiri` and `/dashboard/mwajiri/concierge`.
+  4. Staff queue at `/dashboard/staff/concierge` and case detail at `/dashboard/staff/concierge/[id]` with case claim action, verified candidate search, 3–5 shortlist builder with match notes, and shortlist delivery.
+  5. Shortlist delivery creates durable `contact-unlocks` using `contact.service.ts`, sends `sendConciergeShortlistDeliveredEmail`, and writes audit entries.
+  6. Mwajiri outcome recording (`closed` with `hired` / `none_suitable`) and 1-time replacement guarantee within 30 days of a confirmed hire (`replacement_requested`).
+  7. PostHog events `concierge_brief_submitted` and `concierge_shortlist_delivered` (`size`, `daysToDeliver`).
+- **Files touched**: `src/payload/collections/concierge-cases/schema.ts` (new), `src/payload/collections/index.ts`, `src/lib/audit.ts`, `src/payload/collections/audit-logs/schema.ts`, `src/services/concierge.service.ts` (new), `src/services/subscription.service.ts`, `src/lib/email.ts`, `src/app/actions/concierge.ts` (new), `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx` (new), `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx` (new), `src/components/dashboard/staff/concierge/concierge-queue.tsx` (new), `src/components/dashboard/staff/concierge/concierge-case-detail.tsx` (new), `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx` (new), `src/app/(saas)/dashboard/staff/concierge/page.tsx` (new), `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx` (new), `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/staff/page.tsx`, `src/lib/dashboard-nav.ts`, `context/ui-registry.md`, `context/progress-tracker.md`, `src/payload-types.ts` (regenerated).
+- **Notes**: All 11.1–11.3 deliverables complete. `pnpm lint` (0 errors) and `pnpm build` pass cleanly.
+
 ---
 
 ## Log

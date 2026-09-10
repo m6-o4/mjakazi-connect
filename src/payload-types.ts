@@ -85,6 +85,7 @@ export interface Config {
     'expressions-of-interest': ExpressionsOfInterest;
     hires: Hire;
     reviews: Review;
+    'concierge-cases': ConciergeCase;
     redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -112,6 +113,7 @@ export interface Config {
     'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
     hires: HiresSelect<false> | HiresSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
+    'concierge-cases': ConciergeCasesSelect<false> | ConciergeCasesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -704,6 +706,12 @@ export interface AuditLog {
     | 'review_rejected'
     | 'review_hidden'
     | 'review_shown'
+    | 'concierge_case_created'
+    | 'concierge_brief_submitted'
+    | 'concierge_case_claimed'
+    | 'concierge_shortlist_delivered'
+    | 'concierge_outcome_recorded'
+    | 'concierge_replacement_requested'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -1084,6 +1092,40 @@ export interface Review {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "concierge-cases".
+ */
+export interface ConciergeCase {
+  id: string;
+  mwajiri: string | User;
+  subscription: string | Subscription;
+  state: 'intake' | 'in_review' | 'shortlist_delivered' | 'closed' | 'replacement_requested';
+  brief?: {
+    jobCategory?: string | null;
+    location?: string | null;
+    workPreference?: ('live_in' | 'live_out' | 'either') | null;
+    salaryMin?: number | null;
+    salaryMax?: number | null;
+    familyDetails?: string | null;
+    duties?: string | null;
+    specialRequirements?: string | null;
+    submittedAt?: string | null;
+  };
+  shortlist?:
+    | {
+        candidate: string | WajakaziProfile;
+        matchNote?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  assignedTo?: (string | null) | User;
+  deliveredAt?: string | null;
+  outcome?: ('hired' | 'none_suitable') | null;
+  replacementUsedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -1321,6 +1363,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'reviews';
         value: string | Review;
+      } | null)
+    | ({
+        relationTo: 'concierge-cases';
+        value: string | ConciergeCase;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2038,6 +2084,41 @@ export interface ReviewsSelect<T extends boolean = true> {
   rejectionReason?: T;
   reviewedAt?: T;
   hiddenByWorker?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "concierge-cases_select".
+ */
+export interface ConciergeCasesSelect<T extends boolean = true> {
+  mwajiri?: T;
+  subscription?: T;
+  state?: T;
+  brief?:
+    | T
+    | {
+        jobCategory?: T;
+        location?: T;
+        workPreference?: T;
+        salaryMin?: T;
+        salaryMax?: T;
+        familyDetails?: T;
+        duties?: T;
+        specialRequirements?: T;
+        submittedAt?: T;
+      };
+  shortlist?:
+    | T
+    | {
+        candidate?: T;
+        matchNote?: T;
+        id?: T;
+      };
+  assignedTo?: T;
+  deliveredAt?: T;
+  outcome?: T;
+  replacementUsedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

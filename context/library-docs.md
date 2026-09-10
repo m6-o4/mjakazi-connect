@@ -259,6 +259,9 @@ Normalize once, at the boundary, in `lib/mpesa.ts`. Validate the result against
   `payment-timeout` task exists for this.
 - **The callback URL must be publicly reachable.** In development that means a tunnel, and
   the URL registered with Safaricom must match.
+- **Daraja 3.0 omits `Value` on some metadata items.** A paybill success callback includes
+  `{ Name: "Balance" }` with no `Value` at all. Parsing must tolerate a missing `Value` or
+  the entire callback is dropped — metadata items are coerced, never rejected.
 - **Validate the amount.** Confirm the paid amount equals the expected amount before
   confirming. Amounts come from `platform-settings`.
 
@@ -266,6 +269,12 @@ Normalize once, at the boundary, in `lib/mpesa.ts`. Validate the result against
 
 Amounts are integer KSh. Every callback payload is stored whole for audit. The full state
 machine is in `architecture.md`.
+
+**Development uses real callbacks — there is no in-app simulator.** M-Pesa is an online-only
+flow, so development settles payments exactly as production does: the tunnel
+(`app-dev.s3.co.ke`, already in `allowedDevOrigins`) must be running and reachable, and the
+`MPESA_CALLBACK_URL` env must point at it. A payment that gets no callback sits at
+`stk_sent` and self-expires after the timeout.
 
 ---
 

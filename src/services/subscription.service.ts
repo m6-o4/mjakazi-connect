@@ -10,6 +10,7 @@ import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import { toId, userLabel } from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
 import type { Payment, Subscription, User } from "@/payload-types";
+import { createConciergeCaseOnPayment } from "@/services/concierge.service";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
 
 type Result<T = void> =
@@ -289,19 +290,64 @@ const beginPurchase = async (
 	return fail("This account cannot start a purchase.", "illegal_transition");
 };
 
-// active → active (stacking). appends the new tier's duration to the existing
-// expiry rather than to now, so a renewal bought mid-window extends the window
-// instead of resetting it. a direct compare-and-swap, not applyTransition, because
-// the state does not change
+// active → active (stacking/upgrade).
+// Option 2 implementation:
+// If upgrading to a higher tier or higher-priced plan mid-cycle, convert the remaining
+// unexpired monetary value into extra days on the new tier based on the actual amounts on file.
 const stackSubscription = async (
 	payload: Payload,
 	subscription: Subscription,
 	tier: SubscriptionTier,
-	paymentId: string,
+	payment: Payment,
 ): Promise<Result<Subscription>> => {
 	const previousState = subscription.subscriptionState;
-	const base = subscription.tierExpiry ? new Date(subscription.tierExpiry) : new Date();
-	const tierExpiry = addDays(base, tier.durationDays).toISOString();
+	const now = new Date();
+	const currentExpiry = subscription.tierExpiry ? new Date(subscription.tierExpiry) : now;
+
+	let extraDaysFromProration = 0;
+
+	// check if current subscription is still active with time remaining
+	if (currentExpiry > now && subscription.lastPaymentId) {
+		try {
+			const prevPaymentId = toId(subscription.lastPaymentId);
+			if (prevPaymentId) {
+				// read the previous payment from file
+				const prevPayment = (await payload.findByID({
+					collection: "payments",
+					id: prevPaymentId,
+					depth: 0,
+					overrideAccess: true,
+				})) as Payment | null;
+
+				if (prevPayment && prevPayment.amount > 0 && prevPayment.tierId) {
+					const prevTier = await getTierById(payload, prevPayment.tierId);
+					if (prevTier && prevTier.durationDays > 0 && prevTier.price > 0) {
+						// calculate remaining unused fraction of the previous cycle
+						const totalCycleMs = prevTier.durationDays * 24 * 60 * 60 * 1000;
+						const remainingMs = Math.max(0, currentExpiry.getTime() - now.getTime());
+						const unusedFraction = Math.min(1, remainingMs / totalCycleMs);
+
+						// unexpired monetary value based on actual amount paid on file
+						const unexpiredValue = prevPayment.amount * unusedFraction;
+
+						// daily rate of the new tier based on the new payment/tier price
+						const newTierPrice = payment.amount > 0 ? payment.amount : tier.price;
+						const newDailyRate = newTierPrice / tier.durationDays;
+
+						if (newDailyRate > 0) {
+							extraDaysFromProration = Math.round(unexpiredValue / newDailyRate);
+						}
+					}
+				}
+			}
+		} catch (err) {
+			console.error("[services/subscription] proration calculation failed:", err);
+		}
+	}
+
+	// base expiration: starts from now on tier switch / upgrade so new tier is effective immediately
+	const totalNewDays = tier.durationDays + extraDaysFromProration;
+	const tierExpiry = addDays(now, totalNewDays).toISOString();
 
 	try {
 		const result = await payload.update({
@@ -316,7 +362,7 @@ const stackSubscription = async (
 				tierId: tier.tierId,
 				tierName: tier.name,
 				tierExpiry,
-				lastPaymentId: paymentId,
+				lastPaymentId: payment.id,
 			},
 			overrideAccess: true,
 		});
@@ -336,8 +382,10 @@ const stackSubscription = async (
 				tierId: tier.tierId,
 				tierName: tier.name,
 				durationDays: tier.durationDays,
+				extraDaysFromProration,
+				totalNewDays,
 				stacked: true,
-				paymentId,
+				paymentId: payment.id,
 			},
 		});
 
@@ -419,7 +467,7 @@ const activateSubscriptionOnPayment = async (
 	let result: Result<Subscription>;
 
 	if (subscription.subscriptionState === "active") {
-		result = await stackSubscription(payload, subscription, tier, payment.id);
+		result = await stackSubscription(payload, subscription, tier, payment);
 	} else if (
 		subscription.subscriptionState === "pending_payment" ||
 		subscription.subscriptionState === "none" ||
@@ -456,6 +504,9 @@ const activateSubscriptionOnPayment = async (
 
 	if (result.success) {
 		await notifySubscriptionPurchase(payload, result.data, payment, tier.name);
+		if (tier.isConcierge) {
+			await createConciergeCaseOnPayment(payload, userId, result.data.id);
+		}
 	}
 
 	return result;
