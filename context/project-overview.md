@@ -456,8 +456,8 @@ Summarized here; binding rules live in `architecture.md`:
   naming the viewer, the subject and the time.
 - Phone numbers, ID numbers and documents are never indexed by search engines and never
   appear in an analytics event.
-- Account deletion nullifies personal data. Transaction records are retained for statutory
-  audit.
+- Account deletion nullifies personal data and removes the account's transaction records,
+  which carry the payer's phone number and raw callback body.
 
 ---
 

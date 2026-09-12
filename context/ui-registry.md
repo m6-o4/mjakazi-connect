@@ -292,26 +292,46 @@ codebase.
 ### `ModerationTable`
 
 - **Location**: `src/components/dashboard/moderation/moderation-table.tsx`
-- **Purpose**: Moderation list for wajakazi/waajiri accounts — rename (staff + admin),
-  suspend (staff + admin), reinstate and delete (admin only). Every action requires a
-  reason entered in the dialog.
-- **Props**: `{ accounts: ModerationRow[]; canSuspend; canReinstate; canDelete }`
+- **Purpose**: Moderation list for wajakazi/waajiri accounts — suspend (staff + admin) and
+  reinstate (admin only). Every action requires a reason entered in the dialog. Renaming
+  and permanent deletion live in the account sections.
+- **Props**: `{ accounts: AccountRow[]; canSuspend; canReinstate }`
 - **Visual pattern**: same list-row pattern as `StaffTable`; status `Badge` with a
   page-mapped variant (a suspended account overrides the underlying state); action buttons
-  swap between Suspend/Delete (active) and Reinstate (suspended); `AlertDialog` with a
-  required `Textarea` reason field and an inline error.
+  swap between Suspend (active) and Reinstate (suspended); `AlertDialog` with a required
+  `Textarea` reason field and an inline error. No rename or delete actions here.
 - **Used in**: `(saas)/dashboard/moderation/page.tsx`
+
+### `AccountsTable`
+
+- **Location**: `src/components/dashboard/accounts/accounts-table.tsx`
+- **Purpose**: A single account type's administration list — inline name editing, plus a
+  permanent full delete for admins. Deliberately separate from moderation
+  (suspend/reinstate), which stays reason-gated.
+- **Props**: `{ accounts: AccountRow[]; canDelete: boolean }`
+- **Row mapper**: both this and `ModerationTable` consume the shared `AccountRow` and
+  `toWajakaziRow` / `toWaajiriRow` from `src/lib/account-rows.ts`, so an account's
+  displayed status can never drift between the two surfaces. `AccountRow` = `userId`,
+  `name`, `firstName`, `lastName`, `email`, `statusLabel`, `statusVariant`, `subtitle`,
+  `accountState`, `createdAt`.
+- **Visual pattern**: same `divide-y` list-row pattern as `ModerationTable`; initials
+  avatar in `bg-primary/10 text-primary`; status `Badge`; Edit `Button` (`outline`) opens
+  the shared `EditNameForm`; Delete `Button` (`ghost`, `text-destructive`) opens an
+  `AlertDialog` with no reason field; calls `updateAccountAction` / `deleteAccountAction`
+  then `router.refresh()`; `text-destructive` inline error
+- **Used in**: `(saas)/dashboard/accounts/wajakazi/page.tsx`,
+  `(saas)/dashboard/accounts/waajiri/page.tsx`
 
 ### `EditNameForm`
 
 - **Location**: `src/components/dashboard/admin/edit-name-form.tsx`
 - **Purpose**: Small inline first/last-name editor shared by `StaffTable` and
-  `ModerationTable`
+  `AccountsTable`
 - **Props**:
   `{ initialFirstName: string; initialLastName: string; onSave: (first, last) => Promise<string | null>; onCancel: () => void }`
 - **Visual pattern**: two `Input`s + Save/Cancel `Button`s; inline `text-destructive`
   error
-- **Used in**: `StaffTable`, `ModerationTable`
+- **Used in**: `StaffTable`, `AccountsTable`
 
 ### `AuditLogTable`
 

@@ -669,6 +669,7 @@ export interface AuditLog {
     | 'account_created'
     | 'account_updated'
     | 'account_deleted'
+    | 'account_deletion_failed'
     | 'account_suspended'
     | 'account_reinstated'
     | 'verification_submitted'

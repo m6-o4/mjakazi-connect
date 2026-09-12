@@ -32,6 +32,8 @@ const updateAccountAction = async (
 		const result = await updateAccountName(payload, user, userId, parsed.data);
 		if (!result.success) return { success: false, error: result.error };
 
+		revalidatePath("/dashboard/accounts/wajakazi");
+		revalidatePath("/dashboard/accounts/waajiri");
 		revalidatePath("/dashboard/moderation");
 		return { success: true };
 	} catch (error) {
@@ -40,18 +42,17 @@ const updateAccountAction = async (
 	}
 };
 
-const deleteAccountAction = async (
-	userId: string,
-	reason: string,
-): Promise<ActionResult> => {
+const deleteAccountAction = async (userId: string): Promise<ActionResult> => {
 	try {
 		const user = await getCurrentUser();
 		if (!user) return { success: false, error: "You must be signed in." };
 
 		const payload = await getPayload({ config });
-		const result = await deleteAccount(payload, user, userId, reason);
+		const result = await deleteAccount(payload, user, userId);
 		if (!result.success) return { success: false, error: result.error };
 
+		revalidatePath("/dashboard/accounts/wajakazi");
+		revalidatePath("/dashboard/accounts/waajiri");
 		revalidatePath("/dashboard/moderation");
 		return { success: true };
 	} catch (error) {

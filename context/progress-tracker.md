@@ -20,6 +20,51 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-12 — Admin/staff account sections (name edit + full delete)
+
+- **What was built**:
+  1. Two new dashboard sections for admin and staff — `/dashboard/accounts/wajakazi` and
+     `/dashboard/accounts/waajiri` — listing each account type with inline name editing
+     (shared `EditNameForm`) and an admin-only permanent delete.
+  2. `AccountsTable` (new) plus shared `src/lib/account-badges.ts`, which now holds the
+     verification/blacklist/suspended badge maps used by both the account sections and the
+     moderation page.
+  3. Extended the deletion cascade in `accounts.service.ts`: deleting a SaaS account now
+     also removes contact-unlocks, expressions-of-interest, hires, reviews, saved-wajakazi
+     and concierge-cases (a mjakazi's candidate rows are pulled from shortlists; a
+     mwajiri's whole cases are removed before their subscription). When an employer is
+     deleted, counterpart wajakazi held only by that employer's active hires are released
+     back to `available`. Audit logs are kept as the immutable record. Deletion is
+     admin-only and no longer requires a reason.
+  4. Moderation now owns suspend/reinstate only — the delete and rename actions (and their
+     props, state and dialog handling) were removed from `ModerationTable`; the required
+     reason field stays for both remaining actions. Renaming and deletion live in the
+     account sections.
+  5. Left-nav gained Wajakazi + Waajiri for both roles; the admin overview's account cards
+     now link to the sections, and the staff overview gained Waajiri/Wajakazi account
+     cards.
+  6. Post-review hardening: the shortlist cleanup pages and runs sequentially (no
+     unbounded write burst, no 200-case truncation); a non-transactional cascade failure
+     now writes an `account_deletion_failed` audit entry and asks the admin to re-run;
+     account rows are built by shared `toWajakaziRow`/`toWaajiriRow` mappers
+     (`src/lib/account-rows.ts`) so moderation and the account sections cannot drift.
+- **Files touched**: `src/services/accounts.service.ts`, `src/app/actions/accounts.ts`,
+  `src/lib/account-badges.ts` (new), `src/lib/account-rows.ts` (new),
+  `src/components/dashboard/accounts/accounts-table.tsx` (new),
+  `src/app/(saas)/dashboard/accounts/{wajakazi,waajiri}/page.tsx` (new),
+  `src/lib/dashboard-nav.ts`, `src/app/(saas)/dashboard/admin/page.tsx`,
+  `src/app/(saas)/dashboard/staff/page.tsx`,
+  `src/components/dashboard/moderation/moderation-table.tsx`,
+  `src/app/(saas)/dashboard/moderation/page.tsx`,
+  `src/payload/collections/audit-logs/schema.ts`, `src/lib/audit.ts`,
+  `src/payload-types.ts`, `context/architecture.md`, `context/project-overview.md`,
+  `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing warning) and `pnpm build` pass (49
+  routes). The erasure docs were updated: payments carry the payer's phone number and raw
+  callback, so they are deleted with the account rather than retained. The cascade is still
+  non-transactional, but is idempotent and resumable — re-running deletion finishes the
+  cleanup. Manual verification pending.
+
 ### 2026-09-10 — Real M-Pesa callbacks in dev + payment success cues
 
 - **What was built**:

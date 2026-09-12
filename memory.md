@@ -1,114 +1,99 @@
-# Memory — Real M-Pesa callbacks in dev, payment success cues & Concierge (Phase 11)
+# Memory — Admin/staff account sections, moderation split & safe account deletion
 
-Last updated: 2026-09-10 22:24
+Last updated: 2026-09-12 19:59
 
 ## What was built
 
-Concierge (Phase 11), the Daraja 3.0 callback fix, dev/production payment parity, and
-payment success cues.
+Stage 1 of the section-by-section customer-feedback pass: administration of wajakazi and
+waajiri accounts.
 
-**Phase 11 — Concierge (end to end)**
-- `src/payload/collections/concierge-cases/schema.ts` (new) — collection with states
-  (`intake`, `in_review`, `shortlist_delivered`, `closed`, `replacement_requested`),
-  structured brief group, shortlist array with match notes, `assignedTo`.
-- `src/services/concierge.service.ts` (new) — auto case creation on Concierge payment,
-  brief submission, case claim, shortlist delivery (creates `contact-unlocks`, emails the
-  mwajiri), outcome recording, 1-time replacement guarantee.
-- `src/app/actions/concierge.ts` (new) — Server Actions with cache revalidation.
-- Mwajiri: `concierge-brief-form.tsx`, `concierge-status-card.tsx`,
-  `(saas)/dashboard/mwajiri/concierge/page.tsx`.
-- Staff: `concierge-queue.tsx`, `concierge-case-detail.tsx`,
-  `(saas)/dashboard/staff/concierge/page.tsx` + `[id]/page.tsx`.
+**Account sections (admin + staff)**
+- Routes `(saas)/dashboard/accounts/wajakazi/page.tsx` and
+  `(saas)/dashboard/accounts/waajiri/page.tsx` (new).
+- `src/components/dashboard/accounts/accounts-table.tsx` (new) — `AccountsTable`: inline
+  name editing via the shared `EditNameForm`, plus an admin-only permanent delete with a
+  confirm dialog (no reason field).
+- Shared mappers `src/lib/account-rows.ts` (new) — `AccountRow`,
+  `toWajakaziRow`, `toWaajiriRow`. Both the account sections and moderation now use these,
+  so displayed account status cannot drift.
+- Shared badge maps `src/lib/account-badges.ts` (new).
 
-**Mid-cycle subscription upgrade (Option 2, value-based proration)**
-- `src/services/subscription.service.ts` — `stackSubscription` now converts the unexpired
-  monetary value of the previous tier into extra days on the new tier, using the actual
-  amounts on file (`payments` → `tierId` → tier price/duration). New tier takes effect
-  immediately from `now()`; `tierExpiry = now() + tier.durationDays + prorated extra days`.
+**Deletion cascade** (`src/services/accounts.service.ts`)
+- `deleteAccount` is admin-only and no longer takes a reason.
+- `deleteMjakaziAccountData` / `deleteMwajiriAccountData` / `deleteAccountData` now also
+  remove contact-unlocks, expressions-of-interest, hires, reviews, saved-wajakazi and
+  concierge-cases (shortlist candidate rows pulled out for a deleted worker; whole cases for
+  a deleted employer, before the subscription). Then profile, vault documents, photos,
+  subscription, payments, user + Clerk.
+- Deleting an employer captures workers held by that employer's active hires and releases
+  each back to `availabilityStatus: "available"` — but only when no other active hire still
+  holds them. `account_deleted` audit metadata includes `releasedMjakazi`.
+- Shortlist cleanup pages 50 cases per pass and updates sequentially (no unbounded write
+  burst, no 200-case truncation).
+- Failures write an `account_deletion_failed` audit entry and return a "re-run to complete"
+  error. The cascade is idempotent/resumable (no DB transaction).
 
-**Daraja 3.0 callback fix (app-wide, not concierge-specific)**
-- `src/lib/mpesa.ts` — `callbackMetadataItemSchema.Value` relaxed to
-  `.nullish()`; `getCallbackMetadataValue` coerces null → undefined.
-- Confirmed by tracing: one shared `parseStkCallback` → one route
-  (`/api/webhooks/payments/callback`) → `handleCallback` → verification **or** any
-  subscription tier. There is no per-plan parser.
+**Moderation split**
+- `ModerationTable` now owns suspend/reinstate only. Delete and rename were removed (props,
+  state, dialog handling, imports); the required reason field stays.
+- `src/app/actions/accounts.ts` — `deleteAccountAction(userId)` (no reason);
+  `updateAccountAction` revalidates both account routes and moderation.
 
-**Dev/production payment parity**
-- Deleted the dev-only workaround: `src/app/actions/dev.ts` and
-  `src/components/dashboard/dev/dev-payment-simulate.tsx` (and the `dev/` folder), removed
-  both render sites. Development now settles from the real Daraja callback over the tunnel.
-- `src/services/payment.service.ts` — added `getLatestPaymentForUser`.
+**Nav + overview**
+- `src/lib/dashboard-nav.ts` — Wajakazi and Waajiri items for `admin` and `staff`.
+- Admin overview account cards now link to the sections; staff overview gained
+  Waajiri/Wajakazi cards with counts.
 
-**Payment success cues (UI)**
-- `src/components/dashboard/payments/payment-success-notice.tsx` (new) — shared neutral
-  card, success colour only on icon/heading.
-- `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` (new) —
-  always-mounted wrapper that survives `pending_payment → pending_review` and then shows
-  the notice (gated to `pending_review`).
-- `pay-verification.tsx` — reports awaiting state up via `onAwaitingChange`.
-- `purchase-subscription.tsx` — detects the newest payment **by id** settling at
-  `confirmed` (so renewals/upgrades are caught); polling fixed to run while awaiting even
-  when the subscription is already `active`.
-
-**Records updated:** `context/architecture.md` (invariant #13 no longer has a simulator
-exception; Payments section rewritten), `context/library-docs.md` (Daraja valueless
-metadata item; dev uses real callbacks), `context/ui-registry.md`,
-`context/progress-tracker.md`.
+**Audit / types / docs**
+- Added `account_deletion_failed` to `src/lib/audit.ts` and the `audit-logs` schema; ran
+  `pnpm generate:types` (updated `src/payload-types.ts`).
+- `context/architecture.md` + `context/project-overview.md`: erasure now states payment
+  records are deleted with the account (they carry payer phone + raw callback), not
+  retained.
+- `context/ui-registry.md` and `context/progress-tracker.md` updated.
 
 ## Decisions made
 
-- **No payment bypass or dev shortcut — ever.** M-Pesa is online-only. Dev uses real
-  callbacks over the tunnel (`app-dev.s3.co.ke`, already in `allowedDevOrigins`); no offline
-  testing path. A payment with no callback self-expires after the 2-minute timeout.
-- **Proration uses amounts on file, never hardcoded values** — so test amounts (KSh 15) and
-  real amounts (KSh 20,000) behave identically and correctly.
-- **Concierge case creation is idempotent per open case** — reuses any non-closed case for
-  the mwajiri; creates a fresh `intake` case only when none is open.
-- **Success cue is anchored on payment id, not subscription state**, because an upgrade
-  keeps the state `active`.
+- **Account sections vs moderation.** The account sections own viewing, renaming and
+  (admin) deletion. Moderation owns suspend/reinstate only.
+- **Delete is admin-only and confirm-only** — no reason required.
+- **Erasure scope:** interaction records are removed with the account; audit logs are kept
+  as the immutable record. Payments are deleted (not retained), because they carry
+  identifiable data.
+- **No DB transaction.** Mongo transactions need a replica set the project does not use;
+  instead the cascade is idempotent/resumable and a failure is audited.
+- **Shared row mapping** across moderation and account sections to prevent status drift.
 
 ## Problems solved
 
-- **Daraja 3.0 dropped callbacks:** `{"Name":"Balance"}` has no `Value`; the strict schema
-  rejected the whole callback → `unrecognized callback body`. Fixed by making `Value`
-  optional.
-- **Upgrade never polled for its callback:** the subscription poll required
-  `state !== "active"`, so a mid-cycle upgrade (already active) never refreshed. Now polls
-  while a payment is awaiting, and stops when the newest payment confirms or on timeout.
-- **Success notice lost on verification:** `PayVerification` unmounts the instant the
-  callback flips the state, so detection lives in the parent wrapper instead.
-- **Proration math verified** for Essentials→Concierge, Standard→Concierge, and same-tier
-  renewal (renewal correctly reduces to plain stacking).
+- Deleting an employer hard-deleted `hires` and bypassed `hire.service`'s availability
+  reset, leaving counterpart wajakazi stuck at `availabilityStatus: "hired"` (hidden from
+  the directory with no hire to explain it). Fixed with the release pass above.
+- Shortlist cleanup originally capped at 200 cases and fired all updates concurrently — now
+  paged and sequential.
+- The account row/badge mapping was triplicated across moderation and both account pages —
+  extracted to `account-rows.ts`.
+- Removed the unused exported `AccountBadge` type.
 
 ## Current state
 
-- Phase 11 complete; dev/production payment parity complete; success cues complete.
-- `pnpm lint` — 0 errors (1 pre-existing `react-hook-form` `watch()` warning in
-  `concierge-brief-form.tsx`). `pnpm build` — compiles and type-checks, 47 routes; only the
-  known harmless Windows `sharp`/`detect-libc` EPERM symlink warnings.
-- **All work from the last two sessions is uncommitted.**
+- Stage 1 feature-complete. `pnpm lint` — 0 errors (same pre-existing `react-hook-form`
+  `watch()` warning in `concierge-brief-form.tsx`). `pnpm build` — passes, 49 routes
+  (only the known Windows `sharp`/`detect-libc` EPERM warnings). **Uncommitted.**
+- Michael has wiped all SaaS records, leaving only the admin account. No wajakazi/waajiri
+  test data exists right now.
+- Manual verification of the account sections and delete cascade is pending fresh records.
 
 ## Next session starts with
 
-- **Waiting on Michael's client-meeting change list** (interface + workflow changes for the
-  soft launch next week). He is still collating it; do not start guessing changes. When it
-  arrives, group the changes, surface ambiguities, and confirm a plan before writing code.
-- Then: without the test environment being wiped, implement the approved changes, verify
-  (`pnpm lint` + `pnpm build`), and only then run the fresh-data manual test.
+- **Stage 2: staff entry and sign-in.** Michael will drive it the same way as the admin
+  walkthrough — narrate the flow, surface what breaks, then implement. Follow the same loop:
+  read back the request, locate the code, propose the edit, confirm, then `pnpm lint` +
+  `pnpm build`, and update `progress-tracker.md` / `ui-registry.md`.
 
 ## Open questions
 
-- The client's requested changes are unknown. Await the list.
-- Remaining backlog (not blocking): staff "today's activity" + "queue preview"; mjakazi
-  verification-expiry countdown.
-- Known accepted gap: no distinct immediate UI cue for a cancelled/failed callback (e.g.
-  ResultCode 1032) — the waiting state runs to its timeout message. Confirm if the client
-  wants an immediate failure notice.
-
-## Test plan (pending, per Michael)
-
-Michael will wipe all records, keep only the admin account, then create **2 staff, 6
-wajakazi, 3 waajiri** and simulate typical usage. Recommended sequencing agreed: land the
-client changes first, then wipe-and-recreate so the soft-launch build itself is what gets
-exercised. Before the wipe, confirm platform-settings values are re-entered — subscription
-tier prices, verification fee, and Concierge flags are read live by several flows.
+- How staff accounts are created and entered (Clerk invite vs self sign-up then role
+  assignment) — to be defined with Michael at the start of Stage 2.
+- Manual re-verification of the account sections + extended delete cascade needs fresh
+  wajakazi/waajiri records (create disposable test accounts).

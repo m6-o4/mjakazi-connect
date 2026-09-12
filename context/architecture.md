@@ -639,8 +639,9 @@ IDs and Certificates of Good Conduct are sensitive personal data.
 - **Locking.** Documents cannot be edited while verification is `pending_review`. A
   `verified` worker can only _replace_ a document — which reverts them to `pending_review`
   — never remove one, so a badge can never stand over missing evidence.
-- **Erasure.** Account deletion nullifies personal data and destroys vault documents.
-  Payment records are retained for statutory audit with the personal fields nulled.
+- **Erasure.** Account deletion nullifies personal data, destroys vault documents and
+  removes the account's payment records, which carry the payer's phone number and the raw
+  Daraja callback body. Aggregate figures remain available from the audit trail.
 - **Indexing.** Phone numbers, ID numbers and document URLs are never exposed to search
   engines. Public profile pages carry no contact data at all, so there is nothing to leak.
 
