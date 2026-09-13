@@ -20,6 +20,120 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-13 — Toast feedback convention (Batch 4, rollout complete)
+
+- **What was built**: Final batch — mjakazi + settings confirmations:
+  - `mjakazi/verification/submit-verification.tsx` — "Submitted for review"
+  - `mjakazi/verification/resubmit-verification.tsx` — "Resubmitted for review"
+  - `mjakazi/opportunities/eoi-inbox.tsx` — "Interest accepted" / "Interest declined"
+  - `mjakazi/opportunities/hire-inbox.tsx` — "Hire confirmed" / "Hire reversed" /
+    "Contract ended"
+  - `settings/availability-card.tsx` — "Availability updated" and "Hire confirmed"
+  - `mjakazi/reviews/reviews-panel.tsx` — "Review hidden from profile" / "Review shown on
+    profile"
+- **Status**: rollout complete. Every transient action confirmation in the dashboard now
+  uses the `notifySuccess` / `notifyInfo` / `notifyError` helpers in `src/lib/notify.ts`.
+  Deliberately still inline: persistent state and field-level validation errors (payment
+  notices, M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle,
+  availability status, review hidden note, form field errors).
+- **Files touched**: the six components above, `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
+  (49 routes) pass. **Manual verification pending across all four batches.**
+
+### 2026-09-13 — Toast feedback convention (Batch 3)
+
+- **What was built**: Added `notifySuccess` confirmations to the mwajiri flows:
+  - `mwajiri/saved/eoi-send.tsx` — "Interest sent to N wajakazi"
+  - `mwajiri/hire-confirm-card.tsx` — "Hire recorded" (mark hired), "Hire confirmed"
+    (agree), "Hire reversed", "Contract ended"
+  - `mwajiri/concierge/concierge-status-card.tsx` — "Case outcome recorded" (hired / none
+    suitable) and "Replacement requested"
+- **Decisions**: the concierge actions already call `revalidatePath`, so that card updates
+  without an explicit `router.refresh()`. Existing inline errors left untouched.
+- **Files touched**: the three components above, `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
+  (49 routes) pass. Batch 4 (mjakazi verification submit/resubmit, EOI + hire inbox,
+  availability, review visibility) remains. **Manual verification pending.**
+
+### 2026-09-13 — Toast feedback convention (Batch 2)
+
+- **What was built**: Extended the `notifySuccess` convention to the previously silent
+  admin / accounts / moderation / staff flows, each with a stable per-entity `id`:
+  - `admin/edit-name-form.tsx` — "Name updated" (covers rename in both tables)
+  - `admin/staff/staff-table.tsx` — "Staff account deleted"
+  - `accounts/accounts-table.tsx` — "Account deleted" (names the account)
+  - `moderation/moderation-table.tsx` — "Account suspended" / "Account reinstated"
+  - `staff/reviews/review-queue.tsx` — "Review published" / "Review rejected"
+  - `staff/verifications/review-form.tsx` — "Verification approved" / "Verification
+    rejected" (fired before the redirect; the toast survives navigation)
+- **Decisions**: existing inline errors (rejection reasons, validation) left untouched —
+  toasts only confirm success.
+- **Files touched**: the six components above, `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
+  (49 routes) pass. Batch 3 (mwajiri EOI send, hire-confirm, concierge status) and Batch 4
+  (mjakazi verification submit/resubmit, EOI/hire inbox, availability) remain. **Manual
+  verification pending.**
+
+### 2026-09-13 — Toast feedback convention (Batch 1)
+
+- **What was built**: Added `src/lib/notify.ts` (client-only) wrapping the Base UI toast
+  manager with `notifySuccess` / `notifyInfo` / `notifyError` so every confirmation shares
+  one set of defaults (success 5s, info 8s, error high priority and stays until dismissed,
+  optional stable `id` so repeat actions update one toast instead of stacking). Migrated
+  `ProfileForm` onto the helpers and converted the four inline transient confirmations to
+  success toasts:
+  - `admin/staff/create-staff-form.tsx` — "Staff account created" (inline line removed)
+  - `admin/settings/platform-settings-form.tsx` — "Verification fee saved" (the 3s "Saved"
+    button label is gone; the `status` union no longer includes `"saved"`)
+  - `admin/settings/subscription-tiers-form.tsx` — "Subscription tiers saved" (same)
+  - `mwajiri/concierge/concierge-brief-form.tsx` — "Requirements brief submitted" (inline
+    line removed)
+- **Decisions**: toasts are the standard surface for transient action confirmations;
+  persistent state stays inline (payment-received notices, M-Pesa awaiting/timeout, the
+  availability status card, document-vault badges, browse contact reveal, Save/Saved toggle).
+  Field-level validation errors stay inline; action-level failures can use `notifyError`.
+  Toasts survive `router.refresh()` / `router.push()` within the dashboard because
+  `<Toaster>` lives in `(saas)/layout.tsx`.
+- **Files touched**: `src/lib/notify.ts` (new), the four components above,
+  `src/components/dashboard/mjakazi/profile-form/index.tsx`, `context/ui-registry.md`.
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
+  (49 routes) pass. Batches 2–4 are not done yet: moderation / accounts / staff tables and
+  the review queue + form (silent successes); mwajiri EOI send, hire-confirm, concierge
+  status; mjakazi verification submit/resubmit, EOI/hire inbox, availability. **Manual
+  verification pending.**
+
+### 2026-09-13 — Mjakazi profile form: required-field semantics (Model A)
+
+- **What was built/fixed**: Settled the mismatch between the form's `*` markers, the zod
+  schema, and `profileComplete`. Chosen model (Model A): `*` means "needed to complete your
+  profile", not "required to save" — partial saves stay allowed, and the schema keeps
+  enforcing only real errors (phone format, 200-word cap, salary ordering).
+  1. Form asterisks are now derived from one exported list (`PROFILE_UI_REQUIRED_FIELDS`
+     in `profile-constants.ts` = the completeness set + `displayName`), so they can never
+     drift from the completeness checklist; the legend is reworded to match.
+  2. react-hook-form now validates on blur and re-validates on change (`mode: "onTouched"`,
+     `reValidateMode: "onChange"`), so errors surface before submit.
+  3. A failed submit focuses the first invalid field.
+  4. `updateProfile` / `updateProfileAction` now return `missingFields`. Save feedback is
+     toast-only through the Base UI `toast` manager (component already existed, now mounted
+     via `<Toaster>` in `(saas)/layout.tsx`): complete → success, incomplete → info that
+     lists what is still needed as a bulleted `<ul>` (labels from `PROFILE_REQUIRED_LABELS`),
+     action failure → error. `ToastDescription` now renders a `<div>` instead of the default
+     `<p>` so the description can carry block content like a list.
+- **Files touched**: `src/services/profile.service.ts`, `src/app/actions/profile.ts`,
+  `src/app/(saas)/layout.tsx`, `src/lib/profile-constants.ts`,
+  `src/components/dashboard/mjakazi/profile-form/index.tsx`, `context/ui-registry.md`.
+- **Notes**: The inline save notice was replaced by toasts so feedback is visible without
+  scrolling; removing the inline state also removed the stale-list bug the local review had
+  flagged in the photo handler. `displayName` moved out of the form into
+  `PROFILE_UI_REQUIRED_FIELDS` so the marker list has one source. No schema (DB) change, so
+  no `generate:types`. `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. Follow-ups flagged but deliberately not actioned:
+  `dateOfBirth` is identity data yet neither starred nor in the completeness list;
+  `displayName` is schema-required while `PROFILE_REQUIRED_FIELDS` omits it, and its helper
+  text promises a first-name fallback that `toProfileData` does not implement. **Manual
+  verification pending.**
+
 ### 2026-09-12 — Admin/staff account sections (name edit + full delete)
 
 - **What was built**:

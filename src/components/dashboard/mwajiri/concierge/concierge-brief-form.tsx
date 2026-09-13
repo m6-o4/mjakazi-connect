@@ -1,33 +1,55 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { submitConciergeBriefAction } from "@/app/actions/concierge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { JOB_OPTIONS, LOCATION_OPTIONS, WORK_PREFERENCE_OPTIONS } from "@/lib/profile-constants";
+import { notifySuccess } from "@/lib/notify";
+import {
+	JOB_OPTIONS,
+	LOCATION_OPTIONS,
+	WORK_PREFERENCE_OPTIONS,
+} from "@/lib/profile-constants";
 
-const briefSchema = z.object({
-	jobCategory: z.string().min(1, "Job category is required"),
-	location: z.string().min(1, "Location is required"),
-	workPreference: z.enum(["live_in", "live_out", "either"]),
-	salaryMin: z.number().min(1, "Minimum salary is required"),
-	salaryMax: z.number().min(1, "Maximum salary is required"),
-	familyDetails: z.string().min(3, "Family details are required (e.g. 2 adults, 2 kids)"),
-	duties: z.string().min(10, "Please describe primary duties (at least 10 characters)"),
-	specialRequirements: z.string().optional(),
-}).refine((data) => data.salaryMax >= data.salaryMin, {
-	message: "Maximum salary must be greater than or equal to minimum salary",
-	path: ["salaryMax"],
-});
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const briefSchema = z
+	.object({
+		jobCategory: z.string().min(1, "Job category is required"),
+		location: z.string().min(1, "Location is required"),
+		workPreference: z.enum(["live_in", "live_out", "either"]),
+		salaryMin: z.number().min(1, "Minimum salary is required"),
+		salaryMax: z.number().min(1, "Maximum salary is required"),
+		familyDetails: z
+			.string()
+			.min(3, "Family details are required (e.g. 2 adults, 2 kids)"),
+		duties: z.string().min(10, "Please describe primary duties (at least 10 characters)"),
+		specialRequirements: z.string().optional(),
+	})
+	.refine((data) => data.salaryMax >= data.salaryMin, {
+		message: "Maximum salary must be greater than or equal to minimum salary",
+		path: ["salaryMax"],
+	});
 
 type BriefFormValues = z.infer<typeof briefSchema>;
 
@@ -39,7 +61,6 @@ type Props = {
 const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState(false);
 
 	const {
 		register,
@@ -63,14 +84,16 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 
 	const onSubmit = (values: BriefFormValues) => {
 		setError(null);
-		setSuccess(false);
 
 		startTransition(async () => {
 			const res = await submitConciergeBriefAction(caseId, values);
 			if (!res.success) {
 				setError(res.error);
 			} else {
-				setSuccess(true);
+				notifySuccess("Requirements brief submitted", {
+					id: "concierge-brief",
+					description: "Our staff are now reviewing your case.",
+				});
 			}
 		});
 	};
@@ -80,7 +103,8 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 			<CardHeader>
 				<CardTitle>Concierge Requirements Brief</CardTitle>
 				<CardDescription>
-					Tell us what you are looking for in a domestic worker. Our staff will hand-pick and shortlist 3 to 5 verified candidates for you.
+					Tell us what you are looking for in a domestic worker. Our staff will hand-pick
+					and shortlist 3 to 5 verified candidates for you.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -106,7 +130,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 								</SelectContent>
 							</Select>
 							{errors.jobCategory && (
-								<p className="text-xs text-destructive">{errors.jobCategory.message}</p>
+								<p className="text-destructive text-xs">{errors.jobCategory.message}</p>
 							)}
 						</div>
 
@@ -130,7 +154,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 								</SelectContent>
 							</Select>
 							{errors.location && (
-								<p className="text-xs text-destructive">{errors.location.message}</p>
+								<p className="text-destructive text-xs">{errors.location.message}</p>
 							)}
 						</div>
 					</div>
@@ -159,7 +183,9 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 								</SelectContent>
 							</Select>
 							{errors.workPreference && (
-								<p className="text-xs text-destructive">{errors.workPreference.message}</p>
+								<p className="text-destructive text-xs">
+									{errors.workPreference.message}
+								</p>
 							)}
 						</div>
 
@@ -172,7 +198,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 								{...register("salaryMin", { valueAsNumber: true })}
 							/>
 							{errors.salaryMin && (
-								<p className="text-xs text-destructive">{errors.salaryMin.message}</p>
+								<p className="text-destructive text-xs">{errors.salaryMin.message}</p>
 							)}
 						</div>
 
@@ -185,7 +211,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 								{...register("salaryMax", { valueAsNumber: true })}
 							/>
 							{errors.salaryMax && (
-								<p className="text-xs text-destructive">{errors.salaryMax.message}</p>
+								<p className="text-destructive text-xs">{errors.salaryMax.message}</p>
 							)}
 						</div>
 					</div>
@@ -198,7 +224,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 							{...register("familyDetails")}
 						/>
 						{errors.familyDetails && (
-							<p className="text-xs text-destructive">{errors.familyDetails.message}</p>
+							<p className="text-destructive text-xs">{errors.familyDetails.message}</p>
 						)}
 					</div>
 
@@ -211,12 +237,14 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 							{...register("duties")}
 						/>
 						{errors.duties && (
-							<p className="text-xs text-destructive">{errors.duties.message}</p>
+							<p className="text-destructive text-xs">{errors.duties.message}</p>
 						)}
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="specialRequirements">Special Requirements / Preferences (Optional)</Label>
+						<Label htmlFor="specialRequirements">
+							Special Requirements / Preferences (Optional)
+						</Label>
 						<Textarea
 							id="specialRequirements"
 							rows={2}
@@ -225,8 +253,7 @@ const ConciergeBriefForm = ({ caseId, initialValues }: Props) => {
 						/>
 					</div>
 
-					{error && <p className="text-sm text-destructive">{error}</p>}
-					{success && <p className="text-sm text-success font-medium">Requirements brief submitted successfully! Our staff are now reviewing your case.</p>}
+					{error && <p className="text-destructive text-sm">{error}</p>}
 
 					<Button type="submit" disabled={isPending} className="w-full sm:w-auto">
 						{isPending ? (

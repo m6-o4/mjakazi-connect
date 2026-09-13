@@ -8,6 +8,7 @@ import { setReviewVisibilityAction } from "@/app/actions/reviews";
 import { RatingStars } from "@/components/rating-stars";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 import type { WorkerReviewItem } from "@/services/review.service";
 
 type ReviewsPanelProps = {
@@ -31,6 +32,9 @@ const ReviewsPanel = ({ reviews }: ReviewsPanelProps) => {
 				setError(result.error ?? "Could not update the review.");
 				return;
 			}
+			notifySuccess(hidden ? "Review hidden from profile" : "Review shown on profile", {
+				id: `review-visibility-${reviewId}`,
+			});
 			router.refresh();
 		} catch {
 			setError("Could not update the review.");

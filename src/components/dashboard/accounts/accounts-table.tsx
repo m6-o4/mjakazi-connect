@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AccountRow } from "@/lib/account-rows";
+import { notifySuccess } from "@/lib/notify";
 
 type AccountsTableProps = {
 	accounts: AccountRow[];
@@ -54,11 +55,12 @@ const AccountsTable = ({ accounts, canDelete }: AccountsTableProps) => {
 	};
 
 	const handleDelete = async () => {
-		if (!pendingDelete) return;
+		const account = pendingDelete;
+		if (!account) return;
 
 		setBusy(true);
 		setError(null);
-		const result = await deleteAccountAction(pendingDelete.userId);
+		const result = await deleteAccountAction(account.userId);
 		setBusy(false);
 
 		if (!result.success) {
@@ -66,6 +68,10 @@ const AccountsTable = ({ accounts, canDelete }: AccountsTableProps) => {
 			return;
 		}
 
+		notifySuccess("Account deleted", {
+			id: `account-delete-${account.userId}`,
+			description: `${account.name}'s account and data were removed.`,
+		});
 		setPendingDelete(null);
 		router.refresh();
 	};

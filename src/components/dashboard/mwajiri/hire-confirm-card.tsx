@@ -16,6 +16,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 type HireCandidate = {
 	mjakaziId: string;
@@ -51,6 +52,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 	const run = async (
 		key: string,
 		action: () => Promise<{ success: boolean; error?: string }>,
+		successMessage: string,
 	) => {
 		setBusy(key);
 		setError(null);
@@ -61,6 +63,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 				return;
 			}
 			posthog.capture("hire_confirmed", { confirmedBy: "mwajiri" });
+			notifySuccess(successMessage, { id: `hire-${key}` });
 			router.refresh();
 		} finally {
 			setBusy(null);
@@ -68,15 +71,22 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 	};
 
 	const markHired = (candidate: HireCandidate) =>
-		run(`mark-${candidate.mjakaziId}`, () =>
-			confirmHireAction({
-				mjakaziId: candidate.mjakaziId,
-				sourceEoiId: candidate.sourceEoiId,
-			}),
+		run(
+			`mark-${candidate.mjakaziId}`,
+			() =>
+				confirmHireAction({
+					mjakaziId: candidate.mjakaziId,
+					sourceEoiId: candidate.sourceEoiId,
+				}),
+			"Hire recorded",
 		);
 
 	const agree = (hire: HireItem) =>
-		run(`agree-${hire.id}`, () => confirmHireAction({ mjakaziId: hire.mjakaziId }));
+		run(
+			`agree-${hire.id}`,
+			() => confirmHireAction({ mjakaziId: hire.mjakaziId }),
+			"Hire confirmed",
+		);
 
 	const reverse = async (hire: HireItem) => {
 		setBusy(`reverse-${hire.id}`);
@@ -87,6 +97,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 				setError(result.error ?? "Could not reverse the hire.");
 				return;
 			}
+			notifySuccess("Hire reversed", { id: `hire-reverse-${hire.id}` });
 			router.refresh();
 		} finally {
 			setBusy(null);
@@ -105,6 +116,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 				return;
 			}
 			posthog.capture("hire_ended", { endedBy: "mwajiri" });
+			notifySuccess("Contract ended", { id: `hire-end-${hire.id}` });
 			setReviewingId(hire.mjakaziId);
 			router.refresh();
 		} finally {

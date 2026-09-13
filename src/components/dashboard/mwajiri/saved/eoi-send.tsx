@@ -15,6 +15,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 type SendableProfile = {
 	id: string;
@@ -55,7 +56,12 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 		try {
 			const result = await sendEoiBatchAction({ mjakaziIds: [...selected] });
 			if (result.success) {
-				posthog.capture("interest_sent", { count: selected.size });
+				const count = selected.size;
+				posthog.capture("interest_sent", { count });
+				notifySuccess(`Interest sent to ${count} wajakazi`, {
+					id: "eoi-send",
+					description: "Each of them can now accept or decline.",
+				});
 				setSelected(new Set());
 				router.refresh();
 			} else {

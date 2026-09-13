@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountRow } from "@/lib/account-rows";
+import { notifySuccess } from "@/lib/notify";
 
 type ModerationTableProps = {
 	accounts: AccountRow[];
@@ -82,7 +83,8 @@ const ModerationTable = ({
 	};
 
 	const handleConfirm = async () => {
-		if (!pending) return;
+		const action = pending;
+		if (!action) return;
 		if (!reason.trim()) {
 			setReasonError("A reason is required.");
 			return;
@@ -92,10 +94,10 @@ const ModerationTable = ({
 		setReasonError(null);
 
 		let result: { success: boolean; error?: string };
-		if (pending.type === "suspend") {
-			result = await suspendAccountAction(pending.userId, reason);
+		if (action.type === "suspend") {
+			result = await suspendAccountAction(action.userId, reason);
 		} else {
-			result = await reinstateAccountAction(pending.userId, reason);
+			result = await reinstateAccountAction(action.userId, reason);
 		}
 
 		setBusy(false);
@@ -104,6 +106,11 @@ const ModerationTable = ({
 			return;
 		}
 
+		const suspended = action.type === "suspend";
+		notifySuccess(suspended ? "Account suspended" : "Account reinstated", {
+			id: `moderation-${action.userId}`,
+			description: `${action.name} was ${suspended ? "suspended" : "reinstated"}.`,
+		});
 		setPending(null);
 		router.refresh();
 	};

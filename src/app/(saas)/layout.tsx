@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ReactNode } from "react";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Toaster } from "@/components/ui/toast";
 import { jakartaSans } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +44,9 @@ const SaasLayout = async (props: { children: ReactNode }) => {
 						enableSystem
 						disableTransitionOnChange
 					>
-						<main>{children}</main>
+						<Toaster>
+							<main>{children}</main>
+						</Toaster>
 					</ThemeProvider>
 				</body>
 			</html>

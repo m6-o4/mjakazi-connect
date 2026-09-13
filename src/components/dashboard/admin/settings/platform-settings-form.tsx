@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifySuccess } from "@/lib/notify";
 
 type PlatformSettingsFormProps = {
 	currentVerificationFee: number;
@@ -22,7 +23,7 @@ type PlatformSettingsFormProps = {
 // avoid fighting the number input's native behaviour (leading zeros, empty state)
 const PlatformSettingsForm = ({ currentVerificationFee }: PlatformSettingsFormProps) => {
 	const [fee, setFee] = useState<string>(String(currentVerificationFee));
-	const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
 	const [error, setError] = useState<string | null>(null);
 
 	const save = async () => {
@@ -43,8 +44,11 @@ const PlatformSettingsForm = ({ currentVerificationFee }: PlatformSettingsFormPr
 			return;
 		}
 
-		setStatus("saved");
-		setTimeout(() => setStatus("idle"), 3000);
+		setStatus("idle");
+		notifySuccess("Verification fee saved", {
+			id: "verification-fee",
+			description: `New payment attempts will charge KSh ${parsed.toLocaleString()}.`,
+		});
 	};
 
 	const disabled = status === "saving" || fee === String(currentVerificationFee);
@@ -83,7 +87,7 @@ const PlatformSettingsForm = ({ currentVerificationFee }: PlatformSettingsFormPr
 				{error && <p className="text-destructive text-sm">{error}</p>}
 
 				<Button onClick={save} disabled={disabled} className="w-full sm:w-auto">
-					{status === "saving" ? "Saving..." : status === "saved" ? "Saved" : "Save fee"}
+					{status === "saving" ? "Saving..." : "Save fee"}
 				</Button>
 			</CardContent>
 		</Card>

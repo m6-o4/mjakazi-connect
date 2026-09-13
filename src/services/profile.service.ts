@@ -177,7 +177,13 @@ const updateProfile = async (
 	payload: Payload,
 	user: User,
 	input: ProfileFormValues,
-): Promise<Result<{ profile: WajakaziProfile; profileComplete: boolean }>> => {
+): Promise<
+	Result<{
+		profile: WajakaziProfile;
+		profileComplete: boolean;
+		missingFields: ProfileRequiredField[];
+	}>
+> => {
 	if (user.role !== "mjakazi") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
 	}
@@ -205,6 +211,7 @@ const updateProfile = async (
 		});
 
 		const profileComplete = await writeCompleteness(payload, updated);
+		const missingFields = getMissingRequiredFields(updated);
 
 		if (wasVerified && legalNameChanged) {
 			// dynamic import keeps this module out of a static cycle with
@@ -218,7 +225,7 @@ const updateProfile = async (
 
 		return {
 			success: true,
-			data: { profile: updated, profileComplete },
+			data: { profile: updated, profileComplete, missingFields },
 		};
 	} catch (error) {
 		console.error("[services/profile] updateProfile failed:", error);

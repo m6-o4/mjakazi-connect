@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifySuccess } from "@/lib/notify";
 
 // creates a new staff account. the temporary password is generated server-side
 // and never reaches the browser — the new staff member resets it on first sign-in
@@ -23,13 +24,11 @@ const CreateStaffForm = () => {
 	const [lastName, setLastName] = useState("");
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
-	const [success, setSuccess] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const submit = async () => {
 		setLoading(true);
 		setError(null);
-		setSuccess(false);
 
 		const result = await createStaffAction({ firstName, lastName, email });
 		if (!result.success) {
@@ -38,7 +37,10 @@ const CreateStaffForm = () => {
 			return;
 		}
 
-		setSuccess(true);
+		notifySuccess("Staff account created", {
+			id: "create-staff-account",
+			description: `${email} can now sign in and reset their password.`,
+		});
 		setFirstName("");
 		setLastName("");
 		setEmail("");
@@ -55,10 +57,6 @@ const CreateStaffForm = () => {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
-				{success && (
-					<p className="text-success text-sm font-medium">Staff account created.</p>
-				)}
-
 				<div className="grid gap-3 sm:grid-cols-2">
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="staff-first-name">First name</Label>

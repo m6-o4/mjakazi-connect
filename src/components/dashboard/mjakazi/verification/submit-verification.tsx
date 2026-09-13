@@ -15,6 +15,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 type SubmitVerificationProps = {
@@ -59,6 +60,10 @@ const SubmitVerification = ({
 				return;
 			}
 			posthog.capture("verification_submitted");
+			notifySuccess("Submitted for review", {
+				id: "verification-submit",
+				description: "Our team will review your profile and documents.",
+			});
 			router.refresh();
 		} catch {
 			setError("Could not submit your profile.");

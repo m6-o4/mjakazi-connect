@@ -5,6 +5,7 @@ import { getPayload } from "payload";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import type { ProfileRequiredField } from "@/lib/profile-constants";
 import { profileFormSchema, type ProfileFormValues } from "@/lib/profile-schema";
 import config from "@/payload-config";
 import { updateAvailability, updateProfile } from "@/services/profile.service";
@@ -12,6 +13,7 @@ import { updateAvailability, updateProfile } from "@/services/profile.service";
 type ActionResult = {
 	success: boolean;
 	profileComplete?: boolean;
+	missingFields?: ProfileRequiredField[];
 	error?: string;
 };
 
@@ -44,7 +46,11 @@ const updateProfileAction = async (input: ProfileFormValues): Promise<ActionResu
 		revalidatePath("/dashboard/mjakazi");
 		revalidatePath("/dashboard/mjakazi/profile");
 
-		return { success: true, profileComplete: result.data.profileComplete };
+		return {
+			success: true,
+			profileComplete: result.data.profileComplete,
+			missingFields: result.data.missingFields,
+		};
 	} catch (error) {
 		console.error("[actions/profile] updateProfile failed:", error);
 		return { success: false, error: "Could not save your profile." };

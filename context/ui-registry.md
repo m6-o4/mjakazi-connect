@@ -66,6 +66,22 @@ codebase.
   `SignOutButton`; email hidden below `sm`
 - **Used in**: `(saas)/dashboard/layout.tsx`
 
+### `Toaster`
+
+- **Location**: `src/components/ui/toast.tsx` (shadcn Base UI toast; pre-existing, mounted
+  this session)
+- **Purpose**: App-wide toast host for the SaaS group. Renders the `ToastProvider`, portal,
+  viewport, and list for the module-scope `toast` manager, which any client component can
+  call directly with `toast.add({ id, type, title, description, timeout, priority })`
+- **Visual pattern**: `bg-popover` card, `rounded-2xl`, bottom-center on mobile and
+  bottom-right on `sm`+ via `ToastViewport`; `ToastIcon` renders per `type` (success / info /
+  warning / error / loading). Reuse a stable `id` per action so repeat toasts upsert instead
+  of stacking. `ToastDescription` renders a `<div>` (not the default `<p>`) so a description
+  can carry block content such as a bulleted `<ul>`. Prefer the `notifySuccess` /
+  `notifyInfo` / `notifyError` helpers in `src/lib/notify.ts` over calling `toast.add`
+  directly, so the defaults stay consistent
+- **Used in**: `(saas)/layout.tsx` (wraps `<main>`); consumed so far by `ProfileForm`
+
 ### `ProfileCompletenessCard`
 
 - **Location**: `src/components/dashboard/mjakazi/profile-completeness-card/index.tsx`
@@ -84,7 +100,15 @@ codebase.
 - **Props**:
   `{ initialValues: ProfileFormValues; photo: { id: string; url: string | null } | null; initialProfileComplete: boolean }`
 - **Visual pattern**: sectioned shadcn `Card`s; `grid gap-4 md:grid-cols-2` field layout;
-  fires `profile_completed` PostHog event on the first false→true completeness transition
+  validates on blur and re-validates on change (`mode: "onTouched"`), and a failed submit
+  focuses the first invalid field. Required asterisks derive from a single exported list
+  (`PROFILE_UI_REQUIRED_FIELDS` = the completeness set + `displayName`), so they can never
+  drift from the completeness checklist; the legend states these are needed for verification
+  and that a partial profile can be saved. Partial saves are allowed (Model A), and save
+  feedback is toast-only: success when complete, an info toast listing the still-missing
+  fields from `PROFILE_REQUIRED_LABELS` when incomplete, and an error toast on failure (all
+  with the shared `id: "profile-save"` so they upsert rather than stack).
+  Fires `profile_completed` PostHog event on the first false→true completeness transition
 - **Used in**: `(saas)/dashboard/mjakazi/profile/page.tsx`
 
 ### `FormSelect`
@@ -162,8 +186,8 @@ codebase.
 - **Props**: `{ profileComplete: boolean; hasBothDocuments: boolean }`
 - **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when
   done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `Button`
-  disabled until ready; fires `verification_submitted` PostHog event on success then
-  `router.refresh()`
+  disabled until ready; fires `verification_submitted` PostHog event and a `notifySuccess`
+  toast on success, then `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `VerificationStateCard`
@@ -243,7 +267,8 @@ codebase.
 - **Visual pattern**: shadcn `Card`; a `Label` + `Textarea` for the required rejection
   reason (`rejectionReason`, shown to the worker); `Button` (default) "Approve" +
   `Button variant="destructive"` "Reject"; fires `verification_approved` (`daysToVerify`)
-  / `verification_rejected` (`attempt`) PostHog events, then redirects back to the queue
+  / `verification_rejected` (`attempt`) PostHog events, then a `notifySuccess` toast and a
+  redirect back to the queue
 - **Used in**: `(saas)/dashboard/staff/verifications/[id]/page.tsx`
 
 ### `CreateStaffForm`
@@ -252,8 +277,9 @@ codebase.
 - **Purpose**: Creates a staff account (first/last name + email); the temporary password
   is generated server-side
 - **Props**: none
-- **Visual pattern**: shadcn `Card`; two-column name grid + email `Input`; `text-success`
-  confirmation line; calls `createStaffAction` then `router.refresh()`
+- **Visual pattern**: shadcn `Card`; two-column name grid + email `Input`; inline
+  `text-destructive` error only (success fires a `notifySuccess` toast); calls
+  `createStaffAction` then `router.refresh()`
 - **Used in**: `(saas)/dashboard/admin/staff/page.tsx`
 
 ### `StaffTable`
@@ -264,7 +290,7 @@ codebase.
 - **Props**: `{ staff: StaffRecord[]; currentUserId: string }`
 - **Visual pattern**: `divide-y` list rows (stack on mobile, spread on desktop); initials
   avatar in `bg-primary/10 text-primary`; `Badge` role + "You"; inline `EditNameForm`;
-  `AlertDialog`-guarded delete
+  `AlertDialog`-guarded delete; delete success fires a `notifySuccess` toast
 - **Used in**: `(saas)/dashboard/admin/staff/page.tsx`
 
 ### `PlatformSettingsForm`
@@ -273,8 +299,9 @@ codebase.
 - **Purpose**: Edits the mjakazi verification fee (single number) via
   `updateVerificationFeeAction`
 - **Props**: `{ currentVerificationFee: number }`
-- **Visual pattern**: shadcn `Card`; "KSh" prefix + number `Input`; Save `Button` with
-  saving/saved state; inline `text-destructive` error; disabled when unchanged
+- **Visual pattern**: shadcn `Card`; "KSh" prefix + number `Input`; Save `Button` with a
+  saving state; inline `text-destructive` error (success fires a `notifySuccess` toast);
+  disabled when unchanged
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
 ### `SubscriptionTiersForm`
@@ -286,7 +313,7 @@ codebase.
 - **Visual pattern**: shadcn `Card`; per-tier bordered sub-card with
   name/id/price/duration `Input`s, description `Textarea`, Active + Concierge checkboxes;
   ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"; tierId
-  auto-slugified from name
+  auto-slugified from name; success fires a `notifySuccess` toast
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
 ### `ModerationTable`
@@ -299,7 +326,8 @@ codebase.
 - **Visual pattern**: same list-row pattern as `StaffTable`; status `Badge` with a
   page-mapped variant (a suspended account overrides the underlying state); action buttons
   swap between Suspend (active) and Reinstate (suspended); `AlertDialog` with a required
-  `Textarea` reason field and an inline error. No rename or delete actions here.
+  `Textarea` reason field and an inline error; suspend/reinstate success fires a
+  `notifySuccess` toast. No rename or delete actions here.
 - **Used in**: `(saas)/dashboard/moderation/page.tsx`
 
 ### `AccountsTable`
@@ -318,7 +346,8 @@ codebase.
   avatar in `bg-primary/10 text-primary`; status `Badge`; Edit `Button` (`outline`) opens
   the shared `EditNameForm`; Delete `Button` (`ghost`, `text-destructive`) opens an
   `AlertDialog` with no reason field; calls `updateAccountAction` / `deleteAccountAction`
-  then `router.refresh()`; `text-destructive` inline error
+  then `router.refresh()`; `text-destructive` inline error; delete success fires a
+  `notifySuccess` toast
 - **Used in**: `(saas)/dashboard/accounts/wajakazi/page.tsx`,
   `(saas)/dashboard/accounts/waajiri/page.tsx`
 
@@ -330,7 +359,7 @@ codebase.
 - **Props**:
   `{ initialFirstName: string; initialLastName: string; onSave: (first, last) => Promise<string | null>; onCancel: () => void }`
 - **Visual pattern**: two `Input`s + Save/Cancel `Button`s; inline `text-destructive`
-  error
+  error; success fires a `notifySuccess` toast
 - **Used in**: `StaffTable`, `AccountsTable`
 
 ### `AuditLogTable`
@@ -364,7 +393,8 @@ codebase.
   payment (attempts exhausted)
 - **Props**: none
 - **Visual pattern**: shadcn `Card`; "Resubmit for review" `Button` (default); fires
-  `verification_resubmitted` PostHog event on success then `router.refresh()`
+  `verification_resubmitted` PostHog event and a `notifySuccess` toast on success, then
+  `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `VerificationPaymentFlow`
@@ -426,7 +456,8 @@ codebase.
   `default`, others = `outline`); a "Who hired you?" bordered picker panel (candidate rows
   with `MapPin` location + "Not listed — hired elsewhere" outline `Button`) when Hired is
   chosen with candidates; calls `updateAvailabilityAction` / `confirmHireByMjakaziAction`;
-  fires `hire_confirmed` (`confirmedBy: "mjakazi"`) then `router.refresh()`
+  fires `hire_confirmed` (`confirmedBy: "mjakazi"`), a `notifySuccess` toast, then
+  `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/settings/page.tsx`
 
 ### `DirectoryCard`
@@ -544,7 +575,8 @@ codebase.
   rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
   muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
   disabled `Button` until 3–5 selected; accent `buttonVariants` "Subscribe to send
-  interest" link when not active; fires `interest_sent` (`count`) then `router.refresh()`
+  interest" link when not active; fires `interest_sent` (`count`) and a `notifySuccess`
+  toast, then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`
 
 ### `EoiInbox`
@@ -557,7 +589,7 @@ codebase.
   - muted `location · sentAtLabel` line; `Badge` Accepted (default) / Declined (secondary)
     / Pending or Expired (outline); `Button` "Accept" (default, `Check` icon) + "Decline"
     (outline, `X` icon) on `sent`; `Inbox` empty state; fires `interest_responded`
-    (`response`) then `router.refresh()`
+    (`response`) and a `notifySuccess` toast, then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
 
 ### `HireInbox`
@@ -572,7 +604,8 @@ codebase.
   their agreement (outline); `pending_agreement` shows Agree / Not correct, `agreed` shows
   **End contract**; returns `null` when empty; calls `confirmHireByMjakaziAction` /
   `reverseHireAction` / `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mjakazi"`)
-  then `router.refresh()`
+  and a `notifySuccess` toast (Hire confirmed / Hire reversed / Contract ended), then
+  `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/opportunities/page.tsx`
 
 ### `OpportunitiesCard`
@@ -602,7 +635,8 @@ codebase.
   (outline) and Agree / Reverse / Not correct / **End contract** `Button`s, a **Leave a
   review** `Button` on ended hires, and a Reviewed `Badge`; ending a contract reveals
   `LeaveReviewForm` inline; calls `confirmHireAction` / `reverseHireAction` /
-  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) then
+  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a `notifySuccess`
+  toast (Hire recorded / Hire confirmed / Hire reversed / Contract ended), then
   `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
@@ -637,8 +671,8 @@ codebase.
   `{ reviews: { id; reviewerName | null; rating; comment; hidden; publishedAt | null }[] }`
 - **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name;
   `Button` "Hide from profile" (ghost) / "Show on profile" (outline) calling
-  `setReviewVisibilityAction` then `router.refresh()`; "Hidden from your public profile."
-  muted note; `Star` empty state
+  `setReviewVisibilityAction` then a `notifySuccess` toast and `router.refresh()`; "Hidden
+  from your public profile." muted note; `Star` empty state
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`
 
 ### `ReviewQueue`
@@ -651,7 +685,8 @@ codebase.
 - **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + reviewer name + "reviewing
   {worker}"; `Clock` submitted date; Approve `Button` (default) + Reject (outline); inline
   `Textarea` reason + Confirm/Cancel on reject; `Inbox` empty state; calls
-  `approveReviewAction` / `rejectReviewAction` then `router.refresh()`
+  `approveReviewAction` / `rejectReviewAction` then `router.refresh()`; approve/reject
+  success fires a `notifySuccess` toast
 - **Used in**: `src/app/(saas)/dashboard/staff/reviews/page.tsx`
 
 ### `ProfileReviews`
@@ -682,7 +717,7 @@ codebase.
 - **Location**: `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx`
 - **Purpose**: The Mwajiri requirements brief intake form for Concierge matching
 - **Props**: `{ caseId: string; initialValues?: Partial<BriefFormValues> | null }`
-- **Visual pattern**: react-hook-form + zod; two-column grid fields; `Select` for role, location, work arrangement; `Textarea` for duties and special requirements; calls `submitConciergeBriefAction`
+- **Visual pattern**: react-hook-form + zod; two-column grid fields; `Select` for role, location, work arrangement; `Textarea` for duties and special requirements; calls `submitConciergeBriefAction`; inline `text-destructive` error, success fires a `notifySuccess` toast
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
 
 ### `ConciergeStatusCard`
@@ -690,7 +725,7 @@ codebase.
 - **Location**: `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx`
 - **Purpose**: Status summary card for a Concierge case on the Mwajiri dashboard and concierge page
 - **Props**: `{ conciergeCase: ConciergeCase; eligibleForReplacement?: boolean }`
-- **Visual pattern**: shadcn `Card` with `Crown` icon; status `Badge`; shortlist cards with candidate names and match notes; record outcome buttons; 1-time replacement guarantee button
+- **Visual pattern**: shadcn `Card` with `Crown` icon; status `Badge`; shortlist cards with candidate names and match notes; record outcome buttons; 1-time replacement guarantee button; record-outcome and replacement success fire `notifySuccess` toasts (the actions revalidate the path, so the card updates without an explicit refresh)
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
 
 ### `ConciergeQueue`

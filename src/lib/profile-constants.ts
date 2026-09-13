@@ -169,6 +169,12 @@ const PROFILE_REQUIRED_LABELS: Record<ProfileRequiredField, string> = {
 	phone: "Add your mobile phone number",
 };
 
+// the fields the profile form marks with an asterisk: the completeness set plus
+// displayName, which the form schema requires but which is not part of the
+// completeness checklist. kept here so the form's markers and the checklist cannot
+// drift apart
+const PROFILE_UI_REQUIRED_FIELDS = [...PROFILE_REQUIRED_FIELDS, "displayName"] as const;
+
 export {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
@@ -178,6 +184,7 @@ export {
 	MARITAL_STATUS_OPTIONS,
 	PROFILE_REQUIRED_FIELDS,
 	PROFILE_REQUIRED_LABELS,
+	PROFILE_UI_REQUIRED_FIELDS,
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 };

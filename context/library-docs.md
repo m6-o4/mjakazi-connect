@@ -349,12 +349,29 @@ than relying on recall.
   the first. **Never `pnpm add @radix-ui/anything`.**
 - Base UI's component APIs differ from Radix. Use the `/shadcn` skill rather than adapting
   a Radix example.
+- **The toast component is installed but does nothing until `<Toaster>` is mounted.** It
+  lived in `components/ui/toast.tsx` unmounted for a while, so `toast.add(...)` was
+  silently dropped. It is mounted in `(saas)/layout.tsx` (inside `ThemeProvider`, wrapping
+  `<main>`). The `(payload)` and `(auth)` groups do not have it.
+- **`ToastDescription` renders a `<p>` by default.** A `<ul>` or other block content inside
+  it is invalid HTML and breaks hydration. This project overrides it with
+  `render={<div />}` so a description can carry a list.
 
 ### Project rules
 
 Components arrive via `pnpm dlx shadcn@latest add {name}` and are customized in place.
 Nothing is hand-authored into `components/ui/`. Nine are already installed — check before
 adding.
+
+- **Transient action confirmations go through `src/lib/notify.ts`**, not `toast.add`
+  directly: `notifySuccess` (5s), `notifyInfo` (8s), `notifyError` (high priority, no
+  auto-dismiss). Pass a stable per-entity `id` so repeat actions upsert one toast instead of
+  stacking.
+- **Persistent state and field-level validation errors stay inline** — payment notices,
+  M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle, availability
+  status, review "hidden" note, and form field errors.
+- Toasts survive `router.refresh()` / `router.push()` within the dashboard because
+  `<Toaster>` lives in the `(saas)` layout.
 
 ---
 

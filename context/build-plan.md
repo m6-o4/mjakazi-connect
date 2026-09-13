@@ -179,6 +179,12 @@ fields, `app/actions/profile.ts`, the form at `/dashboard/mjakazi/profile`,
 all fields save, reload populated, and completeness is computed. **Verify**: fill
 partially, save, reload. Fill fully, confirm completeness reflects it.
 
+**Scope addition (queued 2026-09-13, not started):** an employment-history section on the
+mjakazi profile page — the worker can list up to 5 previous employers. Storage shape
+(free-text vs structured), date handling, whether it counts toward `profileComplete`, and
+whether it shows on the public profile are open questions to settle before building.
+Recorded in `memory.md`.
+
 ### 2.2 — Document vault
 
 **Role**: the evidence behind the Verified badge, and the most sensitive data this system

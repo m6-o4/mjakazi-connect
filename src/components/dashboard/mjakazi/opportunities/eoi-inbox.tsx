@@ -9,6 +9,7 @@ import { respondToEoiAction } from "@/app/actions/eoi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 type ReceivedEoi = {
 	id: string;
@@ -36,6 +37,12 @@ const EoiInbox = ({ eois }: EoiInboxProps) => {
 			const result = await respondToEoiAction({ eoiId, response });
 			if (result.success) {
 				posthog.capture("interest_responded", { response });
+				notifySuccess(
+					response === "accepted" ? "Interest accepted" : "Interest declined",
+					{
+						id: `eoi-${eoiId}`,
+					},
+				);
 				router.refresh();
 			} else {
 				setError(result.error ?? "Could not respond.");
