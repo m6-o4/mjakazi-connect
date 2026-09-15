@@ -656,7 +656,41 @@ const sendHireEndedEmail = async ({
 	});
 };
 
+type SendConciergeShortlistDeliveredEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	candidateCount: number;
+};
+
+// concierge shortlist delivered — sent to the mwajiri when staff delivers a shortlist
+const sendConciergeShortlistDeliveredEmail = async ({
+	payload,
+	to,
+	firstName,
+	candidateCount,
+}: SendConciergeShortlistDeliveredEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Your Concierge Shortlist is Ready")}
+    ${p(`Hi ${escapeHtml(firstName)}, our team has curated a shortlist of <strong>${candidateCount} verified wajakazi</strong> matching your requirements.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Contact details for all shortlisted candidates have been unlocked and are available in your Concierge dashboard.</p>
+    `)}
+    ${p("Log in to your dashboard to review the candidates and reach out directly.")}
+    ${muted("Contact details are unlocked permanently.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your Concierge shortlist is ready",
+		html: baseTemplate(content),
+	});
+};
+
 export {
+	sendConciergeShortlistDeliveredEmail,
 	sendEoiBatchSentEmail,
 	sendEoiNudgeEmail,
 	sendEoiReceivedEmail,

@@ -412,8 +412,8 @@ Professional: `jobsSkills` (multi-select), `about`, `yearsExperience`, `educatio
 
 Availability: `availabilityStatus` — `available | hired | on_break`.
 
-Moderation: `suspended` (checkbox) — mirrors the account-level suspension on `users` so the
-directory guard can exclude a suspended worker without joining `users`.
+Moderation: `suspended` (checkbox) — mirrors the account-level suspension on `users` so
+the directory guard can exclude a suspended worker without joining `users`.
 
 Verification (authoritative): `verificationState` —
 `draft | pending_payment | pending_review | verified | rejected | verification_expired | blacklisted | deactivated`.
@@ -440,10 +440,18 @@ cleanly on account erasure. `wajakazi-profiles.photo` points here.
 
 ### Documents
 
-**`vault-documents`** — encrypted identity documents. Never `media`.
+**`vault-documents`** — encrypted identity documents, one file per slot. Never `media`.
 
 `profile` (relationship), `uploadedBy` (relationship to `users`), `documentType`
-(`national_id | certificate_of_good_conduct`), `file`, `uploadedAt`.
+(`national_id | certificate_of_good_conduct`), `side` (`front | back`), `file`,
+`uploadedAt`.
+
+A slot is a (documentType, side) pair, and it is the unit uploaded, replaced, removed and
+checked — so a National ID front, a National ID back and a Certificate of Good Conduct are
+three separate records. The required set is declared once in `DOCUMENT_SLOTS`
+(`src/lib/vault.ts`) and read by the collection options, the upload UI, the staff viewer
+and the pre-submission gate. A record stored before `side` existed has no side and is read
+as the front.
 
 Access: `staff` and `admin`, plus the owning Mjakazi. No one else, ever.
 
@@ -486,10 +494,10 @@ to 5.
 subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
 `confirmedAt`, `agreedAt`, `reversedAt`, `endedAt`, `state`
 (`pending_agreement | agreed | reversed | ended`), `sourceEoi`. One record per (mwajiri,
-mjakazi) — compound unique index. The event Match Conversion Rate is measured from, and the
-clock the replacement guarantee starts. `ended` is the natural close (either party ends a
-completed contract, which also releases the mjakazi back to `available`), distinct from
-`reversed` ("did not hold"). `sourceConciergeCase` lands with the `concierge-cases`
+mjakazi) — compound unique index. The event Match Conversion Rate is measured from, and
+the clock the replacement guarantee starts. `ended` is the natural close (either party
+ends a completed contract, which also releases the mjakazi back to `available`), distinct
+from `reversed` ("did not hold"). `sourceConciergeCase` lands with the `concierge-cases`
 collection in Phase 11.
 
 **`reviews`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `reviewerName`
@@ -636,11 +644,19 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   is public and CDN-served; the vault is neither.
 - **Viewing is an event.** Every document view writes an audit entry naming the viewer,
   the subject, the document type and the time. No exceptions, including for `admin`.
-- **Locking.** Documents cannot be edited while verification is `pending_review`. A
-  `verified` worker can only _replace_ a document — which reverts them to `pending_review`
-  — never remove one, so a badge can never stand over missing evidence.
-- **Erasure.** Account deletion nullifies personal data and destroys vault documents.
-  Payment records are retained for statutory audit with the personal fields nulled.
+- **Locking.** Documents cannot be edited while verification is `pending_review`, and the
+  lock is per slot (a document type and a side). A `verified` worker can only _replace_ a
+  slot — never remove one — and replacing one reverts them to `pending_review`. Adding a
+  slot that did not exist when they were verified is not a replacement, so it does not
+  cost them the badge.
+- **The badge boundary is the enforced one.** The required-slot gate runs on the way into
+  `pending_payment`, but the vault stays editable until `pending_review` — so
+  `approveVerification` checks the required set again before granting `verified`. A
+  partial document set can therefore never end up with a badge, whatever happened between
+  submit and review.
+- **Erasure.** Account deletion nullifies personal data, destroys vault documents and
+  removes the account's payment records, which carry the payer's phone number and the raw
+  Daraja callback body. Aggregate figures remain available from the audit trail.
 - **Indexing.** Phone numbers, ID numbers and document URLs are never exposed to search
   engines. Public profile pages carry no contact data at all, so there is nothing to leak.
 
@@ -670,17 +686,18 @@ into a client component.
 payment route. Neither exists in this build. Testing against Daraja uses the sandbox
 environment.
 
-**Development-only callback simulator.** The Daraja sandbox accepts an STK push but never
-fires the confirmation callback, so the confirmed-payment path cannot be exercised end to
-end in development without feeding a callback back in. A single dev-only Server Action,
-`simulatePaymentCallbackAction` (`src/app/actions/dev.ts`), exists for that purpose. It is
-gated on `process.env.MPESA_ENVIRONMENT === "production"` and returns "Not available"
-there, so it cannot run against the production M-Pesa environment. In development it
-resolves the caller's latest `stk_sent` payment and runs a correctly-shaped synthetic
-callback through the real `handleCallback` handler — the same correlation checks, audit
-entries and activation transitions as a genuine callback. It never sets state directly and
-never grants access without a confirmed payment. This is a deliberate, documented
-exception to invariant #13, not a reintroduction of v1's mock route.
+**Development uses real callbacks — no simulator.** The Daraja sandbox does fire the STK
+confirmation callback; it simply cannot reach `localhost`, so development runs a public
+tunnel (`app-dev.s3.co.ke`, already trusted in `allowedDevOrigins`) and points
+`MPESA_CALLBACK_URL` at it. A real callback therefore drives the same
+`/api/webhooks/payments/callback` → `handleCallback` path in development as in production.
+
+An earlier dev-only `simulatePaymentCallbackAction` (`src/app/actions/dev.ts`) existed to
+work around a callback that never arrived; it was removed once the real callback was
+correctly parsed (Daraja 3.0 omits `Value` on some metadata items like `Balance`, which
+the old strict parser rejected). Development and production now settle payments
+identically, and a payment with no callback self-expires after the timeout. M-Pesa is an
+online-only flow, so there is no offline testing path by design.
 
 ---
 
@@ -779,11 +796,13 @@ ask.
 8. Only a verified M-Pesa callback moves a payment to `confirmed`.
 9. A confirmed payment is immutable.
 10. A duplicate transaction ID never activates anything twice.
-11. All money is integer KSh. No floats in the money path.
+11. All money is integer KSh. No floats in the money path. Arithmetic on a window that has
+    already been paid for reads the terms snapshotted on that payment — never live
+    `platform-settings`, which an admin can change afterwards.
 12. Prices come from `platform-settings`, never from a literal in application code.
-13. No payment bypass, mock route or dev shortcut exists in the codebase. The one
-    exception is the development-only callback simulator described in the Payments section
-    (`src/app/actions/dev.ts`), which is inert in production.
+13. No payment bypass, mock route or dev shortcut exists in the codebase. Development
+    settles payments from the real Daraja callback over the tunnel, exactly as production
+    does.
 
 ### Access
 

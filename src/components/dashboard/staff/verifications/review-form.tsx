@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { notifySuccess } from "@/lib/notify";
 
 type ReviewFormProps = {
 	profileId: string;
@@ -57,6 +58,7 @@ const ReviewForm = ({
 			} else {
 				posthog.capture("verification_approved");
 			}
+			notifySuccess("Verification approved", { id: `verification-${profileId}` });
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
 		} catch (error) {
@@ -83,6 +85,7 @@ const ReviewForm = ({
 			posthog.capture("verification_rejected", {
 				attempt: (verificationAttempts ?? 0) + 1,
 			});
+			notifySuccess("Verification rejected", { id: `verification-${profileId}` });
 			router.push("/dashboard/staff/verifications");
 			router.refresh();
 		} catch (error) {

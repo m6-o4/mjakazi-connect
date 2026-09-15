@@ -135,9 +135,19 @@ type WorkPreferenceValue = OptionValue<typeof WORK_PREFERENCE_OPTIONS>;
 type EducationLevelValue = OptionValue<typeof EDUCATION_LEVEL_OPTIONS>;
 type LocationValue = OptionValue<typeof LOCATION_OPTIONS>;
 
+// how many previous placements a mjakazi may list. the bound is enforced in the
+// payload field, the zod schema and the form's add button, all from here
+const MAX_EMPLOYMENT_ENTRIES = 5;
+
+// the employer descriptor cap, read by the payload field and the zod schema so
+// the two can never disagree about what fits
+const EMPLOYER_MAX_LENGTH = 80;
+
 // the fields that must be populated for profileComplete to be true. this is the
 // single source of truth — the compute function and the dashboard checklist both
-// derive from it, so they can never disagree
+// derive from it, so they can never disagree.
+// employmentHistory is deliberately absent: it is display content, not something
+// verification can check, so it must never gate submission for review
 const PROFILE_REQUIRED_FIELDS = [
 	"photo",
 	"legalFirstName",
@@ -169,15 +179,24 @@ const PROFILE_REQUIRED_LABELS: Record<ProfileRequiredField, string> = {
 	phone: "Add your mobile phone number",
 };
 
+// the fields the profile form marks with an asterisk: the completeness set plus
+// displayName, which the form schema requires but which is not part of the
+// completeness checklist. kept here so the form's markers and the checklist cannot
+// drift apart
+const PROFILE_UI_REQUIRED_FIELDS = [...PROFILE_REQUIRED_FIELDS, "displayName"] as const;
+
 export {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
+	EMPLOYER_MAX_LENGTH,
 	JOB_OPTIONS,
 	LANGUAGE_OPTIONS,
 	LOCATION_OPTIONS,
 	MARITAL_STATUS_OPTIONS,
+	MAX_EMPLOYMENT_ENTRIES,
 	PROFILE_REQUIRED_FIELDS,
 	PROFILE_REQUIRED_LABELS,
+	PROFILE_UI_REQUIRED_FIELDS,
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 };

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { COUNTRY_OPTIONS } from "@/lib/profile-constants";
 import { DASHBOARD_BY_ROLE } from "@/lib/roles";
+import { normalizeDocumentSide } from "@/lib/vault";
 import config from "@/payload-config";
 
 type Args = {
@@ -77,13 +78,14 @@ const StaffVerificationReviewPage = async ({ params }: Args) => {
 		collection: "vault-documents",
 		where: { profile: { equals: profile.id } },
 		limit: 10,
-		select: { documentType: true, filename: true },
+		select: { documentType: true, side: true, filename: true },
 		overrideAccess: false,
 		req: { user },
 	});
 	const documents: ReviewDocument[] = docsResult.docs.map((doc) => ({
 		id: doc.id,
 		documentType: doc.documentType,
+		side: normalizeDocumentSide(doc.side),
 		filename: doc.filename ?? null,
 	}));
 

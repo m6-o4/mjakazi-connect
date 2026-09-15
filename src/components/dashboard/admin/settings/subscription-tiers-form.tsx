@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { notifySuccess } from "@/lib/notify";
 
 type Tier = {
 	tierId: string;
@@ -56,7 +57,7 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 	const [tiers, setTiers] = useState<Tier[]>(
 		initialTiers.length > 0 ? initialTiers : [emptyTier()],
 	);
-	const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+	const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
 	const [error, setError] = useState<string | null>(null);
 
 	const updateTier = (index: number, field: keyof Tier, value: unknown) => {
@@ -104,8 +105,11 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 			return;
 		}
 
-		setStatus("saved");
-		setTimeout(() => setStatus("idle"), 3000);
+		setStatus("idle");
+		notifySuccess("Subscription tiers saved", {
+			id: "subscription-tiers",
+			description: "Changes apply to new subscriptions immediately.",
+		});
 	};
 
 	return (
@@ -262,11 +266,7 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 					disabled={status === "saving"}
 					className="w-full sm:w-auto"
 				>
-					{status === "saving"
-						? "Saving..."
-						: status === "saved"
-							? "Saved"
-							: "Save tiers"}
+					{status === "saving" ? "Saving..." : "Save tiers"}
 				</Button>
 			</CardContent>
 		</Card>

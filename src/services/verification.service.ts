@@ -10,7 +10,7 @@ import {
 } from "@/lib/email";
 import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import { loadUserEmail } from "@/lib/user-email";
-import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
+import { getMissingDocumentSlots, type RequiredDocumentSlot } from "@/lib/vault";
 import type { Payment, User, WajakaziProfile } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 
@@ -232,25 +232,27 @@ const notifyPaymentReceived = async (
 	}
 };
 
-// both vault document types must be present. this is a trusted count — the
-// caller has already proven ownership of the profile, and only the set of
-// document types is inspected, never the bytes
-const hasBothDocuments = async (
+// the required slots (document type + side) still missing from the vault. this
+// is a trusted read — the caller has already proven ownership of the profile,
+// and only the type and side are inspected, never the bytes. an explicit select
+// keeps the private file url and the populated relationships out of the result
+const getMissingRequiredDocuments = async (
 	payload: Payload,
 	profileId: string,
-): Promise<boolean> => {
+): Promise<readonly RequiredDocumentSlot[]> => {
 	const result = await payload.find({
 		collection: "vault-documents",
 		where: { profile: { equals: profileId } },
 		limit: 100,
+		depth: 0,
+		select: { documentType: true, side: true },
 	});
-	const present = new Set(result.docs.map((document) => document.documentType));
-	return DOCUMENT_TYPE_OPTIONS.every((option) => present.has(option.value));
+	return getMissingDocumentSlots(result.docs);
 };
 
 // the shared guard for any worker-initiated entry into review: the profile is
-// complete and both documents are uploaded. the guard lives here, not in the UI,
-// so a service-level call can never skip it
+// complete and every required document side is uploaded. the guard lives here,
+// not in the UI, so a service-level call can never skip it
 const assessReadiness = async (
 	payload: Payload,
 	profile: WajakaziProfile,
@@ -262,9 +264,9 @@ const assessReadiness = async (
 		);
 	}
 
-	if (!(await hasBothDocuments(payload, profile.id))) {
+	if ((await getMissingRequiredDocuments(payload, profile.id)).length > 0) {
 		return fail(
-			"Upload both identity documents before submitting for verification.",
+			"Upload your National ID (front and back) and Certificate of Good Conduct before submitting for verification.",
 			"missing_documents",
 		);
 	}
@@ -555,6 +557,20 @@ const approveVerification = async (
 	if (!profile) return fail("Profile not found.", "not_found");
 	if (profile.verificationState !== "pending_review") {
 		return fail("Profile is not pending review.", "wrong_state");
+	}
+
+	// the readiness gate runs on the way into review, but the vault stays editable
+	// until the state reaches pending_review — so the evidence is checked again
+	// here, where the badge is actually granted. a verified badge must never stand
+	// over an incomplete document set, and a partial set is exactly what this
+	// feature's required-slot rule exists to prevent
+	const missing = await getMissingRequiredDocuments(payload, profile.id);
+	if (missing.length > 0) {
+		const labels = missing.map((slot) => slot.label).join(", ");
+		return fail(
+			`This profile is missing ${labels} and cannot be approved. Ask the worker to upload it, then reject so they can resubmit.`,
+			"missing_documents",
+		);
 	}
 
 	const result = await applyTransition({

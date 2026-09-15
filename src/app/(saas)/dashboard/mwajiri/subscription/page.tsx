@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
-import { DevPaymentSimulate } from "@/components/dashboard/dev/dev-payment-simulate";
 import { PurchaseSubscription } from "@/components/dashboard/mwajiri/subscription/purchase-subscription";
 import config from "@/payload-config";
+import { getLatestPaymentForUser } from "@/services/payment.service";
 import { getOwnWaajiriProfile } from "@/services/profile.service";
 import { getSubscriptionTiers } from "@/services/settings.service";
 import { getOwnSubscription } from "@/services/subscription.service";
@@ -18,10 +18,11 @@ const MwajiriSubscriptionPage = async () => {
 
 	const payload = await getPayload({ config });
 
-	const [subscription, tiers, profile] = await Promise.all([
+	const [subscription, tiers, profile, latestPayment] = await Promise.all([
 		getOwnSubscription(payload, user),
 		getSubscriptionTiers(payload),
 		getOwnWaajiriProfile(payload, user),
+		getLatestPaymentForUser(payload, user.id, "subscription"),
 	]);
 
 	const tierOptions = tiers.map((tier) => ({
@@ -47,12 +48,9 @@ const MwajiriSubscriptionPage = async () => {
 				state={subscription?.subscriptionState ?? "none"}
 				expiry={subscription?.tierExpiry ?? null}
 				phone={profile?.phone ?? null}
+				latestPaymentId={latestPayment?.id ?? null}
+				latestPaymentStatus={latestPayment?.status ?? null}
 			/>
-
-			{process.env.MPESA_ENVIRONMENT !== "production" &&
-			subscription?.subscriptionState === "pending_payment" ? (
-				<DevPaymentSimulate />
-			) : null}
 		</div>
 	);
 };

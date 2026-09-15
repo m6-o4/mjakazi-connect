@@ -129,7 +129,8 @@ const suspendAccount = async (
 
 	const target = await loadTargetUser(payload, userId);
 	if (!target) return fail("Account not found.", "not_found");
-	if (!isSaasAccount(target)) return fail("Not a wajakazi or mwajiri account.", "invalid_target");
+	if (!isSaasAccount(target))
+		return fail("Not a wajakazi or mwajiri account.", "invalid_target");
 	if (target.accountState === "suspended") {
 		return fail("Account is already suspended.", "wrong_state");
 	}
@@ -146,7 +147,12 @@ const suspendAccount = async (
 	} else {
 		const subscription = await getSubscriptionByUser(payload, userId);
 		if (subscription) {
-			const subResult = await suspendSubscription(payload, actor, subscription.id, reason);
+			const subResult = await suspendSubscription(
+				payload,
+				actor,
+				subscription.id,
+				reason,
+			);
 			if (!subResult.success) {
 				console.error(
 					"[services/moderation] subscription suspend failed:",
@@ -181,11 +187,13 @@ const reinstateAccount = async (
 	reason: string,
 ): Promise<Result<User>> => {
 	if (!isAdmin(actor)) return fail("Forbidden", "forbidden");
-	if (!reason.trim()) return fail("A reinstatement reason is required.", "reason_required");
+	if (!reason.trim())
+		return fail("A reinstatement reason is required.", "reason_required");
 
 	const target = await loadTargetUser(payload, userId);
 	if (!target) return fail("Account not found.", "not_found");
-	if (!isSaasAccount(target)) return fail("Not a wajakazi or mwajiri account.", "invalid_target");
+	if (!isSaasAccount(target))
+		return fail("Not a wajakazi or mwajiri account.", "invalid_target");
 	if (target.accountState !== "suspended") {
 		return fail("Account is not suspended.", "wrong_state");
 	}

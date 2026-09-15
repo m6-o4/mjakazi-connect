@@ -2,9 +2,10 @@
 
 import posthog from "posthog-js";
 import { useState } from "react";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm, useWatch, type FieldErrors } from "react-hook-form";
 
 import { updateProfileAction } from "@/app/actions/profile";
+import { EmploymentHistoryField } from "@/components/dashboard/mjakazi/profile-form/employment-history-field";
 import { FormDatePicker } from "@/components/dashboard/mjakazi/profile-form/form-date-picker";
 import { FormSelect } from "@/components/dashboard/mjakazi/profile-form/form-select";
 import { OptionChips } from "@/components/dashboard/mjakazi/profile-form/option-chips";
@@ -20,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
@@ -27,6 +29,8 @@ import {
 	LANGUAGE_OPTIONS,
 	LOCATION_OPTIONS,
 	MARITAL_STATUS_OPTIONS,
+	PROFILE_REQUIRED_LABELS,
+	PROFILE_UI_REQUIRED_FIELDS,
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 } from "@/lib/profile-constants";
@@ -40,6 +44,19 @@ import { cn } from "@/lib/utils";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
+// the form's asterisks come from one exported list so they can never drift from
+// the completeness checklist
+const REQUIRED_FIELD_SET: ReadonlySet<string> = new Set<string>(
+	PROFILE_UI_REQUIRED_FIELDS,
+);
+
+const requiredMark = (
+	<span className="text-destructive" aria-hidden="true">
+		{" "}
+		*
+	</span>
+);
+
 type ProfileFormProps = {
 	initialValues: ProfileFormValues;
 	photo: { id: string; url: string | null } | null;
@@ -52,13 +69,15 @@ const ProfileForm = ({
 	initialProfileComplete,
 }: ProfileFormProps) => {
 	const [submitting, setSubmitting] = useState(false);
-	const [saveError, setSaveError] = useState<string | null>(null);
-	const [saved, setSaved] = useState(false);
 	const [wasComplete, setWasComplete] = useState(initialProfileComplete);
 
 	const methods = useForm<ProfileFormValues>({
 		resolver: zodResolver(profileFormSchema),
 		defaultValues: initialValues,
+		// validate as a field is left, then on every change once it has errored,
+		// so mistakes surface before the submit button is pressed
+		mode: "onTouched",
+		reValidateMode: "onChange",
 	});
 
 	const {
@@ -87,28 +106,78 @@ const ProfileForm = ({
 
 	const onSubmit = async (values: ProfileFormValues) => {
 		setSubmitting(true);
-		setSaveError(null);
-		setSaved(false);
 		try {
 			const result = await updateProfileAction(values);
-			if (result.success) {
-				setSaved(true);
-				if (result.profileComplete) markComplete();
-			} else {
-				setSaveError(result.error ?? "Could not save your profile.");
+			if (!result.success) {
+				notifyError("Could not save", {
+					id: "profile-save",
+					description: result.error ?? "Please try again.",
+				});
+				return;
 			}
+
+			const missing = result.missingFields ?? [];
+			if (missing.length === 0) {
+				notifySuccess("Profile saved", {
+					id: "profile-save",
+					description: "Your profile is complete and ready for verification.",
+				});
+				markComplete();
+				return;
+			}
+
+			notifyInfo("Profile saved", {
+				id: "profile-save",
+				description: (
+					<>
+						<p>The following are still needed for verification:</p>
+						<ul className="list-disc pl-5">
+							{missing.map((field) => (
+								<li key={field}>{PROFILE_REQUIRED_LABELS[field]}</li>
+							))}
+						</ul>
+					</>
+				),
+			});
 		} catch {
-			setSaveError("Could not save your profile.");
+			notifyError("Could not save", {
+				id: "profile-save",
+				description: "Please try again.",
+			});
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
+	// send focus to the first invalid field on a failed submit so the error is
+	// never off-screen on a long form. every possible error here is a registered
+	// input or textarea, so setFocus resolves reliably — except inside a placement,
+	// which has no registered input of its own, so that lands on the employer input
+	const onInvalid = (formErrors: FieldErrors<ProfileFormValues>) => {
+		const firstError = (Object.keys(formErrors) as (keyof ProfileFormValues)[])[0];
+		if (!firstError) return;
+
+		if (firstError === "employmentHistory") {
+			const rows = formErrors.employmentHistory;
+			const index = Array.isArray(rows) ? rows.findIndex((row) => Boolean(row)) : -1;
+			if (index >= 0) methods.setFocus(`employmentHistory.${index}.employer`);
+			return;
+		}
+
+		methods.setFocus(firstError, { shouldSelect: true });
+	};
+
 	return (
 		<FormProvider {...methods}>
-			<form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
+			<form
+				onSubmit={handleSubmit(onSubmit, onInvalid)}
+				className="flex flex-col gap-6"
+				noValidate
+			>
 				<p className="text-muted-foreground text-xs">
-					Fields marked with <span className="text-destructive">*</span> are required.
+					Fields marked with <span className="text-destructive">*</span> are needed to
+					complete your profile. You can save and finish later, they are required before
+					you submit for verification.
 				</p>
 				<Card>
 					<CardHeader>
@@ -123,10 +192,7 @@ const ProfileForm = ({
 								<Label htmlFor="displayName">
 									<span>
 										Display name
-										<span className="text-destructive" aria-hidden="true">
-											{" "}
-											*
-										</span>
+										{REQUIRED_FIELD_SET.has("displayName") && requiredMark}
 									</span>
 								</Label>
 								<Input id="displayName" {...register("displayName")} />
@@ -139,14 +205,13 @@ const ProfileForm = ({
 								)}
 							</div>
 
+							<FormDatePicker name="dateOfBirth" label="Date of birth" />
+
 							<div className="flex flex-col gap-1.5">
 								<Label htmlFor="legalFirstName">
 									<span>
 										Legal first name
-										<span className="text-destructive" aria-hidden="true">
-											{" "}
-											*
-										</span>
+										{REQUIRED_FIELD_SET.has("legalFirstName") && requiredMark}
 									</span>
 								</Label>
 								<Input id="legalFirstName" {...register("legalFirstName")} />
@@ -156,22 +221,17 @@ const ProfileForm = ({
 								<Label htmlFor="legalLastName">
 									<span>
 										Legal last name
-										<span className="text-destructive" aria-hidden="true">
-											{" "}
-											*
-										</span>
+										{REQUIRED_FIELD_SET.has("legalLastName") && requiredMark}
 									</span>
 								</Label>
 								<Input id="legalLastName" {...register("legalLastName")} />
 							</div>
 
-							<FormDatePicker name="dateOfBirth" label="Date of birth" />
-
 							<FormSelect
 								name="nationality"
 								label="Nationality"
 								options={COUNTRY_OPTIONS}
-								required
+								required={REQUIRED_FIELD_SET.has("nationality")}
 							/>
 
 							<FormSelect
@@ -186,10 +246,7 @@ const ProfileForm = ({
 								<Label htmlFor="phone">
 									<span>
 										Mobile phone number
-										<span className="text-destructive" aria-hidden="true">
-											{" "}
-											*
-										</span>
+										{REQUIRED_FIELD_SET.has("phone") && requiredMark}
 									</span>
 								</Label>
 								<Input
@@ -218,17 +275,14 @@ const ProfileForm = ({
 							name="jobsSkills"
 							label="Jobs / skills"
 							options={JOB_OPTIONS}
-							required
+							required={REQUIRED_FIELD_SET.has("jobsSkills")}
 						/>
 
 						<div className="flex flex-col gap-1.5">
 							<Label htmlFor="about">
 								<span>
 									About me
-									<span className="text-destructive" aria-hidden="true">
-										{" "}
-										*
-									</span>
+									{REQUIRED_FIELD_SET.has("about") && requiredMark}
 								</span>
 							</Label>
 							<Textarea
@@ -261,10 +315,7 @@ const ProfileForm = ({
 								<Label htmlFor="yearsExperience">
 									<span>
 										Years of experience
-										<span className="text-destructive" aria-hidden="true">
-											{" "}
-											*
-										</span>
+										{REQUIRED_FIELD_SET.has("yearsExperience") && requiredMark}
 									</span>
 								</Label>
 								<Input
@@ -289,11 +340,13 @@ const ProfileForm = ({
 							/>
 						</div>
 
+						<EmploymentHistoryField />
+
 						<OptionChips
 							name="languages"
 							label="Languages spoken"
 							options={LANGUAGE_OPTIONS}
-							required
+							required={REQUIRED_FIELD_SET.has("languages")}
 						/>
 					</CardContent>
 				</Card>
@@ -309,7 +362,7 @@ const ProfileForm = ({
 								name="workPreference"
 								label="Work preference"
 								options={WORK_PREFERENCE_OPTIONS}
-								required
+								required={REQUIRED_FIELD_SET.has("workPreference")}
 							/>
 
 							<FormDatePicker name="availableFrom" label="Available from" />
@@ -348,19 +401,15 @@ const ProfileForm = ({
 								name="location"
 								label="Location"
 								options={LOCATION_OPTIONS}
-								required
+								required={REQUIRED_FIELD_SET.has("location")}
 							/>
 						</div>
 					</CardContent>
 				</Card>
 
-				<div className="flex items-center gap-3">
-					<Button type="submit" disabled={submitting}>
-						{submitting ? "Saving..." : "Save profile"}
-					</Button>
-					{saved && <p className="text-success text-sm font-medium">Profile saved.</p>}
-					{saveError && <p className="text-destructive text-sm">{saveError}</p>}
-				</div>
+				<Button type="submit" disabled={submitting}>
+					{submitting ? "Saving..." : "Save profile"}
+				</Button>
 			</form>
 		</FormProvider>
 	);

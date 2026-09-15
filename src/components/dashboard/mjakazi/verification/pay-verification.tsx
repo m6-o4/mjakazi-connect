@@ -20,6 +20,10 @@ import { Label } from "@/components/ui/label";
 type PayVerificationProps = {
 	fee: number | null;
 	phone: string;
+	// reports whether an stk push is in flight, so the always-mounted parent
+	// (VerificationPaymentFlow) can show an explicit success cue once the profile
+	// leaves pending_payment while a payment was awaiting confirmation
+	onAwaitingChange?: (awaiting: boolean) => void;
 };
 
 const POLL_INTERVAL_MS = 5000;
@@ -30,13 +34,17 @@ const POLL_TIMEOUT_MS = 150000;
 // the server action, then polls for the callback to flip the profile into
 // review. the page server component re-renders on router.refresh(), so once the
 // state changes this component unmounts and the review status takes its place
-const PayVerification = ({ fee, phone }: PayVerificationProps) => {
+const PayVerification = ({ fee, phone, onAwaitingChange }: PayVerificationProps) => {
 	const router = useRouter();
 	const [phoneValue, setPhoneValue] = useState<string>(phone);
 	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "timedOut">(
 		"idle",
 	);
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		onAwaitingChange?.(status === "awaiting");
+	}, [status, onAwaitingChange]);
 
 	useEffect(() => {
 		if (status !== "awaiting") return;

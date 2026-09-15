@@ -2,7 +2,7 @@
 
 import { format, parse } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,8 +16,17 @@ import {
 import type { ProfileFormValues } from "@/lib/profile-schema";
 import { cn } from "@/lib/utils";
 
+// the date paths this picker serves. employment dates are array paths, so the
+// union is written explicitly rather than widened to FieldPath — it keeps the
+// value typed as a string and documents exactly where the component may be used
+type DateFieldName =
+	| "dateOfBirth"
+	| "availableFrom"
+	| `employmentHistory.${number}.startDate`
+	| `employmentHistory.${number}.endDate`;
+
 type FormDatePickerProps = {
-	name: "dateOfBirth" | "availableFrom";
+	name: DateFieldName;
 	label: string;
 	placeholder?: string;
 };
@@ -31,64 +40,52 @@ const FormDatePicker = ({
 	label,
 	placeholder = "Pick a date",
 }: FormDatePickerProps) => {
-	const { control, formState } = useFormContext<ProfileFormValues>();
-	const errorMessage = formState.errors[name]?.message;
+	const { control } = useFormContext<ProfileFormValues>();
+	const { field, fieldState } = useController({ name, control });
+	const value = field.value ?? "";
+	const errorMessage = fieldState.error?.message;
 
 	return (
 		<div className="flex flex-col gap-1.5">
 			<Label>{label}</Label>
-			<Controller
-				name={name}
-				control={control}
-				render={({ field }) => {
-					const dateValue = field.value
-						? parse(field.value, DATE_FORMAT, new Date())
-						: undefined;
-
-					return (
-						<Popover>
-							<PopoverTrigger
-								className={cn(
-									buttonVariants({ variant: "outline" }),
-									"w-full justify-start font-normal",
-									!field.value && "text-muted-foreground",
-								)}
+			<Popover>
+				<PopoverTrigger
+					className={cn(
+						buttonVariants({ variant: "outline" }),
+						"w-full justify-start font-normal",
+						!value && "text-muted-foreground",
+					)}
+				>
+					<CalendarIcon />
+					{value
+						? format(parse(value, DATE_FORMAT, new Date()), "dd MMM yyyy")
+						: placeholder}
+				</PopoverTrigger>
+				<PopoverContent className="w-auto p-0" align="start">
+					<PopoverTitle className="sr-only">{label}</PopoverTitle>
+					<Calendar
+						mode="single"
+						selected={value ? parse(value, DATE_FORMAT, new Date()) : undefined}
+						onSelect={(date) => field.onChange(date ? format(date, DATE_FORMAT) : "")}
+						captionLayout="dropdown"
+						autoFocus
+					/>
+					{value && (
+						<div className="border-t p-2">
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="w-full"
+								onClick={() => field.onChange("")}
 							>
-								<CalendarIcon />
-								{field.value
-									? format(parse(field.value, DATE_FORMAT, new Date()), "dd MMM yyyy")
-									: placeholder}
-							</PopoverTrigger>
-							<PopoverContent className="w-auto p-0" align="start">
-								<PopoverTitle className="sr-only">{label}</PopoverTitle>
-								<Calendar
-									mode="single"
-									selected={dateValue}
-									onSelect={(date) =>
-										field.onChange(date ? format(date, DATE_FORMAT) : "")
-									}
-									captionLayout="dropdown"
-									autoFocus
-								/>
-								{field.value && (
-									<div className="border-t p-2">
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											className="w-full"
-											onClick={() => field.onChange("")}
-										>
-											Clear
-										</Button>
-									</div>
-								)}
-							</PopoverContent>
-						</Popover>
-					);
-				}}
-			/>
-			{errorMessage && <p className="text-destructive text-xs">{String(errorMessage)}</p>}
+								Clear
+							</Button>
+						</div>
+					)}
+				</PopoverContent>
+			</Popover>
+			{errorMessage && <p className="text-destructive text-xs">{errorMessage}</p>}
 		</div>
 	);
 };

@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useState } from "react";
 
-import { confirmHireByMjakaziAction, endHireAction, reverseHireAction } from "@/app/actions/hire";
+import {
+	confirmHireByMjakaziAction,
+	endHireAction,
+	reverseHireAction,
+} from "@/app/actions/hire";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +19,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 type HireItem = {
 	id: string;
@@ -45,6 +50,7 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 				return;
 			}
 			posthog.capture("hire_confirmed", { confirmedBy: "mjakazi" });
+			notifySuccess("Hire confirmed", { id: `hire-agree-${hire.id}` });
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");
@@ -62,6 +68,7 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 				setError(result.error ?? "Could not reverse the hire.");
 				return;
 			}
+			notifySuccess("Hire reversed", { id: `hire-reverse-${hire.id}` });
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");
@@ -80,6 +87,7 @@ const HireInbox = ({ hires }: HireInboxProps) => {
 				return;
 			}
 			posthog.capture("hire_ended", { endedBy: "mjakazi" });
+			notifySuccess("Contract ended", { id: `hire-end-${hire.id}` });
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");

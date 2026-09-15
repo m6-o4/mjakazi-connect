@@ -185,86 +185,263 @@ const updateAccountName = async (
 	}
 };
 
-// removes every record owned by a SaaS account — profile, identity documents,
-// photo, subscription and payments — so deletion leaves no dangling relations.
-// the caller has already authorized the deletion (admin, or the account owner)
-const deleteAccountData = async (payload: Payload, user: User): Promise<void> => {
-	if (user.role === "mjakazi") {
-		const profileResult = await payload.find({
+const deleteMjakaziAccountData = async (
+	payload: Payload,
+	user: User,
+): Promise<string[]> => {
+	const profileResult = await payload.find({
+		collection: "wajakazi-profiles",
+		where: { user: { equals: user.id } },
+		depth: 0,
+		limit: 1,
+		overrideAccess: true,
+	});
+	const profile = profileResult.docs[0];
+
+	if (profile) {
+		// interaction records reference the profile — remove them before it, so
+		// nothing is left pointing at a deleted document
+		const mjakaziWhere = { mjakazi: { equals: profile.id } };
+		await Promise.all([
+			payload.delete({
+				collection: "contact-unlocks",
+				where: mjakaziWhere,
+				overrideAccess: true,
+			}),
+			payload.delete({
+				collection: "expressions-of-interest",
+				where: mjakaziWhere,
+				overrideAccess: true,
+			}),
+			payload.delete({
+				collection: "hires",
+				where: mjakaziWhere,
+				overrideAccess: true,
+			}),
+			payload.delete({
+				collection: "reviews",
+				where: mjakaziWhere,
+				overrideAccess: true,
+			}),
+			payload.delete({
+				collection: "saved-wajakazi",
+				where: mjakaziWhere,
+				overrideAccess: true,
+			}),
+		]);
+
+		// a shortlist row points at the profile directly, so pull those rows out of
+		// every concierge case rather than leaving a dangling candidate. the query
+		// is paged because each update removes the candidate, so the next find
+		// returns the next page, and updates run sequentially so one deletion never
+		// fires an unbounded burst of writes
+		let shortlistPass = 0;
+		const MAX_SHORTLIST_PASSES = 1000;
+		while (shortlistPass < MAX_SHORTLIST_PASSES) {
+			const cases = await payload.find({
+				collection: "concierge-cases",
+				where: { "shortlist.candidate": { equals: profile.id } },
+				depth: 0,
+				limit: 50,
+				overrideAccess: true,
+			});
+			if (cases.docs.length === 0) break;
+
+			for (const conciergeCase of cases.docs) {
+				const shortlist = (conciergeCase.shortlist ?? []).filter((row) => {
+					const candidateId =
+						typeof row.candidate === "string" ? row.candidate : row.candidate?.id;
+					return candidateId !== profile.id;
+				});
+				await payload.update({
+					collection: "concierge-cases",
+					id: conciergeCase.id,
+					data: { shortlist },
+					overrideAccess: true,
+				});
+			}
+
+			shortlistPass += 1;
+		}
+
+		if (shortlistPass >= MAX_SHORTLIST_PASSES) {
+			console.error(
+				"[services/accounts] shortlist cleanup hit its pass cap for profile:",
+				profile.id,
+			);
+		}
+
+		// identity documents are the most sensitive — remove them first
+		await payload.delete({
+			collection: "vault-documents",
+			where: { profile: { equals: profile.id } },
+			overrideAccess: true,
+		});
+	}
+
+	// every photo the account uploaded, not just the current one
+	const photoResult = await payload.find({
+		collection: "profile-photos",
+		where: { user: { equals: user.id } },
+		limit: 100,
+		overrideAccess: true,
+	});
+	await Promise.all(
+		photoResult.docs.map((photo) =>
+			payload.delete({
+				collection: "profile-photos",
+				id: photo.id,
+				overrideAccess: true,
+			}),
+		),
+	);
+
+	if (profile) {
+		await payload.delete({
 			collection: "wajakazi-profiles",
-			where: { user: { equals: user.id } },
-			depth: 0,
-			limit: 1,
+			id: profile.id,
 			overrideAccess: true,
 		});
-		const profile = profileResult.docs[0];
+	}
 
-		if (profile) {
-			// identity documents are the most sensitive — remove them first
-			await payload.delete({
-				collection: "vault-documents",
-				where: { profile: { equals: profile.id } },
-				overrideAccess: true,
-			});
-		}
+	// deleting a worker releases no one else — their own availability goes with
+	// the profile
+	return [];
+};
 
-		// every photo the account uploaded, not just the current one
-		const photoResult = await payload.find({
-			collection: "profile-photos",
+const deleteMwajiriAccountData = async (
+	payload: Payload,
+	user: User,
+): Promise<string[]> => {
+	const mwajiriWhere = { mwajiri: { equals: user.id } };
+
+	// workers held by this employer's active hires, captured before the hire rows
+	// go — deleting a hire directly bypasses hire.service's own availability reset
+	const activeHires = await payload.find({
+		collection: "hires",
+		where: {
+			mwajiri: { equals: user.id },
+			state: { in: ["pending_agreement", "agreed"] },
+		},
+		depth: 0,
+		limit: 500,
+		overrideAccess: true,
+	});
+	const hiredProfileIds = [
+		...new Set(
+			activeHires.docs
+				.map((hire) =>
+					typeof hire.mjakazi === "string" ? hire.mjakazi : hire.mjakazi?.id,
+				)
+				.filter((id): id is string => Boolean(id)),
+		),
+	];
+
+	// concierge cases reference the subscription, so they go before it
+	await payload.delete({
+		collection: "concierge-cases",
+		where: mwajiriWhere,
+		overrideAccess: true,
+	});
+
+	await Promise.all([
+		payload.delete({
+			collection: "contact-unlocks",
+			where: mwajiriWhere,
+			overrideAccess: true,
+		}),
+		payload.delete({
+			collection: "expressions-of-interest",
+			where: mwajiriWhere,
+			overrideAccess: true,
+		}),
+		payload.delete({
+			collection: "hires",
+			where: mwajiriWhere,
+			overrideAccess: true,
+		}),
+		payload.delete({
+			collection: "reviews",
+			where: mwajiriWhere,
+			overrideAccess: true,
+		}),
+		payload.delete({
+			collection: "saved-wajakazi",
 			where: { user: { equals: user.id } },
-			limit: 100,
+			overrideAccess: true,
+		}),
+	]);
+
+	// release any worker this employer was holding, but only when no other active
+	// hire still holds them — otherwise we would put a worker back in the
+	// directory while another employer's hire is still live
+	const releasedProfileIds: string[] = [];
+	for (const profileId of hiredProfileIds) {
+		const remaining = await payload.count({
+			collection: "hires",
+			where: {
+				mjakazi: { equals: profileId },
+				state: { in: ["pending_agreement", "agreed"] },
+			},
 			overrideAccess: true,
 		});
-		await Promise.all(
-			photoResult.docs.map((photo) =>
-				payload.delete({
-					collection: "profile-photos",
-					id: photo.id,
-					overrideAccess: true,
-				}),
-			),
-		);
-
-		if (profile) {
-			await payload.delete({
+		if (remaining.totalDocs === 0) {
+			await payload.update({
 				collection: "wajakazi-profiles",
-				id: profile.id,
+				id: profileId,
+				data: { availabilityStatus: "available" },
 				overrideAccess: true,
 			});
-		}
-	} else {
-		const subscriptionResult = await payload.find({
-			collection: "subscriptions",
-			where: { user: { equals: user.id } },
-			limit: 10,
-			overrideAccess: true,
-		});
-		await Promise.all(
-			subscriptionResult.docs.map((sub) =>
-				payload.delete({
-					collection: "subscriptions",
-					id: sub.id,
-					overrideAccess: true,
-				}),
-			),
-		);
-
-		const profileResult = await payload.find({
-			collection: "waajiri-profiles",
-			where: { user: { equals: user.id } },
-			depth: 0,
-			limit: 1,
-			overrideAccess: true,
-		});
-		const profile = profileResult.docs[0];
-		if (profile) {
-			await payload.delete({
-				collection: "waajiri-profiles",
-				id: profile.id,
-				overrideAccess: true,
-			});
+			releasedProfileIds.push(profileId);
 		}
 	}
+
+	const subscriptionResult = await payload.find({
+		collection: "subscriptions",
+		where: { user: { equals: user.id } },
+		limit: 10,
+		overrideAccess: true,
+	});
+	await Promise.all(
+		subscriptionResult.docs.map((sub) =>
+			payload.delete({
+				collection: "subscriptions",
+				id: sub.id,
+				overrideAccess: true,
+			}),
+		),
+	);
+
+	const profileResult = await payload.find({
+		collection: "waajiri-profiles",
+		where: { user: { equals: user.id } },
+		depth: 0,
+		limit: 1,
+		overrideAccess: true,
+	});
+	const profile = profileResult.docs[0];
+	if (profile) {
+		await payload.delete({
+			collection: "waajiri-profiles",
+			id: profile.id,
+			overrideAccess: true,
+		});
+	}
+
+	return releasedProfileIds;
+};
+
+// removes every record owned by a SaaS account — profile, identity documents,
+// photos, subscription, payments and the interaction records that reference the
+// account (unlocks, expressions of interest, hires, reviews, saved profiles,
+// concierge cases) — so deletion leaves no dangling relations. audit logs are
+// deliberately kept: they are the immutable operational record. the caller has
+// already authorized the deletion (admin, or the account owner)
+const deleteAccountData = async (payload: Payload, user: User): Promise<string[]> => {
+	const releasedProfileIds =
+		user.role === "mjakazi"
+			? await deleteMjakaziAccountData(payload, user)
+			: await deleteMwajiriAccountData(payload, user);
 
 	const paymentResult = await payload.find({
 		collection: "payments",
@@ -281,22 +458,21 @@ const deleteAccountData = async (payload: Payload, user: User): Promise<void> =>
 			}),
 		),
 	);
+
+	return releasedProfileIds;
 };
 
-// deletes a SaaS account, cascading through profile, documents and clerk. admin
-// only — staff never delete. a reason is mandatory, following the moderation
-// procedure (suspend as the warning, delete only after no repentance)
+// deletes a SaaS account, cascading through profile, documents, interactions and
+// clerk. admin only — staff never delete. no reason is required: deletion lives
+// in the account sections, deliberately separate from moderation
+// (suspend/reinstate), which stays reason-gated
 const deleteAccount = async (
 	payload: Payload,
 	actor: User,
 	userId: string,
-	reason: string,
 ): Promise<Result> => {
 	if (actor.role !== "admin") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
-	}
-	if (!reason.trim()) {
-		return { success: false, error: "A deletion reason is required.", code: "reason_required" };
 	}
 
 	try {
@@ -314,7 +490,7 @@ const deleteAccount = async (
 			return { success: false, error: "Not a SaaS account.", code: "invalid_target" };
 		}
 
-		await deleteAccountData(payload, target);
+		const releasedProfileIds = await deleteAccountData(payload, target);
 
 		await writeAuditLog({
 			action: "account_deleted",
@@ -322,8 +498,11 @@ const deleteAccount = async (
 			actorLabel: userLabel(actor),
 			targetId: target.id,
 			targetLabel: userLabel(target),
-			reason: reason.trim(),
-			metadata: { role: target.role, email: target.email },
+			metadata: {
+				role: target.role,
+				email: target.email,
+				releasedMjakazi: releasedProfileIds,
+			},
 		});
 
 		await payload.delete({
@@ -335,7 +514,23 @@ const deleteAccount = async (
 		return { success: true, data: undefined };
 	} catch (error) {
 		console.error("[services/accounts] deleteAccount failed:", error);
-		return { success: false, error: "Could not delete the account." };
+
+		// the cascade is not transactional, so a failure can leave a partially
+		// erased account. record it so the partial state is visible and the
+		// deletion can be re-run to completion
+		await writeAuditLog({
+			action: "account_deletion_failed",
+			actorId: actor.id,
+			actorLabel: userLabel(actor),
+			targetId: userId,
+			targetLabel: null,
+			metadata: { error: error instanceof Error ? error.message : "unknown error" },
+		});
+
+		return {
+			success: false,
+			error: "Deletion did not finish. Re-run it to complete the cleanup.",
+		};
 	}
 };
 

@@ -10,6 +10,7 @@ import { getCallbackMetadataValue, type StkCallback } from "@/lib/mpesa";
 import { toId, userLabel } from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
 import type { Payment, Subscription, User } from "@/payload-types";
+import { createConciergeCaseOnPayment } from "@/services/concierge.service";
 import { getTierById, type SubscriptionTier } from "@/services/settings.service";
 
 type Result<T = void> =
@@ -289,19 +290,99 @@ const beginPurchase = async (
 	return fail("This account cannot start a purchase.", "illegal_transition");
 };
 
-// active → active (stacking). appends the new tier's duration to the existing
-// expiry rather than to now, so a renewal bought mid-window extends the window
-// instead of resetting it. a direct compare-and-swap, not applyTransition, because
-// the state does not change
+// the cycle length that was in force when the previous payment was made. the
+// payment's own snapshot is authoritative; a payment written before that field
+// existed falls back to the tier's current duration, which is the only
+// remaining read for a legacy record. null means the carry-over cannot be
+// measured at all, and the caller must not guess
+const resolvePreviousCycleDays = async (
+	payload: Payload,
+	prevPayment: Payment | null,
+): Promise<number | null> => {
+	if (!prevPayment) return null;
+	if (
+		typeof prevPayment.tierDurationDays === "number" &&
+		prevPayment.tierDurationDays > 0
+	) {
+		return prevPayment.tierDurationDays;
+	}
+	if (!prevPayment.tierId) return null;
+
+	const prevTier = await getTierById(payload, prevPayment.tierId);
+	return prevTier && prevTier.durationDays > 0 ? prevTier.durationDays : null;
+};
+
+// active → active (stacking/upgrade). the new window runs from now and carries
+// over what is left of the current one: the unexpired share of the previous
+// cycle is expressed in days at the new tier's rate, so a same-tier renewal
+// lands on the existing expiry plus the new duration and any tier change
+// converts the remainder at the ratio of what was paid to what is now charged.
+// nothing is refunded in cash, on any tier change
 const stackSubscription = async (
 	payload: Payload,
 	subscription: Subscription,
 	tier: SubscriptionTier,
-	paymentId: string,
+	payment: Payment,
 ): Promise<Result<Subscription>> => {
 	const previousState = subscription.subscriptionState;
-	const base = subscription.tierExpiry ? new Date(subscription.tierExpiry) : new Date();
-	const tierExpiry = addDays(base, tier.durationDays).toISOString();
+	const now = new Date();
+	const currentExpiry = subscription.tierExpiry ? new Date(subscription.tierExpiry) : now;
+
+	let extraDaysFromProration = 0;
+
+	// carry-over only applies to a window that is still running and has a
+	// purchase behind it to measure the remainder against
+	if (currentExpiry > now && subscription.lastPaymentId) {
+		const prevPaymentId = toId(subscription.lastPaymentId);
+		let prevPayment: Payment | null = null;
+
+		if (prevPaymentId) {
+			try {
+				prevPayment = await payload.findByID({
+					collection: "payments",
+					id: prevPaymentId,
+					depth: 0,
+					overrideAccess: true,
+				});
+			} catch (err) {
+				console.error("[services/subscription] previous payment read failed:", err);
+			}
+		}
+
+		const prevCycleDays = await resolvePreviousCycleDays(payload, prevPayment);
+		const newPaymentAmount = payment.amount > 0 ? payment.amount : tier.price;
+
+		// a running window that cannot be measured is not applied at all. the
+		// alternative — committing `now + duration` — would silently shorten a
+		// window that has already been paid for and overwrite the payment that
+		// funded it. failing leaves the payment confirmed and lets the caller's
+		// activation-failure path raise it for investigation
+		if (
+			!prevPayment ||
+			prevPayment.amount <= 0 ||
+			!prevCycleDays ||
+			newPaymentAmount < 1
+		) {
+			return fail(
+				"Could not carry over the current subscription window.",
+				"carry_over_unavailable",
+			);
+		}
+
+		// two dimensionless ratios — no fractional money is ever formed. the
+		// share of the previous cycle still unexpired, and what the new tier
+		// charges relative to the amount actually paid on file
+		const cycleMs = prevCycleDays * 24 * 60 * 60 * 1000;
+		const remainingMs = Math.max(0, currentExpiry.getTime() - now.getTime());
+		const priceRatio = prevPayment.amount / newPaymentAmount;
+		extraDaysFromProration = Math.round(
+			(remainingMs / cycleMs) * priceRatio * tier.durationDays,
+		);
+	}
+
+	// base expiration: starts from now on tier switch / upgrade so new tier is effective immediately
+	const totalNewDays = tier.durationDays + extraDaysFromProration;
+	const tierExpiry = addDays(now, totalNewDays).toISOString();
 
 	try {
 		const result = await payload.update({
@@ -316,7 +397,7 @@ const stackSubscription = async (
 				tierId: tier.tierId,
 				tierName: tier.name,
 				tierExpiry,
-				lastPaymentId: paymentId,
+				lastPaymentId: payment.id,
 			},
 			overrideAccess: true,
 		});
@@ -336,8 +417,10 @@ const stackSubscription = async (
 				tierId: tier.tierId,
 				tierName: tier.name,
 				durationDays: tier.durationDays,
+				extraDaysFromProration,
+				totalNewDays,
 				stacked: true,
-				paymentId,
+				paymentId: payment.id,
 			},
 		});
 
@@ -419,7 +502,7 @@ const activateSubscriptionOnPayment = async (
 	let result: Result<Subscription>;
 
 	if (subscription.subscriptionState === "active") {
-		result = await stackSubscription(payload, subscription, tier, payment.id);
+		result = await stackSubscription(payload, subscription, tier, payment);
 	} else if (
 		subscription.subscriptionState === "pending_payment" ||
 		subscription.subscriptionState === "none" ||
@@ -456,6 +539,9 @@ const activateSubscriptionOnPayment = async (
 
 	if (result.success) {
 		await notifySubscriptionPurchase(payload, result.data, payment, tier.name);
+		if (tier.isConcierge) {
+			await createConciergeCaseOnPayment(payload, userId, result.data.id);
+		}
 	}
 
 	return result;

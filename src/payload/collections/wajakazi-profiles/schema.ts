@@ -3,10 +3,12 @@ import type { CollectionConfig } from "payload";
 import {
 	COUNTRY_OPTIONS,
 	EDUCATION_LEVEL_OPTIONS,
+	EMPLOYER_MAX_LENGTH,
 	JOB_OPTIONS,
 	LANGUAGE_OPTIONS,
 	LOCATION_OPTIONS,
 	MARITAL_STATUS_OPTIONS,
+	MAX_EMPLOYMENT_ENTRIES,
 	RELIGION_OPTIONS,
 	WORK_PREFERENCE_OPTIONS,
 } from "@/lib/profile-constants";
@@ -136,6 +138,54 @@ const WajakaziProfiles: CollectionConfig = {
 			type: "select",
 			label: "Education Level",
 			options: EDUCATION_LEVEL_OPTIONS.map((e) => ({ label: e.label, value: e.value })),
+		},
+		{
+			// optional display content describing past placements. not evidence, so it
+			// is never part of profileComplete and never blocks verification. employer
+			// is a household descriptor rather than a named person — it is deliberately
+			// unindexed so a third party's name can never be searched through it
+			name: "employmentHistory",
+			type: "array",
+			label: "Employment History",
+			maxRows: MAX_EMPLOYMENT_ENTRIES,
+			labels: { singular: "Employment", plural: "Employment History" },
+			admin: {
+				description: `Up to ${MAX_EMPLOYMENT_ENTRIES} previous placements. Optional — this is shown to employers but is not verified.`,
+			},
+			fields: [
+				{
+					name: "employer",
+					type: "text",
+					label: "Employer",
+					required: true,
+					maxLength: EMPLOYER_MAX_LENGTH,
+					admin: {
+						description:
+							"A short description such as 'A family in Kilimani'. Do not enter anyone's full name or contact details.",
+					},
+				},
+				{
+					name: "role",
+					type: "select",
+					label: "Role",
+					required: true,
+					// the same list as jobsSkills, so a listed role is always one the
+					// rest of the product recognises
+					options: JOB_OPTIONS.map((j) => ({ label: j.label, value: j.value })),
+				},
+				{
+					name: "startDate",
+					type: "date",
+					label: "Start Date",
+					required: true,
+				},
+				{
+					name: "endDate",
+					type: "date",
+					label: "End Date",
+					required: true,
+				},
+			],
 		},
 		{
 			name: "languages",

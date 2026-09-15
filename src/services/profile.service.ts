@@ -5,7 +5,7 @@ import {
 	PROFILE_REQUIRED_FIELDS,
 	type ProfileRequiredField,
 } from "@/lib/profile-constants";
-import type { ProfileFormValues } from "@/lib/profile-schema";
+import { isFilledEmploymentEntry, type ProfileFormValues } from "@/lib/profile-schema";
 import type {
 	ProfilePhoto,
 	User,
@@ -70,6 +70,17 @@ const toProfileData = (input: ProfileFormValues) => ({
 	about: input.about || null,
 	yearsExperience: input.yearsExperience ?? null,
 	educationLevel: input.educationLevel || null,
+	// rows the user added and abandoned are dropped here rather than stored as
+	// empty entries. payload regenerates the row ids on every save, so the array
+	// is replaced wholesale — nothing references a row id
+	employmentHistory: input.employmentHistory
+		.filter(isFilledEmploymentEntry)
+		.map((entry) => ({
+			employer: entry.employer,
+			role: entry.role,
+			startDate: entry.startDate,
+			endDate: entry.endDate,
+		})),
 	languages: input.languages,
 	workPreference: input.workPreference || null,
 	availableFrom: input.availableFrom || null,
@@ -177,7 +188,13 @@ const updateProfile = async (
 	payload: Payload,
 	user: User,
 	input: ProfileFormValues,
-): Promise<Result<{ profile: WajakaziProfile; profileComplete: boolean }>> => {
+): Promise<
+	Result<{
+		profile: WajakaziProfile;
+		profileComplete: boolean;
+		missingFields: ProfileRequiredField[];
+	}>
+> => {
 	if (user.role !== "mjakazi") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
 	}
@@ -205,6 +222,7 @@ const updateProfile = async (
 		});
 
 		const profileComplete = await writeCompleteness(payload, updated);
+		const missingFields = getMissingRequiredFields(updated);
 
 		if (wasVerified && legalNameChanged) {
 			// dynamic import keeps this module out of a static cycle with
@@ -218,7 +236,7 @@ const updateProfile = async (
 
 		return {
 			success: true,
-			data: { profile: updated, profileComplete },
+			data: { profile: updated, profileComplete, missingFields },
 		};
 	} catch (error) {
 		console.error("[services/profile] updateProfile failed:", error);

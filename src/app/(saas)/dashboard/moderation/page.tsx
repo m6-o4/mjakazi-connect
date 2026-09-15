@@ -2,42 +2,13 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
-import {
-	ModerationTable,
-	type ModerationRow,
-} from "@/components/dashboard/moderation/moderation-table";
+import { ModerationTable } from "@/components/dashboard/moderation/moderation-table";
+import { toWaajiriRow, toWajakaziRow } from "@/lib/account-rows";
 import { DASHBOARD_BY_ROLE } from "@/lib/roles";
 import config from "@/payload-config";
-import {
-	listWaajiriAccounts,
-	listWajakaziAccounts,
-} from "@/services/accounts.service";
+import { listWaajiriAccounts, listWajakaziAccounts } from "@/services/accounts.service";
 
 export const metadata = { title: "Moderation" };
-
-const verificationBadge: Record<
-	string,
-	{ label: string; variant: ModerationRow["statusVariant"] }
-> = {
-	draft: { label: "Draft", variant: "outline" },
-	pending_payment: { label: "Pending payment", variant: "secondary" },
-	pending_review: { label: "Pending review", variant: "secondary" },
-	verified: { label: "Verified", variant: "default" },
-	rejected: { label: "Rejected", variant: "destructive" },
-	verification_expired: { label: "Expired", variant: "destructive" },
-	blacklisted: { label: "Blacklisted", variant: "destructive" },
-	deactivated: { label: "Deactivated", variant: "outline" },
-};
-
-const blacklistBadge: Record<
-	string,
-	{ label: string; variant: ModerationRow["statusVariant"] }
-> = {
-	active: { label: "Active", variant: "outline" },
-	blacklisted: { label: "Blacklisted", variant: "destructive" },
-};
-
-const suspendedBadge = { label: "Suspended", variant: "secondary" as const };
 
 const ModerationPage = async () => {
 	const user = await getCurrentUser();
@@ -52,68 +23,21 @@ const ModerationPage = async () => {
 		listWaajiriAccounts(payload, user),
 	]);
 
-	const wajakaziRows: ModerationRow[] = (wajakaziResult.success ? wajakaziResult.data : []).map(
-		(account) => {
-			const badge =
-				account.accountState === "suspended"
-					? suspendedBadge
-					: (verificationBadge[account.verificationState] ?? verificationBadge.draft);
-			const legalName = [account.firstName, account.lastName]
-				.filter(Boolean)
-				.join(" ")
-				.trim();
-
-			return {
-				userId: account.userId,
-				name: account.displayName,
-				firstName: account.firstName,
-				lastName: account.lastName,
-				email: account.email,
-				statusLabel: badge.label,
-				statusVariant: badge.variant,
-				subtitle:
-					legalName && legalName !== account.displayName
-						? `Legal name: ${legalName}`
-						: null,
-				accountState: account.accountState,
-				createdAt: account.createdAt,
-			};
-		},
+	const wajakaziRows = (wajakaziResult.success ? wajakaziResult.data : []).map(
+		toWajakaziRow,
 	);
-
-	const waajiriRows: ModerationRow[] = (waajiriResult.success ? waajiriResult.data : []).map(
-		(account) => {
-			const badge =
-				account.accountState === "suspended"
-					? suspendedBadge
-					: (blacklistBadge[account.blacklistState] ?? blacklistBadge.active);
-
-			return {
-				userId: account.userId,
-				name: [account.firstName, account.lastName].filter(Boolean).join(" ").trim(),
-				firstName: account.firstName,
-				lastName: account.lastName,
-				email: account.email,
-				statusLabel: badge.label,
-				statusVariant: badge.variant,
-				subtitle: null,
-				accountState: account.accountState,
-				createdAt: account.createdAt,
-			};
-		},
-	);
+	const waajiriRows = (waajiriResult.success ? waajiriResult.data : []).map(toWaajiriRow);
 
 	const canSuspend = true;
 	const canReinstate = user.role === "admin";
-	const canDelete = user.role === "admin";
 
 	return (
 		<div className="flex flex-col gap-8">
 			<div>
 				<h1 className="text-heading text-2xl font-semibold">Moderation</h1>
 				<p className="text-muted-foreground mt-1 text-sm">
-					Suspend accounts for bad behaviour, reinstate them, or delete them. Every
-					action requires a reason.
+					Suspend accounts for bad behaviour, or reinstate them. Every action requires a
+					reason. Renaming and deletion live in the Wajakazi and Waajiri sections.
 				</p>
 			</div>
 
@@ -123,7 +47,6 @@ const ModerationPage = async () => {
 					accounts={wajakaziRows}
 					canSuspend={canSuspend}
 					canReinstate={canReinstate}
-					canDelete={canDelete}
 				/>
 			</section>
 
@@ -133,7 +56,6 @@ const ModerationPage = async () => {
 					accounts={waajiriRows}
 					canSuspend={canSuspend}
 					canReinstate={canReinstate}
-					canDelete={canDelete}
 				/>
 			</section>
 		</div>

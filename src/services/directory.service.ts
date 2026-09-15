@@ -9,7 +9,10 @@ const DIRECTORY_PAGE_SIZE = 9;
 // the only fields a public directory response may contain. contact (phone) and
 // sensitive identity fields (legal name, date of birth, nationality, marital
 // status, religion) are deliberately absent — this is the payload-level
-// enforcement of invariant #14, not a UI mask
+// enforcement of invariant #14, not a UI mask.
+// this is the LIST set: it is what the paginated list, the saved list, the
+// archive block and the overview count query all read, so it carries only what a
+// card actually renders
 const DIRECTORY_PUBLIC_FIELDS = {
 	slug: true,
 	displayName: true,
@@ -24,6 +27,19 @@ const DIRECTORY_PUBLIC_FIELDS = {
 	salaryMin: true,
 	salaryMax: true,
 	location: true,
+} as const;
+
+// the detail read adds the one field only a profile-detail page renders. the
+// subfields are named explicitly rather than selected with `true`, so a subfield
+// added to the array later is never published to anonymous visitors by default
+const DIRECTORY_DETAIL_FIELDS = {
+	...DIRECTORY_PUBLIC_FIELDS,
+	employmentHistory: {
+		employer: true,
+		role: true,
+		startDate: true,
+		endDate: true,
+	},
 } as const;
 
 const EXPERIENCE_BUCKETS = ["0-2", "3-5", "6-9", "10+"] as const;
@@ -43,6 +59,7 @@ type DirectoryProfile = Pick<
 	| "about"
 	| "yearsExperience"
 	| "educationLevel"
+	| "employmentHistory"
 	| "languages"
 	| "workPreference"
 	| "availableFrom"
@@ -145,7 +162,7 @@ const getDirectoryProfile = async (
 		where: { and: [DIRECTORY_VISIBLE, { slug: { equals: slug } }] },
 		depth: 1,
 		limit: 1,
-		select: DIRECTORY_PUBLIC_FIELDS,
+		select: DIRECTORY_DETAIL_FIELDS,
 		overrideAccess: false,
 	});
 

@@ -9,6 +9,7 @@ import { RatingStars } from "@/components/rating-stars";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { notifySuccess } from "@/lib/notify";
 import type { PendingReviewItem } from "@/services/review.service";
 
 type ReviewQueueProps = {
@@ -41,6 +42,7 @@ const ReviewQueue = ({ items }: ReviewQueueProps) => {
 				setError(result.error ?? "Could not approve the review.");
 				return;
 			}
+			notifySuccess("Review published", { id: `review-${id}` });
 			router.refresh();
 		} catch {
 			setError("Could not approve the review.");
@@ -62,6 +64,7 @@ const ReviewQueue = ({ items }: ReviewQueueProps) => {
 				setError(result.error ?? "Could not reject the review.");
 				return;
 			}
+			notifySuccess("Review rejected", { id: `review-${id}` });
 			setRejectingId(null);
 			setReason("");
 			router.refresh();

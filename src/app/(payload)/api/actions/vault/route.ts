@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { documentTypeSchema, VAULT_MAX_BYTES, VAULT_MIME_TYPES } from "@/lib/vault";
+import {
+	documentSideSchema,
+	documentTypeSchema,
+	isDocumentSlot,
+	VAULT_MAX_BYTES,
+	VAULT_MIME_TYPES,
+} from "@/lib/vault";
 import config from "@/payload-config";
 import { uploadVaultDocument } from "@/services/vault.service";
 
@@ -42,6 +48,7 @@ const POST = async (req: NextRequest) => {
 		const formData = await req.formData();
 		const file = formData.get("file");
 		const documentTypeRaw = formData.get("documentType");
+		const sideRaw = formData.get("side");
 
 		if (!(file instanceof File)) {
 			return NextResponse.json(
@@ -54,6 +61,21 @@ const POST = async (req: NextRequest) => {
 		if (!parsedType.success) {
 			return NextResponse.json(
 				{ success: false, error: "Invalid document type." },
+				{ status: 400 },
+			);
+		}
+
+		const parsedSide = documentSideSchema.safeParse(sideRaw);
+		if (!parsedSide.success) {
+			return NextResponse.json(
+				{ success: false, error: "Invalid document side." },
+				{ status: 400 },
+			);
+		}
+
+		if (!isDocumentSlot(parsedType.data, parsedSide.data)) {
+			return NextResponse.json(
+				{ success: false, error: "Invalid document slot." },
 				{ status: 400 },
 			);
 		}
@@ -78,6 +100,7 @@ const POST = async (req: NextRequest) => {
 
 		const result = await uploadVaultDocument(payload, user, {
 			documentType: parsedType.data,
+			side: parsedSide.data,
 			file: { data: buffer, mimetype, name, size: file.size },
 		});
 
@@ -93,6 +116,7 @@ const POST = async (req: NextRequest) => {
 			document: {
 				id: result.data.document.id,
 				documentType: result.data.document.documentType,
+				side: result.data.document.side,
 				filename: result.data.document.filename ?? null,
 			},
 		});

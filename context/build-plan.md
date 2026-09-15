@@ -179,6 +179,19 @@ fields, `app/actions/profile.ts`, the form at `/dashboard/mjakazi/profile`,
 all fields save, reload populated, and completeness is computed. **Verify**: fill
 partially, save, reload. Fill fully, confirm completeness reflects it.
 
+**Scope addition (queued 2026-09-13, not started):** an employment-history section on the
+mjakazi profile page — the worker can list up to 5 previous employers. Storage shape
+(free-text vs structured), date handling, whether it counts toward `profileComplete`, and
+whether it shows on the public profile are open questions to settle before building.
+Recorded in `memory.md`.
+
+**Built 2026-09-15.** Structured, 4 fields per entry (`employer`, `role` from
+`JOB_OPTIONS`, `startDate`, `endDate`), max 5, all optional. Deliberately outside
+`profileComplete` and `PROFILE_UI_REQUIRED_FIELDS` — display content, never gated on
+verification. Renders on every profile-detail page (`DIRECTORY_PUBLIC_FIELDS`), so the
+public directory and the mwajiri browse detail both show it; detail pages only. See the
+`progress-tracker.md` entry for the full decision set.
+
 ### 2.2 — Document vault
 
 **Role**: the evidence behind the Verified badge, and the most sensitive data this system
@@ -188,6 +201,14 @@ authenticated streaming route at `api/actions/vault/{id}`, audit entry on every 
 is logged. **Verify**: upload as a Mjakazi. Copy the URL, open it signed out — it must
 fail. Open it as another Mjakazi — it must fail. Open it as staff — it must work and write
 an audit entry.
+
+**Scope addition (built 2026-09-15):** the National ID is captured as two slots — front
+and back — and the Certificate of Good Conduct as one, all three required before
+submitting for verification. `vault-documents` gained a required `side` (`front | back`);
+a slot (document type + side) is now the unit uploaded, replaced, removed and checked, and
+`DOCUMENT_SLOTS` in `src/lib/vault.ts` is the single source of truth the collection
+options, the upload UI, the staff viewer and the pre-submission gate all read. See the
+`progress-tracker.md` entry.
 
 ---
 
@@ -276,12 +297,14 @@ hand — nothing applies twice.
 ### 5.1 — Subscriptions collection and state machine
 
 **Builds**: `subscriptions` collection, `services/subscription.service.ts`, six states,
-stacking logic that appends to existing expiry rather than to `now()`. Tier prices and
-durations read live from `platform-settings.subscriptionTiers`, never hardcoded.
-`payments.tier` (currently `'1'|'2'|'3'`) is replaced by `tierId` + `tierName` string
-snapshots in the same pass. **Done when**: every transition is guarded and stacking is
-correct. **Verify**: with an active window, purchase again. Confirm the new expiry is old
-expiry plus duration, not today plus duration.
+stacking logic that converts the unexpired value of the current window into extra days at
+the new tier's daily rate, with the new window running from the moment of purchase. Tier
+prices and durations read live from `platform-settings.subscriptionTiers`, never
+hardcoded. `payments.tier` (currently `'1'|'2'|'3'`) is replaced by `tierId` + `tierName`
+string snapshots in the same pass. **Done when**: every transition is guarded and stacking
+is correct. **Verify**: with an active window, purchase again. Confirm the new expiry
+extends past the old one and that the extra days reflect the unexpired value converted at
+the new tier's daily rate.
 
 ### 5.2 — Purchase flow
 
@@ -463,8 +486,8 @@ Staff suspend only; admin reinstates and deletes. Mandatory reason on every acti
 entry on every action. A suspended wajakazi leaves the directory and can no longer be
 contact-revealed; a suspended mwajiri's subscription is suspended. Suspended users are
 redirected to a `/suspended` notice showing the reason. **Done when**: staff can suspend
-and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate — the
-second must fail.
+and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate —
+the second must fail.
 
 ### 10.2 — Admin dashboard — DONE 2026-09-09
 
@@ -510,8 +533,8 @@ sandbox before the product handles more of the funnel.
 - **Callback replay idempotency** — replay the same confirmation callback by hand; the
   second must be refused and audit-logged, and access must never be granted twice.
 - **Subscription expiry** — backdate an active subscription's expiry, run
-  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are blocked,
-  and previously unlocked contacts remain visible.
+  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are
+  blocked, and previously unlocked contacts remain visible.
 
 **Verified 2026-09-09**: all three checks passed in the sandbox — STK push end to end
 (prompt reached the handset, record moved `stk_sent` → `confirmed` on a real callback),

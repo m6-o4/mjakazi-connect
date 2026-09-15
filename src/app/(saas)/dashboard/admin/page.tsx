@@ -3,8 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
-import { RevenueCard } from "@/components/dashboard/admin/revenue-card";
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { RevenueCard } from "@/components/dashboard/admin/revenue-card";
 import { StatCard } from "@/components/dashboard/overview/stat-card";
 import {
 	Card,
@@ -102,8 +102,16 @@ const AdminOverviewPage = async () => {
 				/>
 				<StatCard label="Verified wajakazi" value={verified.totalDocs} />
 				<StatCard label="Active subscriptions" value={activeSubscriptions.totalDocs} />
-				<StatCard label="Waajiri accounts" value={waajiri.totalDocs} />
-				<StatCard label="Wajakazi accounts" value={wajakazi.totalDocs} />
+				<StatCard
+					label="Waajiri accounts"
+					value={waajiri.totalDocs}
+					href="/dashboard/accounts/waajiri"
+				/>
+				<StatCard
+					label="Wajakazi accounts"
+					value={wajakazi.totalDocs}
+					href="/dashboard/accounts/wajakazi"
+				/>
 				<StatCard
 					label="Total profiles"
 					value={totalProfiles.totalDocs}
@@ -143,15 +151,11 @@ const AdminOverviewPage = async () => {
 					<CardContent className="flex items-end justify-around gap-4 text-center">
 						<div>
 							<p className="text-muted-foreground text-sm">Approved</p>
-							<p className="text-heading text-3xl font-semibold">
-								{throughput.approved}
-							</p>
+							<p className="text-heading text-3xl font-semibold">{throughput.approved}</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-sm">Rejected</p>
-							<p className="text-heading text-3xl font-semibold">
-								{throughput.rejected}
-							</p>
+							<p className="text-heading text-3xl font-semibold">{throughput.rejected}</p>
 						</div>
 					</CardContent>
 				</Card>

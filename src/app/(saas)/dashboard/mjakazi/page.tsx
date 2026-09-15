@@ -21,7 +21,7 @@ import {
 	PROFILE_REQUIRED_FIELDS,
 	PROFILE_REQUIRED_LABELS,
 } from "@/lib/profile-constants";
-import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
+import { documentSlotKey, REQUIRED_DOCUMENT_SLOTS } from "@/lib/vault";
 import config from "@/payload-config";
 import { listReceivedEois } from "@/services/eoi.service";
 import { getMissingRequiredFields, getOwnProfile } from "@/services/profile.service";
@@ -53,26 +53,27 @@ const MjakaziDashboardPage = async () => {
 		href: "/dashboard/mjakazi/profile",
 	}));
 
-	// which identity documents the worker has uploaded so far. an explicit select
-	// omits the private url, which must never reach the client
-	const uploadedDocumentTypes = new Set<string>();
+	// which document sides the worker has uploaded so far. an explicit select
+	// omits the private url, which must never reach the client. the slot key comes
+	// from the shared rule, so this checklist cannot drift from the submit gate
+	const uploadedSlots = new Set<string>();
 	if (profile) {
 		const docsResult = await payload.find({
 			collection: "vault-documents",
 			where: { profile: { equals: profile.id } },
 			limit: 10,
-			select: { documentType: true },
+			select: { documentType: true, side: true },
 			overrideAccess: false,
 			req: { user },
 		});
 		for (const doc of docsResult.docs) {
-			uploadedDocumentTypes.add(doc.documentType);
+			uploadedSlots.add(documentSlotKey(doc.documentType, doc.side));
 		}
 	}
 
-	const documents = DOCUMENT_TYPE_OPTIONS.map(({ label, value }) => ({
-		label,
-		uploaded: uploadedDocumentTypes.has(value),
+	const documents = REQUIRED_DOCUMENT_SLOTS.map((slot) => ({
+		label: slot.label,
+		uploaded: uploadedSlots.has(documentSlotKey(slot.documentType, slot.side)),
 	}));
 
 	return (

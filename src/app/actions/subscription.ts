@@ -63,6 +63,7 @@ const initiateSubscriptionPaymentAction = async (
 			phoneNumber: phone,
 			tierId: tier.tierId,
 			tierName: tier.name,
+			tierDurationDays: tier.durationDays,
 		});
 
 		if (!result.success) {

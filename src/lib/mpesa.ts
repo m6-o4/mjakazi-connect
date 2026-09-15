@@ -197,9 +197,13 @@ const initiateStkPush = async ({
 
 // --- callback parsing -------------------------------------------------------
 
+// daraja 3.0 sends some metadata items without a `Value` at all — a paybill STK
+// callback includes `{ Name: "Balance" }` with no value when no balance is
+// returned. requiring `Value` rejected the whole callback, which is only
+// tolerated/coerced elsewhere, so it must stay optional here
 const callbackMetadataItemSchema = z.object({
 	Name: z.string(),
-	Value: z.union([z.string(), z.number()]),
+	Value: z.union([z.string(), z.number()]).nullish(),
 });
 
 // the shape daraja posts back once the handset responds. result code 0 means the
@@ -240,7 +244,8 @@ const getCallbackMetadataValue = (
 	name: string,
 ): string | number | undefined => {
 	const items = callback.Body.stkCallback.CallbackMetadata?.Item ?? [];
-	return items.find((item) => item.Name === name)?.Value;
+	const val = items.find((item) => item.Name === name)?.Value;
+	return val ?? undefined;
 };
 
 export { getCallbackMetadataValue, initiateStkPush, parseStkCallback };

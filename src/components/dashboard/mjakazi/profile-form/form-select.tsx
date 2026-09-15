@@ -1,6 +1,6 @@
 "use client";
 
-import { Controller, useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import { Label } from "@/components/ui/label";
 import {
@@ -12,14 +12,19 @@ import {
 } from "@/components/ui/select";
 import type { ProfileFormValues } from "@/lib/profile-schema";
 
+// the select paths this component serves. employment role is an array path, so
+// the union is written explicitly rather than widened to FieldPath
+type SelectFieldName =
+	| "nationality"
+	| "maritalStatus"
+	| "religion"
+	| "educationLevel"
+	| "workPreference"
+	| "location"
+	| `employmentHistory.${number}.role`;
+
 type FormSelectProps = {
-	name:
-		| "nationality"
-		| "maritalStatus"
-		| "religion"
-		| "educationLevel"
-		| "workPreference"
-		| "location";
+	name: SelectFieldName;
 	label: string;
 	options: readonly { label: string; value: string }[];
 	placeholder?: string;
@@ -29,8 +34,9 @@ type FormSelectProps = {
 // a single-select field bridged to react-hook-form. an empty value means "not
 // set" and is stored as null by the service
 const FormSelect = ({ name, label, options, placeholder, required }: FormSelectProps) => {
-	const { control, formState } = useFormContext<ProfileFormValues>();
-	const errorMessage = formState.errors[name]?.message;
+	const { control } = useFormContext<ProfileFormValues>();
+	const { field, fieldState } = useController({ name, control });
+	const errorMessage = fieldState.error?.message;
 
 	return (
 		<div className="flex flex-col gap-1.5">
@@ -45,28 +51,22 @@ const FormSelect = ({ name, label, options, placeholder, required }: FormSelectP
 					)}
 				</span>
 			</Label>
-			<Controller
-				name={name}
-				control={control}
-				render={({ field }) => (
-					<Select
-						value={(field.value as string) || null}
-						onValueChange={(value) => field.onChange(value ?? "")}
-					>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder={placeholder ?? "Select..."} />
-						</SelectTrigger>
-						<SelectContent>
-							{options.map((option) => (
-								<SelectItem key={option.value} value={option.value}>
-									{option.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				)}
-			/>
-			{errorMessage && <p className="text-destructive text-xs">{String(errorMessage)}</p>}
+			<Select
+				value={(field.value as string) || null}
+				onValueChange={(value) => field.onChange(value ?? "")}
+			>
+				<SelectTrigger className="w-full">
+					<SelectValue placeholder={placeholder ?? "Select..."} />
+				</SelectTrigger>
+				<SelectContent>
+					{options.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			{errorMessage && <p className="text-destructive text-xs">{errorMessage}</p>}
 		</div>
 	);
 };

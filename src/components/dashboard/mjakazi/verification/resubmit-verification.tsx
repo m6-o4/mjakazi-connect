@@ -13,6 +13,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 // the rejected-state resubmit flow. the service re-checks readiness and either
 // re-enters review (free resubmissions remaining) or routes back to payment
@@ -32,6 +33,7 @@ const ResubmitVerification = () => {
 				return;
 			}
 			posthog.capture("verification_resubmitted");
+			notifySuccess("Resubmitted for review", { id: "verification-resubmit" });
 			router.refresh();
 		} catch {
 			setError("Could not resubmit your profile.");

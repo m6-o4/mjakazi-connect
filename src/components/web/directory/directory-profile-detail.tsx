@@ -46,6 +46,29 @@ const formatSalary = (profile: DirectoryProfile): string | null => {
 	return null;
 };
 
+// a placement is expressed in months, never days, so the day stored on the date
+// field is deliberately not shown. the timezone is pinned because a date-only
+// value is stored as UTC midnight, so a runtime behind UTC would otherwise
+// render the previous month
+const formatMonthYear = (value: string | null | undefined): string | null =>
+	value
+		? new Date(value).toLocaleDateString("en-KE", {
+				month: "short",
+				year: "numeric",
+				timeZone: "Africa/Nairobi",
+			})
+		: null;
+
+const formatEmploymentPeriod = (
+	startDate: string | null | undefined,
+	endDate: string | null | undefined,
+): string => {
+	const start = formatMonthYear(startDate);
+	const end = formatMonthYear(endDate);
+	if (start && end) return `${start} – ${end}`;
+	return start ?? end ?? "";
+};
+
 const DirectoryProfileDetail = ({
 	profile,
 	backHref = "/directory",
@@ -77,6 +100,12 @@ const DirectoryProfileDetail = ({
 	const educationLabel = labelFor(EDUCATION_LEVEL_OPTIONS, profile.educationLevel);
 	const workPreferenceLabel = labelFor(WORK_PREFERENCE_OPTIONS, profile.workPreference);
 	const salaryLabel = formatSalary(profile);
+
+	// newest placement first, so the timeline always reads most recent at the top.
+	// the stored order is whatever the worker typed, which carries no meaning
+	const employmentEntries = [...(profile.employmentHistory ?? [])].sort((a, b) =>
+		b.startDate.localeCompare(a.startDate),
+	);
 
 	const availableFrom = profile.availableFrom
 		? new Date(profile.availableFrom).toLocaleDateString("en-KE", {
@@ -195,6 +224,35 @@ const DirectoryProfileDetail = ({
 									{label}
 								</Badge>
 							))}
+						</div>
+					) : null}
+
+					{employmentEntries.length > 0 ? (
+						<div>
+							<h2 className="text-heading mb-2 text-lg font-semibold">
+								Previous employment
+							</h2>
+							<ul className="flex flex-col gap-3">
+								{employmentEntries.map((entry) => {
+									const roleLabel = labelFor(JOB_OPTIONS, entry.role);
+									const period = formatEmploymentPeriod(entry.startDate, entry.endDate);
+									const detail = [roleLabel, period].filter(Boolean).join(" · ");
+
+									return (
+										<li
+											key={entry.id ?? `${entry.employer}-${entry.startDate}`}
+											className="border-border border-l-2 pl-3"
+										>
+											<p className="text-foreground text-sm font-medium wrap-break-word">
+												{entry.employer}
+											</p>
+											{detail ? (
+												<p className="text-muted-foreground text-xs">{detail}</p>
+											) : null}
+										</li>
+									);
+								})}
+							</ul>
 						</div>
 					) : null}
 

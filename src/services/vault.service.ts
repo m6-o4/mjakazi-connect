@@ -1,7 +1,13 @@
 import type { Payload } from "payload";
 
 import { writeAuditLog } from "@/lib/audit";
-import { documentTypeSchema } from "@/lib/vault";
+import {
+	documentSideSchema,
+	documentSlotWhere,
+	documentTypeSchema,
+	isDocumentSlot,
+	normalizeDocumentSide,
+} from "@/lib/vault";
 import type { User, VaultDocument } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
 import { revertToReview } from "@/services/verification.service";
@@ -28,14 +34,14 @@ const userLabel = (user: User): string => {
 	return name || user.email;
 };
 
-// uploads (or replaces) one of the two identity documents. a mjakazi has at most
-// one document per type: uploading the same type replaces it. the new file is
-// created first, then the old one is deleted, so a failed upload never leaves the
-// profile without a document
+// uploads (or replaces) one side of an identity document. a mjakazi has at most
+// one file per slot (document type + side): uploading the same slot replaces it.
+// the new file is created first, then the old one is deleted, so a failed upload
+// never leaves the profile without a document
 const uploadVaultDocument = async (
 	payload: Payload,
 	user: User,
-	input: { documentType: string; file: UploadFile },
+	input: { documentType: string; side: string; file: UploadFile },
 ): Promise<Result<{ document: VaultDocument; replaced: boolean }>> => {
 	if (user.role !== "mjakazi") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
@@ -46,6 +52,19 @@ const uploadVaultDocument = async (
 		return { success: false, error: "Invalid document type.", code: "invalid_type" };
 	}
 	const documentType = parsedType.data;
+
+	const parsedSide = documentSideSchema.safeParse(input.side);
+	if (!parsedSide.success) {
+		return { success: false, error: "Invalid document side.", code: "invalid_side" };
+	}
+	const side = parsedSide.data;
+
+	// the two enums are flat, so the pair has to be checked against the declared
+	// slots — otherwise a caller could store a document the ui never enumerates
+	// and the gate never counts
+	if (!isDocumentSlot(documentType, side)) {
+		return { success: false, error: "Invalid document slot.", code: "invalid_slot" };
+	}
 
 	const profile = await getOwnProfile(payload, user);
 	if (!profile) {
@@ -65,14 +84,17 @@ const uploadVaultDocument = async (
 	const wasVerified = profile.verificationState === "verified";
 
 	try {
-		// read access scopes this to the owner, so only their own existing document
-		// of the same type is found
+		// read access scopes this to the owner, so only their own existing file for
+		// this slot is found. the constraint is built from the shared slot rule, so
+		// a front upload also matches a record stored before the side field existed
+		// — that was a first generation upload, and leaving it behind would orphan it
 		const existing = await payload.find({
 			collection: "vault-documents",
 			where: {
 				and: [
 					{ profile: { equals: profile.id } },
 					{ documentType: { equals: documentType } },
+					documentSlotWhere(side),
 				],
 			},
 			limit: 1,
@@ -89,6 +111,7 @@ const uploadVaultDocument = async (
 				profile: profile.id,
 				uploadedBy: user.id,
 				documentType,
+				side,
 			},
 			file: input.file,
 			overrideAccess: true,
@@ -114,12 +137,19 @@ const uploadVaultDocument = async (
 			actorLabel: userLabel(user),
 			targetId: user.id,
 			targetLabel: userLabel(user),
-			metadata: { documentType, profileId: profile.id, replaced: Boolean(previousId) },
+			metadata: {
+				documentType,
+				side,
+				profileId: profile.id,
+				replaced: Boolean(previousId),
+			},
 		});
 
-		// a verified worker's documents are the reviewed evidence — replacing one
-		// sends the profile back for a free re-review
-		if (wasVerified) {
+		// a verified worker's documents are the reviewed evidence — overwriting one
+		// sends the profile back for a free re-review. adding a slot the required
+		// set grew to include is not an overwrite, so it does not cost them the
+		// badge: nothing reviewed has changed
+		if (wasVerified && previousId) {
 			const reverted = await revertToReview(payload, profile.id);
 			if (!reverted.success) {
 				console.warn("[services/vault] reverification trigger failed:", reverted.error);
@@ -164,6 +194,7 @@ const getVaultDocumentForView = async (
 			targetLabel: null,
 			metadata: {
 				documentType: document.documentType,
+				side: normalizeDocumentSide(document.side),
 				profileId: toId(document.profile),
 				viewerRole: user.role,
 			},
@@ -244,6 +275,7 @@ const deleteVaultDocument = async (
 			targetLabel: null,
 			metadata: {
 				documentType: document.documentType,
+				side: normalizeDocumentSide(document.side),
 				profileId: toId(document.profile),
 			},
 		});

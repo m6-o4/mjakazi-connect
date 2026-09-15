@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { notifySuccess } from "@/lib/notify";
 
 type EditNameFormProps = {
 	initialFirstName: string;
@@ -35,7 +36,11 @@ const EditNameForm = ({
 		setError(null);
 		const saveError = await onSave(firstName.trim(), lastName.trim());
 		setSaving(false);
-		if (saveError) setError(saveError);
+		if (saveError) {
+			setError(saveError);
+			return;
+		}
+		notifySuccess("Name updated", { id: "edit-name" });
 	};
 
 	return (

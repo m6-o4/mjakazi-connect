@@ -1,15 +1,10 @@
 "use client";
 
-import { Ban, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Ban, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { deleteAccountAction, updateAccountAction } from "@/app/actions/accounts";
-import {
-	reinstateAccountAction,
-	suspendAccountAction,
-} from "@/app/actions/moderation";
-import { EditNameForm } from "@/components/dashboard/admin/edit-name-form";
+import { reinstateAccountAction, suspendAccountAction } from "@/app/actions/moderation";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -22,31 +17,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
-type ModerationRow = {
-	userId: string;
-	name: string;
-	firstName: string;
-	lastName: string;
-	email: string;
-	statusLabel: string;
-	statusVariant: "default" | "secondary" | "destructive" | "outline";
-	subtitle: string | null;
-	accountState: string;
-	createdAt: string;
-};
+import type { AccountRow } from "@/lib/account-rows";
+import { notifySuccess } from "@/lib/notify";
 
 type ModerationTableProps = {
-	accounts: ModerationRow[];
+	accounts: AccountRow[];
 	canSuspend: boolean;
 	canReinstate: boolean;
-	canDelete: boolean;
 };
 
 type PendingAction =
 	| { type: "suspend"; userId: string; name: string }
-	| { type: "reinstate"; userId: string; name: string }
-	| { type: "delete"; userId: string; name: string };
+	| { type: "reinstate"; userId: string; name: string };
 
 const initials = (name: string): string =>
 	name
@@ -58,7 +40,12 @@ const initials = (name: string): string =>
 
 const ACTION_COPY: Record<
 	PendingAction["type"],
-	{ title: string; description: string; confirm: string; variant: "default" | "destructive" }
+	{
+		title: string;
+		description: string;
+		confirm: string;
+		variant: "default" | "destructive";
+	}
 > = {
 	suspend: {
 		title: "Suspend account?",
@@ -73,26 +60,17 @@ const ACTION_COPY: Record<
 		confirm: "Reinstate",
 		variant: "default",
 	},
-	delete: {
-		title: "Delete account?",
-		description:
-			"All of the user's data is removed and cannot be recovered. Only do this after a warning and no sign of repentance.",
-		confirm: "Delete",
-		variant: "destructive",
-	},
 };
 
-// lists wajakazi or waajiri accounts with moderation actions. suspend is
-// available to staff and admin; reinstate and delete are admin only. every
-// action requires a reason
+// lists wajakazi or waajiri accounts with moderation actions only. suspend is
+// available to staff and admin; reinstate is admin only. every action requires a
+// reason. renaming and deletion live in the account sections
 const ModerationTable = ({
 	accounts,
 	canSuspend,
 	canReinstate,
-	canDelete,
 }: ModerationTableProps) => {
 	const router = useRouter();
-	const [editingId, setEditingId] = useState<string | null>(null);
 	const [pending, setPending] = useState<PendingAction | null>(null);
 	const [reason, setReason] = useState("");
 	const [reasonError, setReasonError] = useState<string | null>(null);
@@ -104,20 +82,9 @@ const ModerationTable = ({
 		setPending(action);
 	};
 
-	const handleSave = async (
-		userId: string,
-		firstName: string,
-		lastName: string,
-	): Promise<string | null> => {
-		const result = await updateAccountAction(userId, { firstName, lastName });
-		if (!result.success) return result.error ?? "Could not save.";
-		setEditingId(null);
-		router.refresh();
-		return null;
-	};
-
 	const handleConfirm = async () => {
-		if (!pending) return;
+		const action = pending;
+		if (!action) return;
 		if (!reason.trim()) {
 			setReasonError("A reason is required.");
 			return;
@@ -127,12 +94,10 @@ const ModerationTable = ({
 		setReasonError(null);
 
 		let result: { success: boolean; error?: string };
-		if (pending.type === "suspend") {
-			result = await suspendAccountAction(pending.userId, reason);
-		} else if (pending.type === "reinstate") {
-			result = await reinstateAccountAction(pending.userId, reason);
+		if (action.type === "suspend") {
+			result = await suspendAccountAction(action.userId, reason);
 		} else {
-			result = await deleteAccountAction(pending.userId, reason);
+			result = await reinstateAccountAction(action.userId, reason);
 		}
 
 		setBusy(false);
@@ -141,6 +106,11 @@ const ModerationTable = ({
 			return;
 		}
 
+		const suspended = action.type === "suspend";
+		notifySuccess(suspended ? "Account suspended" : "Account reinstated", {
+			id: `moderation-${action.userId}`,
+			description: `${action.name} was ${suspended ? "suspended" : "reinstated"}.`,
+		});
 		setPending(null);
 		router.refresh();
 	};
@@ -149,9 +119,7 @@ const ModerationTable = ({
 		return (
 			<div className="bg-card border-border flex flex-col items-center justify-center rounded-lg border p-12 text-center">
 				<p className="text-foreground text-base font-semibold">No accounts</p>
-				<p className="text-muted-foreground mt-1 text-sm">
-					Accounts will appear here.
-				</p>
+				<p className="text-muted-foreground mt-1 text-sm">Accounts will appear here.</p>
 			</div>
 		);
 	}
@@ -160,7 +128,6 @@ const ModerationTable = ({
 		<div className="flex flex-col gap-3">
 			<div className="bg-card border-border divide-border divide-y rounded-lg border">
 				{accounts.map((account) => {
-					const isEditing = editingId === account.userId;
 					const isSuspended = account.accountState === "suspended";
 
 					return (
@@ -177,9 +144,7 @@ const ModerationTable = ({
 											<p className="text-foreground text-sm font-semibold">
 												{account.name}
 											</p>
-											<Badge variant={account.statusVariant}>
-												{account.statusLabel}
-											</Badge>
+											<Badge variant={account.statusVariant}>{account.statusLabel}</Badge>
 										</div>
 										<p className="text-muted-foreground text-xs">{account.email}</p>
 										{account.subtitle && (
@@ -188,18 +153,9 @@ const ModerationTable = ({
 									</div>
 								</div>
 
-								{!isEditing && (
-									<div className="flex shrink-0 flex-wrap items-center gap-2">
-										<Button
-											size="sm"
-											variant="outline"
-											onClick={() => setEditingId(account.userId)}
-										>
-											<Pencil />
-											Edit
-										</Button>
-										{isSuspended ? (
-											canReinstate && (
+								<div className="flex shrink-0 flex-wrap items-center gap-2">
+									{isSuspended
+										? canReinstate && (
 												<Button
 													size="sm"
 													variant="outline"
@@ -215,56 +171,25 @@ const ModerationTable = ({
 													Reinstate
 												</Button>
 											)
-										) : (
-											<>
-												{canSuspend && (
-													<Button
-														size="sm"
-														variant="outline"
-														className="text-destructive"
-														onClick={() =>
-															openAction({
-																type: "suspend",
-																userId: account.userId,
-																name: account.name,
-															})
-														}
-													>
-														<Ban />
-														Suspend
-													</Button>
-												)}
-												{canDelete && (
-													<Button
-														size="sm"
-														variant="ghost"
-														className="text-destructive"
-														onClick={() =>
-															openAction({
-																type: "delete",
-																userId: account.userId,
-																name: account.name,
-															})
-														}
-													>
-														<Trash2 />
-														Delete
-													</Button>
-												)}
-											</>
-										)}
-									</div>
-								)}
+										: canSuspend && (
+												<Button
+													size="sm"
+													variant="outline"
+													className="text-destructive"
+													onClick={() =>
+														openAction({
+															type: "suspend",
+															userId: account.userId,
+															name: account.name,
+														})
+													}
+												>
+													<Ban />
+													Suspend
+												</Button>
+											)}
+								</div>
 							</div>
-
-							{isEditing && (
-								<EditNameForm
-									initialFirstName={account.firstName}
-									initialLastName={account.lastName}
-									onSave={(first, last) => handleSave(account.userId, first, last)}
-									onCancel={() => setEditingId(null)}
-								/>
-							)}
 						</div>
 					);
 				})}
@@ -282,7 +207,9 @@ const ModerationTable = ({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>{pending ? ACTION_COPY[pending.type].title : ""}</AlertDialogTitle>
+						<AlertDialogTitle>
+							{pending ? ACTION_COPY[pending.type].title : ""}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{pending ? ACTION_COPY[pending.type].description : ""}
 							{pending && (
@@ -323,4 +250,3 @@ const ModerationTable = ({
 };
 
 export { ModerationTable };
-export type { ModerationRow };

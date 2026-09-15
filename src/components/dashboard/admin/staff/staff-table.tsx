@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { notifySuccess } from "@/lib/notify";
 import type { StaffRecord } from "@/services/staff.service";
 
 type StaffTableProps = {
@@ -57,7 +58,11 @@ const StaffTable = ({ staff, currentUserId }: StaffTableProps) => {
 		setDeletingId(id);
 		setError(null);
 		const result = await deleteStaffAction(id);
-		if (!result.success) setError(result.error ?? "Could not delete.");
+		if (!result.success) {
+			setError(result.error ?? "Could not delete.");
+		} else {
+			notifySuccess("Staff account deleted", { id: `staff-delete-${id}` });
+		}
 		setDeletingId(null);
 		router.refresh();
 	};

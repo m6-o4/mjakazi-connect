@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { ConciergeStatusCard } from "@/components/dashboard/mwajiri/concierge/concierge-status-card";
 import { HireConfirmCard } from "@/components/dashboard/mwajiri/hire-confirm-card";
 import { SubscriptionStatusCard } from "@/components/dashboard/mwajiri/subscription-status-card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import config from "@/payload-config";
+import { getConciergeCaseForMwajiri } from "@/services/concierge.service";
 import { listDirectoryProfiles } from "@/services/directory.service";
 import { listSentEois } from "@/services/eoi.service";
 import {
@@ -36,13 +38,15 @@ const MwajiriDashboardPage = async () => {
 
 	// limit: 1 keeps the fetch cheap — only totalDocs (the live verified+available
 	// count) is needed, which comes from the same guarded path as the directory
-	const [subscription, directory, sentEois, hireCandidates, hires] = await Promise.all([
-		getOwnSubscription(payload, user),
-		listDirectoryProfiles(payload, { limit: 1 }),
-		listSentEois(payload, user),
-		listHireCandidatesForMwajiri(payload, user),
-		listHiresForMwajiri(payload, user),
-	]);
+	const [subscription, conciergeCase, directory, sentEois, hireCandidates, hires] =
+		await Promise.all([
+			getOwnSubscription(payload, user),
+			getConciergeCaseForMwajiri(payload, user),
+			listDirectoryProfiles(payload, { limit: 1 }),
+			listSentEois(payload, user),
+			listHireCandidatesForMwajiri(payload, user),
+			listHiresForMwajiri(payload, user),
+		]);
 
 	const reviewedIds = await listReviewedMjakaziIds(
 		payload,
@@ -72,6 +76,13 @@ const MwajiriDashboardPage = async () => {
 				tierName={subscription?.tierName ?? null}
 				tierExpiry={subscription?.tierExpiry ?? null}
 			/>
+
+			{conciergeCase && (
+				<ConciergeStatusCard
+					conciergeCase={conciergeCase}
+					eligibleForReplacement={true}
+				/>
+			)}
 
 			<div className="grid gap-4 md:grid-cols-2">
 				<Card>

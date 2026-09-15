@@ -15,26 +15,27 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 type SubmitVerificationProps = {
 	profileComplete: boolean;
-	hasBothDocuments: boolean;
+	missingDocuments: string[];
 };
 
 // the draft-state submit flow. mirrors the service's readiness guard in the UI —
-// the button stays disabled until the profile is complete and both documents are
-// uploaded, and each missing piece links to where it is fixed. the service
-// re-checks on submit, so this is a courtesy, never the control
+// the button stays disabled until the profile is complete and every required
+// document side is uploaded, and each missing piece links to where it is fixed.
+// the service re-checks on submit, so this is a courtesy, never the control
 const SubmitVerification = ({
 	profileComplete,
-	hasBothDocuments,
+	missingDocuments,
 }: SubmitVerificationProps) => {
 	const router = useRouter();
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const ready = profileComplete && hasBothDocuments;
+	const ready = profileComplete && missingDocuments.length === 0;
 
 	const checks = [
 		{
@@ -42,11 +43,19 @@ const SubmitVerification = ({
 			done: profileComplete,
 			href: "/dashboard/mjakazi/profile",
 		},
-		{
-			label: "Both documents uploaded",
-			done: hasBothDocuments,
-			href: "/dashboard/mjakazi/documents",
-		},
+		...(missingDocuments.length > 0
+			? missingDocuments.map((label) => ({
+					label,
+					done: false,
+					href: "/dashboard/mjakazi/documents",
+				}))
+			: [
+					{
+						label: "Identity documents uploaded",
+						done: true,
+						href: "/dashboard/mjakazi/documents",
+					},
+				]),
 	];
 
 	const submit = async () => {
@@ -59,6 +68,16 @@ const SubmitVerification = ({
 				return;
 			}
 			posthog.capture("verification_submitted");
+			// submit moves draft -> pending_payment, so this must not claim the
+			// profile is under review: no fee has been paid yet and the review is
+			// what the payment triggers (advanceToReview runs on payment
+			// confirmation). the toast drives to the fee as the next step instead,
+			// and the "under review" message belongs to the payment moment
+			notifySuccess("Profile submitted", {
+				id: "verification-submit",
+				description:
+					"Pay the verification fee to send your profile to our team for review.",
+			});
 			router.refresh();
 		} catch {
 			setError("Could not submit your profile.");
@@ -72,8 +91,8 @@ const SubmitVerification = ({
 			<CardHeader>
 				<CardTitle>Submit for verification</CardTitle>
 				<CardDescription>
-					Complete your profile and upload both documents, then submit them for our team
-					to review.
+					Complete your profile and upload both sides of your National ID and your
+					Certificate of Good Conduct, then submit them for our team to review.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">

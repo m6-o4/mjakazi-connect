@@ -15,6 +15,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
 
 type AvailabilityStatus = "available" | "hired" | "on_break";
 
@@ -91,6 +92,10 @@ const AvailabilityCard = ({
 			}
 			setStatus(next);
 			setPickingHire(false);
+			notifySuccess("Availability updated", {
+				id: "availability",
+				description: `Status set to ${STATUS_CONFIG[next].label}.`,
+			});
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");
@@ -111,6 +116,10 @@ const AvailabilityCard = ({
 			posthog.capture("hire_confirmed", { confirmedBy: "mjakazi" });
 			setStatus("hired");
 			setPickingHire(false);
+			notifySuccess("Hire confirmed", {
+				id: `availability-hire-${candidate.mwajiriId}`,
+				description: `You are now listed as hired by ${candidate.name}.`,
+			});
 			router.refresh();
 		} catch {
 			setError("Network error. Please try again.");

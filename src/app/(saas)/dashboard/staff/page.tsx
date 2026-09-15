@@ -17,34 +17,57 @@ const StaffOverviewPage = async () => {
 
 	// trusted platform-wide counts — staff read the whole queue, and these
 	// numbers never leave the overview
-	const [pendingReviews, awaitingPayment, verified, pendingModeration, suspended] =
-		await Promise.all([
-			payload.count({
-				collection: "wajakazi-profiles",
-				where: { verificationState: { equals: "pending_review" } },
-				overrideAccess: true,
-			}),
-			payload.count({
-				collection: "wajakazi-profiles",
-				where: { verificationState: { equals: "pending_payment" } },
-				overrideAccess: true,
-			}),
-			payload.count({
-				collection: "wajakazi-profiles",
-				where: { verificationState: { equals: "verified" } },
-				overrideAccess: true,
-			}),
-			payload.count({
-				collection: "reviews",
-				where: { state: { equals: "pending" } },
-				overrideAccess: true,
-			}),
-			payload.count({
-				collection: "users",
-				where: { accountState: { equals: "suspended" } },
-				overrideAccess: true,
-			}),
-		]);
+	const [
+		pendingReviews,
+		openConciergeCases,
+		awaitingPayment,
+		verified,
+		pendingModeration,
+		suspended,
+		waajiri,
+		wajakazi,
+	] = await Promise.all([
+		payload.count({
+			collection: "wajakazi-profiles",
+			where: { verificationState: { equals: "pending_review" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "concierge-cases",
+			where: { state: { in: ["intake", "in_review", "replacement_requested"] } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "wajakazi-profiles",
+			where: { verificationState: { equals: "pending_payment" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "wajakazi-profiles",
+			where: { verificationState: { equals: "verified" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "reviews",
+			where: { state: { equals: "pending" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "users",
+			where: { accountState: { equals: "suspended" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "users",
+			where: { role: { equals: "mwajiri" } },
+			overrideAccess: true,
+		}),
+		payload.count({
+			collection: "users",
+			where: { role: { equals: "mjakazi" } },
+			overrideAccess: true,
+		}),
+	]);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -63,6 +86,12 @@ const StaffOverviewPage = async () => {
 					href="/dashboard/staff/verifications"
 				/>
 				<StatCard
+					label="Open Concierge cases"
+					value={openConciergeCases.totalDocs}
+					description="Awaiting matching or brief"
+					href="/dashboard/staff/concierge"
+				/>
+				<StatCard
 					label="Awaiting payment"
 					value={awaitingPayment.totalDocs}
 					description="Workers mid-checkout"
@@ -79,6 +108,18 @@ const StaffOverviewPage = async () => {
 					value={suspended.totalDocs}
 					description="Review in moderation"
 					href="/dashboard/moderation"
+				/>
+				<StatCard
+					label="Waajiri accounts"
+					value={waajiri.totalDocs}
+					description="All employers"
+					href="/dashboard/accounts/waajiri"
+				/>
+				<StatCard
+					label="Wajakazi accounts"
+					value={wajakazi.totalDocs}
+					description="All workers"
+					href="/dashboard/accounts/wajakazi"
 				/>
 			</div>
 		</div>

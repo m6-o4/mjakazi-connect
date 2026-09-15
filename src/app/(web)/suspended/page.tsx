@@ -27,9 +27,7 @@ const SuspendedPage = async () => {
 			</p>
 			{user.suspensionReason && (
 				<div className="bg-card border-border rounded-lg border p-4">
-					<p className="text-muted-foreground text-xs font-semibold uppercase">
-						Reason
-					</p>
+					<p className="text-muted-foreground text-xs font-semibold uppercase">Reason</p>
 					<p className="text-foreground mt-1 text-sm">{user.suspensionReason}</p>
 				</div>
 			)}
