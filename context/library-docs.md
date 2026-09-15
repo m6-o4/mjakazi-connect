@@ -166,12 +166,26 @@ the webhook must stay reachable without a session.
 **Payload's REST API owns `/api/{collection-slug}`.** Our route handlers share that
 namespace. See the API namespacing rules in `architecture.md`.
 
+**`select` takes nested subfields — and a bare `true` on an array publishes every
+subfield.** `select: { arrayField: { subfield: true } }` is a supported shape:
+`payload-types.ts` generates it, and `getSelectMode` recurses into object-valued entries
+rather than stopping at the array. So `select: { rows: true }` returns all subfields, and
+any subfield added to the array later is published by default. **A field an
+unauthenticated read can reach names its subfields explicitly.** `directory.service.ts`
+therefore keeps `DIRECTORY_PUBLIC_FIELDS` for the list reads and `DIRECTORY_DETAIL_FIELDS`
+for the detail reads, the latter adding `employmentHistory` by subfield. Corollary: one
+`select` object shared by several reads fetches the union, so a field only a detail page
+renders is loaded by every list, saved list and count query too.
+
 ### Project rules
 
 - Run `pnpm generate:types` after every schema change, and `pnpm generate:importmap` after
   any admin component change.
 - Access rules live only in `access-control.ts`.
 - Collection slugs kebab-case and plural.
+- An array field that bounds user input carries `maxRows`, and the bound is imported from
+  a shared constants module so the payload field, the zod schema and the form cannot
+  disagree (employment history: `MAX_EMPLOYMENT_ENTRIES` in `profile-constants.ts`).
 
 ---
 
@@ -270,10 +284,10 @@ Normalize once, at the boundary, in `lib/mpesa.ts`. Validate the result against
 Amounts are integer KSh. Every callback payload is stored whole for audit. The full state
 machine is in `architecture.md`.
 
-**Development uses real callbacks — there is no in-app simulator.** M-Pesa is an online-only
-flow, so development settles payments exactly as production does: the tunnel
-(`app-dev.s3.co.ke`, already in `allowedDevOrigins`) must be running and reachable, and the
-`MPESA_CALLBACK_URL` env must point at it. A payment that gets no callback sits at
+**Development uses real callbacks — there is no in-app simulator.** M-Pesa is an
+online-only flow, so development settles payments exactly as production does: the tunnel
+(`app-dev.s3.co.ke`, already in `allowedDevOrigins`) must be running and reachable, and
+the `MPESA_CALLBACK_URL` env must point at it. A payment that gets no callback sits at
 `stk_sent` and self-expires after the timeout.
 
 ---
@@ -353,8 +367,8 @@ than relying on recall.
   lived in `components/ui/toast.tsx` unmounted for a while, so `toast.add(...)` was
   silently dropped. It is mounted in `(saas)/layout.tsx` (inside `ThemeProvider`, wrapping
   `<main>`). The `(payload)` and `(auth)` groups do not have it.
-- **`ToastDescription` renders a `<p>` by default.** A `<ul>` or other block content inside
-  it is invalid HTML and breaks hydration. This project overrides it with
+- **`ToastDescription` renders a `<p>` by default.** A `<ul>` or other block content
+  inside it is invalid HTML and breaks hydration. This project overrides it with
   `render={<div />}` so a description can carry a list.
 
 ### Project rules
@@ -365,11 +379,11 @@ adding.
 
 - **Transient action confirmations go through `src/lib/notify.ts`**, not `toast.add`
   directly: `notifySuccess` (5s), `notifyInfo` (8s), `notifyError` (high priority, no
-  auto-dismiss). Pass a stable per-entity `id` so repeat actions upsert one toast instead of
-  stacking.
+  auto-dismiss). Pass a stable per-entity `id` so repeat actions upsert one toast instead
+  of stacking.
 - **Persistent state and field-level validation errors stay inline** — payment notices,
-  M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle, availability
-  status, review "hidden" note, and form field errors.
+  M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle,
+  availability status, review "hidden" note, and form field errors.
 - Toasts survive `router.refresh()` / `router.push()` within the dashboard because
   `<Toaster>` lives in the `(saas)` layout.
 
@@ -395,6 +409,13 @@ client-supplied role, price, tier, user id or state value.
 
 - Uncontrolled by default. Reading a value during render gives a stale one — use `watch`
   or `getValues`.
+- **`formState.errors` cannot be indexed by a dotted path.** Inside a `useFieldArray` row
+  the error is at `errors.rows[0].role`, but `errors["rows.0.role"]` is `undefined`, so
+  the usual `Controller` + `formState.errors[name]` pattern renders no message for a
+  nested field while the form still refuses to submit. Use
+  `useController({ name, control })` and read `fieldState.error` — it resolves for the
+  exact path. Prefer an explicit union of the paths a component accepts over `FieldPath`:
+  it keeps the value typed as a string and documents where the component may be used.
 - Server Action integration needs the form's `handleSubmit` to call the action, not the
   form's native action attribute, if client-side validation is wanted first.
 
@@ -414,6 +435,10 @@ on the server — client validation is a courtesy, server validation is the cont
 Datetimes are stored UTC and rendered `Africa/Nairobi`. Subscription stacking appends
 duration to the existing expiry rather than to `now()` — see `architecture.md`. Never
 compute an expiry with raw millisecond arithmetic.
+
+A date-only field round-trips as UTC midnight, so pin the timezone whenever one is
+formatted (`timeZone: "Africa/Nairobi"`), or the runtime's own timezone decides which day
+is shown — a server behind UTC renders the previous one. Full rule in `code-standards.md`.
 
 ---
 

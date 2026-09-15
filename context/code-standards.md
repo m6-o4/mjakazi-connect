@@ -323,6 +323,10 @@ arguments, webhook payloads, query parameters that reach a database query.
   in `architecture.md` invariant #15) — nothing else.
 - Queries touching profiles pass an explicit `select`. Contact fields are never selected
   by default.
+- **A free-text field a public read can reach must also reject contact details**, or it
+  becomes a second route to what the vault withholds. Help text is a courtesy, not a
+  control — see `employer` on the employment history, which rejects Kenyan phone numbers
+  and email addresses in `profile-schema.ts` (`CONTACT_DETAIL_PATTERNS`).
 - Reading contact fields happens in exactly one place: `contact.service.ts`.
 
 ---
@@ -344,6 +348,11 @@ arguments, webhook payloads, query parameters that reach a database query.
 - **Money is integer KSh.** No floats, no decimals, no currency library. Amounts come from
   `platform-settings`, never from a literal.
 - **Datetimes are stored UTC** and rendered `Africa/Nairobi`. Arithmetic uses `date-fns`.
+- **A date-only value is stored as UTC midnight**, so any date-to-string rendering pins
+  `timeZone: "Africa/Nairobi"` explicitly — otherwise the runtime's own timezone decides
+  the day, and a server behind UTC renders the previous one. Verified: `2021-03-01`
+  renders `Mar 2021` under UTC and under `Africa/Nairobi`, but `Feb 2021` under
+  `America/New_York`.
 - **Phone numbers are normalized to `254` + nine digits starting `7` or `1`.** Never
   hardcode `2547` — portability means the prefix says nothing about the network. Normalize
   once, at the boundary, in `lib/mpesa.ts`. Full rule in `library-docs.md`.
@@ -449,6 +458,13 @@ Michael's workflow, documented so the agent understands the context it is writin
 - Conventional Commits, enforced by `semantic-release` via `.releaserc.json`. `feat:`,
   `fix:`, `chore:`, `docs:`, `refactor:`.
 - The agent never commits, never branches, never pushes, never tags.
+- **Michael commits after `/remember save`**, as the last step of the session loop, so the
+  commit captures everything that session changed — the code, `memory.md`, and the context
+  files (`progress-tracker.md`, `ui-registry.md`, `build-plan.md`, and any other doc the
+  work touched). An uncommitted working tree at the end of a session is therefore the
+  expected state, not a loose end: do not report it as one, and do not offer to commit.
+  The save must come first so that `memory.md` describing the work is part of the same
+  commit.
 
 ---
 

@@ -70,16 +70,17 @@ codebase.
 
 - **Location**: `src/components/ui/toast.tsx` (shadcn Base UI toast; pre-existing, mounted
   this session)
-- **Purpose**: App-wide toast host for the SaaS group. Renders the `ToastProvider`, portal,
-  viewport, and list for the module-scope `toast` manager, which any client component can
-  call directly with `toast.add({ id, type, title, description, timeout, priority })`
+- **Purpose**: App-wide toast host for the SaaS group. Renders the `ToastProvider`,
+  portal, viewport, and list for the module-scope `toast` manager, which any client
+  component can call directly with
+  `toast.add({ id, type, title, description, timeout, priority })`
 - **Visual pattern**: `bg-popover` card, `rounded-2xl`, bottom-center on mobile and
-  bottom-right on `sm`+ via `ToastViewport`; `ToastIcon` renders per `type` (success / info /
-  warning / error / loading). Reuse a stable `id` per action so repeat toasts upsert instead
-  of stacking. `ToastDescription` renders a `<div>` (not the default `<p>`) so a description
-  can carry block content such as a bulleted `<ul>`. Prefer the `notifySuccess` /
-  `notifyInfo` / `notifyError` helpers in `src/lib/notify.ts` over calling `toast.add`
-  directly, so the defaults stay consistent
+  bottom-right on `sm`+ via `ToastViewport`; `ToastIcon` renders per `type` (success /
+  info / warning / error / loading). Reuse a stable `id` per action so repeat toasts
+  upsert instead of stacking. `ToastDescription` renders a `<div>` (not the default `<p>`)
+  so a description can carry block content such as a bulleted `<ul>`. Prefer the
+  `notifySuccess` / `notifyInfo` / `notifyError` helpers in `src/lib/notify.ts` over
+  calling `toast.add` directly, so the defaults stay consistent
 - **Used in**: `(saas)/layout.tsx` (wraps `<main>`); consumed so far by `ProfileForm`
 
 ### `ProfileCompletenessCard`
@@ -103,22 +104,32 @@ codebase.
   validates on blur and re-validates on change (`mode: "onTouched"`), and a failed submit
   focuses the first invalid field. Required asterisks derive from a single exported list
   (`PROFILE_UI_REQUIRED_FIELDS` = the completeness set + `displayName`), so they can never
-  drift from the completeness checklist; the legend states these are needed for verification
-  and that a partial profile can be saved. Partial saves are allowed (Model A), and save
-  feedback is toast-only: success when complete, an info toast listing the still-missing
-  fields from `PROFILE_REQUIRED_LABELS` when incomplete, and an error toast on failure (all
-  with the shared `id: "profile-save"` so they upsert rather than stack).
-  Fires `profile_completed` PostHog event on the first false→true completeness transition
+  drift from the completeness checklist; the legend states these are needed for
+  verification and that a partial profile can be saved. Partial saves are allowed (Model
+  A), and save feedback is toast-only: success when complete, an info toast listing the
+  still-missing fields from `PROFILE_REQUIRED_LABELS` when incomplete, and an error toast
+  on failure (all with the shared `id: "profile-save"` so they upsert rather than stack).
+  Fires `profile_completed` PostHog event on the first false→true completeness transition.
+  The Professional card renders `EmploymentHistoryField` between the
+  years-of-experience/education grid and the languages chips — employment history is
+  optional, so it carries no asterisk and does not appear in the completeness checklist
 - **Used in**: `(saas)/dashboard/mjakazi/profile/page.tsx`
 
 ### `FormSelect`
 
 - **Location**: `src/components/dashboard/mjakazi/profile-form/form-select.tsx`
 - **Purpose**: Bridges a single-select shadcn `Select` (Base UI) to react-hook-form
-- **Props**: `{ name; label; options: readonly { label; value: string }[]; placeholder? }`
+- **Props**:
+  `{ name: SelectFieldName; label; options: readonly { label; value: string }[]; placeholder?; required? }`
+  where `SelectFieldName` is the six top-level selects plus
+  `employmentHistory.${number}.role`. The union is written explicitly rather than widened
+  to `FieldPath`, which keeps the value typed and documents where the component may be
+  used
 - **Visual pattern**: `Label` + `Select`/`SelectTrigger`/`SelectContent`;
-  `text-destructive` error line
-- **Used in**: `ProfileForm`
+  `text-destructive` error line. Uses `useController` (not `Controller`) so the error
+  comes from that field's own `fieldState` — a nested array path cannot be read out of
+  `formState.errors` by indexing
+- **Used in**: `ProfileForm`, `EmploymentHistoryField`
 
 ### `OptionChips`
 
@@ -145,11 +156,35 @@ codebase.
 - **Location**: `src/components/dashboard/mjakazi/profile-form/form-date-picker.tsx`
 - **Purpose**: shadcn `Calendar` + `Popover` date picker bridged to react-hook-form;
   stores a `YYYY-MM-DD` string
-- **Props**: `{ name: "dateOfBirth" | "availableFrom"; label: string; placeholder? }`
+- **Props**: `{ name: DateFieldName; label: string; placeholder? }` where `DateFieldName`
+  is `dateOfBirth`, `availableFrom`, or `employmentHistory.${number}.startDate` /
+  `.endDate`
 - **Visual pattern**: `PopoverTrigger` styled with
   `buttonVariants({ variant: "outline" })`; `Calendar` `mode="single"`; `Clear` ghost
-  button when set
-- **Used in**: `ProfileForm`
+  button when set. Uses `useController` so the error comes from that field's own
+  `fieldState`, which is what makes a nested array path work
+- **Used in**: `ProfileForm`, `EmploymentHistoryField`
+
+### `EmploymentHistoryField`
+
+- **Location**:
+  `src/components/dashboard/mjakazi/profile-form/employment-history-field.tsx`
+- **Purpose**: The repeatable editor for up to 5 previous placements (`employer`, `role`,
+  `startDate`, `endDate`). Optional display content — no asterisks, not part of
+  `profileComplete`, and editing it never sends a verified worker back to `pending_review`
+- **Props**: none — reads the form through `useFormContext`, driven by `useFieldArray` on
+  `employmentHistory`
+- **Visual pattern**: plain `border-border rounded-lg border p-4` block per row
+  (deliberately not a `Card`, since it sits inside the Professional `Card`); "Placement N"
+  label + ghost `Remove` button; `grid gap-4 md:grid-cols-2` with the employer `Input`
+  spanning both columns and a helper line steering away from full names and contact
+  details; `Plus` icon on an outline "Add placement" button, disabled at
+  `MAX_EMPLOYMENT_ENTRIES` with a "maximum" hint; empty state is a muted one-liner. Remove
+  has no `AlertDialog` because nothing persists until "Save profile". The employer value
+  is published on the public profile, so the shared schema rejects phone numbers and email
+  addresses in it — the rejection surfaces as that row's normal field error
+- **Used in**: `ProfileForm` (Professional card, after years of experience + education
+  level and before languages)
 
 ### `DocumentVault`
 
@@ -209,7 +244,8 @@ codebase.
 - **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
   the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
   `router.refresh()` until the callback flips the profile into review
-- **Props**: `{ fee: number | null; phone: string; onAwaitingChange?: (awaiting: boolean) => void }`
+- **Props**:
+  `{ fee: number | null; phone: string; onAwaitingChange?: (awaiting: boolean) => void }`
 - **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
   `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
   while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success;
@@ -399,16 +435,18 @@ codebase.
 
 ### `VerificationPaymentFlow`
 
-- **Location**: `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx`
-- **Purpose**: Always-mounted wrapper for the non-draft verification states. Renders the pay
-  card while `pending_payment`; once the callback flips the state (and the pay card
+- **Location**:
+  `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx`
+- **Purpose**: Always-mounted wrapper for the non-draft verification states. Renders the
+  pay card while `pending_payment`; once the callback flips the state (and the pay card
   unmounts) it shows an explicit "payment received" notice above the status card, because
   the transition detection must survive the pay card's unmount
 - **Props**:
   `{ state: VerificationState; fee: number | null; phone: string; verificationExpiry?: string | null; rejectionReason?: string | null; freeResubmissionsRemaining?: number | null }`
 - **Visual pattern**: delegates to `PayVerification` (pending) or
-  `VerificationStateCard` + optional `ResubmitVerification`; renders `PaymentSuccessNotice`
-  once a payment that was awaiting confirmation leaves `pending_payment`
+  `VerificationStateCard` + optional `ResubmitVerification`; renders
+  `PaymentSuccessNotice` once a payment that was awaiting confirmation leaves
+  `pending_payment`
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `PaymentSuccessNotice`
@@ -506,8 +544,13 @@ codebase.
   `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
 - **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
   content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
-  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s;
-  CTA `Card` with accent "Join as a mwajiri" + outline "Sign in"
+  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; a
+  "Previous employment" timeline (employer in `text-foreground`, role + month/year range
+  in `text-muted-foreground`, `border-l-2` rail per entry, newest first, omitted entirely
+  when empty); CTA `Card` with accent "Join as a mwajiri" + outline "Sign in". Renders
+  wherever profile content renders — the public directory detail and the mwajiri browse
+  detail both use this component, so employment history is in `DIRECTORY_DETAIL_FIELDS`.
+  No compact card shows it, and the list reads deliberately do not select it
 - **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
 
 ### `DirectoryProfileViewTracker`
@@ -548,8 +591,8 @@ codebase.
   `text-primary`; pending `Clock` in `text-accent`; restricted `ShieldAlert` in
   `text-destructive`; no-subscription `CreditCard` in `text-accent`; days remaining via
   date-fns `differenceInCalendarDays`, expiry rendered `Africa/Nairobi`; CTA links (Extend
-  / Choose a plan / Renew) use the accent treatment `bg-accent text-accent-foreground
-  font-semibold`, never `outline`
+  / Choose a plan / Renew) use the accent treatment
+  `bg-accent text-accent-foreground font-semibold`, never `outline`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `SaveToggle`
@@ -635,9 +678,9 @@ codebase.
   (outline) and Agree / Reverse / Not correct / **End contract** `Button`s, a **Leave a
   review** `Button` on ended hires, and a Reviewed `Badge`; ending a contract reveals
   `LeaveReviewForm` inline; calls `confirmHireAction` / `reverseHireAction` /
-  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a `notifySuccess`
-  toast (Hire recorded / Hire confirmed / Hire reversed / Contract ended), then
-  `router.refresh()`
+  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a
+  `notifySuccess` toast (Hire recorded / Hire confirmed / Hire reversed / Contract ended),
+  then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `RatingStars`
@@ -717,29 +760,42 @@ codebase.
 - **Location**: `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx`
 - **Purpose**: The Mwajiri requirements brief intake form for Concierge matching
 - **Props**: `{ caseId: string; initialValues?: Partial<BriefFormValues> | null }`
-- **Visual pattern**: react-hook-form + zod; two-column grid fields; `Select` for role, location, work arrangement; `Textarea` for duties and special requirements; calls `submitConciergeBriefAction`; inline `text-destructive` error, success fires a `notifySuccess` toast
+- **Visual pattern**: react-hook-form + zod; two-column grid fields; `Select` for role,
+  location, work arrangement; `Textarea` for duties and special requirements; calls
+  `submitConciergeBriefAction`; inline `text-destructive` error, success fires a
+  `notifySuccess` toast
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
 
 ### `ConciergeStatusCard`
 
 - **Location**: `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx`
-- **Purpose**: Status summary card for a Concierge case on the Mwajiri dashboard and concierge page
+- **Purpose**: Status summary card for a Concierge case on the Mwajiri dashboard and
+  concierge page
 - **Props**: `{ conciergeCase: ConciergeCase; eligibleForReplacement?: boolean }`
-- **Visual pattern**: shadcn `Card` with `Crown` icon; status `Badge`; shortlist cards with candidate names and match notes; record outcome buttons; 1-time replacement guarantee button; record-outcome and replacement success fire `notifySuccess` toasts (the actions revalidate the path, so the card updates without an explicit refresh)
-- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
+- **Visual pattern**: shadcn `Card` with `Crown` icon; status `Badge`; shortlist cards
+  with candidate names and match notes; record outcome buttons; 1-time replacement
+  guarantee button; record-outcome and replacement success fire `notifySuccess` toasts
+  (the actions revalidate the path, so the card updates without an explicit refresh)
+- **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx`
 
 ### `ConciergeQueue`
 
 - **Location**: `src/components/dashboard/staff/concierge/concierge-queue.tsx`
 - **Purpose**: The staff queue list of open, in-review, or delivered Concierge cases
 - **Props**: `{ cases: ConciergeCase[] }`
-- **Visual pattern**: stacked shadcn `Card`s; `Crown` icon; status `Badge`; brief summary details; assigned staff indicator; "Manage Case" button
+- **Visual pattern**: stacked shadcn `Card`s; `Crown` icon; status `Badge`; brief summary
+  details; assigned staff indicator; "Manage Case" button
 - **Used in**: `src/app/(saas)/dashboard/staff/concierge/page.tsx`
 
 ### `ConciergeCaseDetail`
 
 - **Location**: `src/components/dashboard/staff/concierge/concierge-case-detail.tsx`
-- **Purpose**: Staff case management detail view with case claim and 3–5 candidate shortlist builder
-- **Props**: `{ conciergeCase: ConciergeCase; availableCandidates: CandidateOption[]; currentUserId: string }`
-- **Visual pattern**: Brief summary grid; "Claim Case" button; shortlist builder with search input, candidate picker, match note textareas, and "Deliver Shortlist to Mwajiri" button
+- **Purpose**: Staff case management detail view with case claim and 3–5 candidate
+  shortlist builder
+- **Props**:
+  `{ conciergeCase: ConciergeCase; availableCandidates: CandidateOption[]; currentUserId: string }`
+- **Visual pattern**: Brief summary grid; "Claim Case" button; shortlist builder with
+  search input, candidate picker, match note textareas, and "Deliver Shortlist to Mwajiri"
+  button
 - **Used in**: `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx`

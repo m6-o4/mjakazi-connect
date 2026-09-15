@@ -20,6 +20,100 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-15 — Mjakazi profile form: identity field order (minor UI fix)
+
+- **What was built**: Reordered the Identity card's fields so the legal first name and
+  legal last name sit on the same row, with date of birth moved up beside the display
+  name. A pure JSX reorder inside the existing `grid gap-4 md:grid-cols-2` — no class,
+  label, validation or required-marker changes.
+- **Files touched**: `src/components/dashboard/mjakazi/profile-form/index.tsx`.
+- **Notes**: The grid pairs fields two per row, so the sequence is what drives the layout.
+  The rows now read: `display name | date of birth`, `legal first name | legal last name`,
+  `nationality | marital status`, `religion | mobile phone`. `pnpm lint` (0 errors, 1
+  pre-existing concierge-form warning) and `pnpm build` pass. Verified by Michael
+  (2026-09-15).
+
+### 2026-09-15 — Phase 2.1 scope addition: mjakazi employment history
+
+- **What was built**: An optional employment-history section on the mjakazi profile — up
+  to 5 previous placements, each structured as `employer` (short household descriptor,
+  80-char cap), `role` (select over the existing `JOB_OPTIONS`), `startDate` and `endDate`
+  (real Payload `date` fields, required). Planned with `/architect`; five decisions
+  settled with Michael before any code:
+  - **Storage**: structured, 4 fields, no "reason for leaving" (free text, sensitive, no
+    hiring value).
+  - **Dates**: both required, `endDate >= startDate`, `startDate` cannot be in the future,
+    displayed as month + year, sorted newest-first.
+  - **Completeness**: deliberately **outside** `PROFILE_REQUIRED_FIELDS` and
+    `PROFILE_UI_REQUIRED_FIELDS`, so it carries no asterisk, never affects
+    `profileComplete`, never blocks verification submission, and editing it never triggers
+    `revertToReview` — it is display content that staff cannot verify.
+  - **Surfaces**: all profile-detail pages via `DIRECTORY_PUBLIC_FIELDS`. The public
+    `/directory/[slug]` and the mwajiri browse detail share `DirectoryProfileDetail`, so
+    there is no separate dashboard-only path. Detail pages only — no compact card shows
+    it. Not subscription-gated (only phone and email are).
+  - **Editing**: forgiving — Add disabled at 5, immediate Remove with no confirm (nothing
+    persists until Save), a fully blank row is dropped on save, a partially-filled row
+    errors.
+- **Files touched**:
+  - `src/lib/profile-constants.ts` — `MAX_EMPLOYMENT_ENTRIES = 5`, the one bound the
+    payload field, zod schema and Add button all read.
+  - `src/lib/profile-schema.ts` — `employmentEntrySchema`, the `employmentHistory` array
+    field, and the blanks/dates rules added to the existing `superRefine`;
+    `isBlankEmploymentEntry` and `isFilledEmploymentEntry` exported so the service and the
+    schema cannot disagree about what counts as an omitted row. Includes `nairobiToday()`
+    so "start date cannot be in the future" does not misfire between midnight and 3am
+    local time.
+  - `src/payload/collections/wajakazi-profiles/schema.ts` — the `employmentHistory` array
+    (`maxRows: 5`), unindexed.
+  - `src/services/profile.service.ts` — `toProfileData` maps and filters the rows.
+  - `src/components/dashboard/mjakazi/profile-form/employment-history-field.tsx` — **new**
+    `useFieldArray` editor.
+  - `src/components/dashboard/mjakazi/profile-form/form-select.tsx` and
+    `form-date-picker.tsx` — `name` widened to an explicit union that includes the nested
+    `employmentHistory.${number}.*` paths, and `Controller` swapped for `useController` so
+    each field's error comes from its own `fieldState` (a nested path cannot be read out
+    of `formState.errors` by indexing). Existing call sites unchanged.
+  - `src/components/dashboard/mjakazi/profile-form/index.tsx` — section rendered in the
+    Professional card between years-of-experience/education and languages; `onInvalid` now
+    resolves an error inside the array to that row's employer input, the only registered
+    input in a row.
+  - `src/app/(saas)/dashboard/mjakazi/profile/page.tsx` — seeds `initialValues`.
+  - `src/services/directory.service.ts` — `employmentHistory` added to
+    `DIRECTORY_PUBLIC_FIELDS` and to the `DirectoryProfile` `Pick`.
+  - `src/components/web/directory/directory-profile-detail.tsx` — the read-only timeline.
+  - `src/payload-types.ts` (regenerated).
+- **Review pass (same day)**: an uncommitted-diff review surfaced six findings, all fixed:
+  - The employer length cap is now `EMPLOYER_MAX_LENGTH` in `profile-constants.ts`, read
+    by both the zod schema and the Payload field, instead of `80` written twice. Same
+    class of drift as the entry cap.
+  - `employer` now **rejects** Kenyan phone numbers and email addresses in the shared
+    schema (`CONTACT_DETAIL_PATTERNS`). Help text was the only control before, and this
+    field is published to anonymous visitors — it must not become a second route to the
+    contact details the contact vault withholds.
+  - The directory `select` was split: `DIRECTORY_PUBLIC_FIELDS` (list, saved list, archive
+    block, overview count) no longer carries `employmentHistory`, and the new
+    `DIRECTORY_DETAIL_FIELDS` adds it with **explicitly named subfields** rather than
+    `true`, so a subfield added to the array later is never auto-published. Only
+    `getDirectoryProfile` uses the detail set — verified that both
+    `DirectoryProfileDetail` call sites read through it. Nested select is supported by
+    Payload (`getSelectMode` recurses into object-valued entries).
+  - `formatMonthYear` pins `timeZone: "Africa/Nairobi"`. A date-only value is stored as
+    UTC midnight, so a runtime behind UTC rendered the previous month (verified:
+    `Mar 2021` under UTC and Nairobi, `Feb 2021` under `America/New_York`). Matches the
+    existing pinning in `lib/email.ts` and `lib/mpesa.ts`.
+  - The admin description interpolates `MAX_EMPLOYMENT_ENTRIES` instead of hardcoding "5"
+    (the string is also what `generate:types` copies into the generated doc comment).
+  - Dropped the two exports that had no importers (`isBlankEmploymentEntry`,
+    `EmploymentEntryValues`), and corrected the comment — the service reads the derived
+    `isFilledEmploymentEntry`.
+- **Notes**: No new PostHog event and no new audit entry — a profile field edit is not a
+  state transition, matching the rest of the profile form. `pnpm lint` (0 errors, 1
+  pre-existing concierge-form warning) and `pnpm build` pass. **Verified by Michael
+  (2026-09-15)**: the section saves and renders as expected, and the detail/list `select`
+  split works in practice — which also settles the one uncertainty in the change, that
+  Payload honours a nested subfield `select` on an array field.
+
 ### 2026-09-13 — Toast feedback convention (Batch 4, rollout complete)
 
 - **What was built**: Final batch — mjakazi + settings confirmations:
@@ -37,8 +131,9 @@ finished.
   notices, M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle,
   availability status, review hidden note, form field errors).
 - **Files touched**: the six components above, `context/ui-registry.md`.
-- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
-  (49 routes) pass. **Manual verification pending across all four batches.**
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. **Verified by Michael (2026-09-15)** across all four
+  batches — the per-batch "manual verification pending" notes below are superseded.
 
 ### 2026-09-13 — Toast feedback convention (Batch 3)
 
@@ -51,9 +146,9 @@ finished.
 - **Decisions**: the concierge actions already call `revalidatePath`, so that card updates
   without an explicit `router.refresh()`. Existing inline errors left untouched.
 - **Files touched**: the three components above, `context/ui-registry.md`.
-- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
-  (49 routes) pass. Batch 4 (mjakazi verification submit/resubmit, EOI + hire inbox,
-  availability, review visibility) remains. **Manual verification pending.**
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. Batch 4 (mjakazi verification submit/resubmit, EOI + hire
+  inbox, availability, review visibility) remains. **Manual verification pending.**
 
 ### 2026-09-13 — Toast feedback convention (Batch 2)
 
@@ -69,10 +164,10 @@ finished.
 - **Decisions**: existing inline errors (rejection reasons, validation) left untouched —
   toasts only confirm success.
 - **Files touched**: the six components above, `context/ui-registry.md`.
-- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
-  (49 routes) pass. Batch 3 (mwajiri EOI send, hire-confirm, concierge status) and Batch 4
-  (mjakazi verification submit/resubmit, EOI/hire inbox, availability) remain. **Manual
-  verification pending.**
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. Batch 3 (mwajiri EOI send, hire-confirm, concierge
+  status) and Batch 4 (mjakazi verification submit/resubmit, EOI/hire inbox, availability)
+  remain. **Manual verification pending.**
 
 ### 2026-09-13 — Toast feedback convention (Batch 1)
 
@@ -90,49 +185,50 @@ finished.
     line removed)
 - **Decisions**: toasts are the standard surface for transient action confirmations;
   persistent state stays inline (payment-received notices, M-Pesa awaiting/timeout, the
-  availability status card, document-vault badges, browse contact reveal, Save/Saved toggle).
-  Field-level validation errors stay inline; action-level failures can use `notifyError`.
-  Toasts survive `router.refresh()` / `router.push()` within the dashboard because
-  `<Toaster>` lives in `(saas)/layout.tsx`.
+  availability status card, document-vault badges, browse contact reveal, Save/Saved
+  toggle). Field-level validation errors stay inline; action-level failures can use
+  `notifyError`. Toasts survive `router.refresh()` / `router.push()` within the dashboard
+  because `<Toaster>` lives in `(saas)/layout.tsx`.
 - **Files touched**: `src/lib/notify.ts` (new), the four components above,
   `src/components/dashboard/mjakazi/profile-form/index.tsx`, `context/ui-registry.md`.
-- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build`
-  (49 routes) pass. Batches 2–4 are not done yet: moderation / accounts / staff tables and
-  the review queue + form (silent successes); mwajiri EOI send, hire-confirm, concierge
-  status; mjakazi verification submit/resubmit, EOI/hire inbox, availability. **Manual
-  verification pending.**
+- **Notes**: `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. Batches 2–4 are not done yet: moderation / accounts /
+  staff tables and the review queue + form (silent successes); mwajiri EOI send,
+  hire-confirm, concierge status; mjakazi verification submit/resubmit, EOI/hire inbox,
+  availability. **Manual verification pending.**
 
 ### 2026-09-13 — Mjakazi profile form: required-field semantics (Model A)
 
 - **What was built/fixed**: Settled the mismatch between the form's `*` markers, the zod
-  schema, and `profileComplete`. Chosen model (Model A): `*` means "needed to complete your
-  profile", not "required to save" — partial saves stay allowed, and the schema keeps
+  schema, and `profileComplete`. Chosen model (Model A): `*` means "needed to complete
+  your profile", not "required to save" — partial saves stay allowed, and the schema keeps
   enforcing only real errors (phone format, 200-word cap, salary ordering).
   1. Form asterisks are now derived from one exported list (`PROFILE_UI_REQUIRED_FIELDS`
      in `profile-constants.ts` = the completeness set + `displayName`), so they can never
      drift from the completeness checklist; the legend is reworded to match.
-  2. react-hook-form now validates on blur and re-validates on change (`mode: "onTouched"`,
-     `reValidateMode: "onChange"`), so errors surface before submit.
+  2. react-hook-form now validates on blur and re-validates on change
+     (`mode: "onTouched"`, `reValidateMode: "onChange"`), so errors surface before submit.
   3. A failed submit focuses the first invalid field.
   4. `updateProfile` / `updateProfileAction` now return `missingFields`. Save feedback is
-     toast-only through the Base UI `toast` manager (component already existed, now mounted
-     via `<Toaster>` in `(saas)/layout.tsx`): complete → success, incomplete → info that
-     lists what is still needed as a bulleted `<ul>` (labels from `PROFILE_REQUIRED_LABELS`),
-     action failure → error. `ToastDescription` now renders a `<div>` instead of the default
-     `<p>` so the description can carry block content like a list.
+     toast-only through the Base UI `toast` manager (component already existed, now
+     mounted via `<Toaster>` in `(saas)/layout.tsx`): complete → success, incomplete →
+     info that lists what is still needed as a bulleted `<ul>` (labels from
+     `PROFILE_REQUIRED_LABELS`), action failure → error. `ToastDescription` now renders a
+     `<div>` instead of the default `<p>` so the description can carry block content like
+     a list.
 - **Files touched**: `src/services/profile.service.ts`, `src/app/actions/profile.ts`,
   `src/app/(saas)/layout.tsx`, `src/lib/profile-constants.ts`,
   `src/components/dashboard/mjakazi/profile-form/index.tsx`, `context/ui-registry.md`.
 - **Notes**: The inline save notice was replaced by toasts so feedback is visible without
-  scrolling; removing the inline state also removed the stale-list bug the local review had
-  flagged in the photo handler. `displayName` moved out of the form into
-  `PROFILE_UI_REQUIRED_FIELDS` so the marker list has one source. No schema (DB) change, so
-  no `generate:types`. `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
-  `pnpm build` (49 routes) pass. Follow-ups flagged but deliberately not actioned:
+  scrolling; removing the inline state also removed the stale-list bug the local review
+  had flagged in the photo handler. `displayName` moved out of the form into
+  `PROFILE_UI_REQUIRED_FIELDS` so the marker list has one source. No schema (DB) change,
+  so no `generate:types`. `pnpm lint` (0 errors, 1 pre-existing concierge-form warning)
+  and `pnpm build` (49 routes) pass. Follow-ups flagged but deliberately not actioned:
   `dateOfBirth` is identity data yet neither starred nor in the completeness list;
-  `displayName` is schema-required while `PROFILE_REQUIRED_FIELDS` omits it, and its helper
-  text promises a first-name fallback that `toProfileData` does not implement. **Manual
-  verification pending.**
+  `displayName` is schema-required while `PROFILE_REQUIRED_FIELDS` omits it, and its
+  helper text promises a first-name fallback that `toProfileData` does not implement.
+  **Manual verification pending.**
 
 ### 2026-09-12 — Admin/staff account sections (name edit + full delete)
 
@@ -175,55 +271,81 @@ finished.
   `context/ui-registry.md`.
 - **Notes**: `pnpm lint` (0 errors, 1 pre-existing warning) and `pnpm build` pass (49
   routes). The erasure docs were updated: payments carry the payer's phone number and raw
-  callback, so they are deleted with the account rather than retained. The cascade is still
-  non-transactional, but is idempotent and resumable — re-running deletion finishes the
-  cleanup. Manual verification pending.
+  callback, so they are deleted with the account rather than retained. The cascade is
+  still non-transactional, but is idempotent and resumable — re-running deletion finishes
+  the cleanup. Manual verification pending.
 
 ### 2026-09-10 — Real M-Pesa callbacks in dev + payment success cues
 
 - **What was built**:
   1. Retired the dev-only "simulate payment callback" workaround entirely — deleted
      `src/app/actions/dev.ts` and `src/components/dashboard/dev/dev-payment-simulate.tsx`.
-     Development now settles payments from the real Daraja callback over the tunnel, exactly
-     as production does.
+     Development now settles payments from the real Daraja callback over the tunnel,
+     exactly as production does.
   2. Added an explicit "payment received" cue on both pay flows: a shared
-     `PaymentSuccessNotice` component (neutral card, success colour inside), shown once the
-     poll refresh confirms the payment. Subscription detects the new payment by id (so a
-     mid-cycle renewal/upgrade, where state stays `active`, still fires); verification uses
-     `VerificationPaymentFlow`, an always-mounted wrapper that survives the
+     `PaymentSuccessNotice` component (neutral card, success colour inside), shown once
+     the poll refresh confirms the payment. Subscription detects the new payment by id (so
+     a mid-cycle renewal/upgrade, where state stays `active`, still fires); verification
+     uses `VerificationPaymentFlow`, an always-mounted wrapper that survives the
      `pending_payment → pending_review` transition that unmounts the pay card.
   3. Fixed subscription polling so it runs while a payment is awaiting confirmation
      regardless of the current state — previously an upgrade/renewal (state already
      `active`) never polled, so the callback was never observed in the ui.
   4. Added `getLatestPaymentForUser` (`payment.service.ts`) for the pay pages.
-  5. Confirmed and documented the shared callback parser fix (`src/lib/mpesa.ts`) that makes
-     Daraja 3.0 callbacks parse app-wide (verification + every subscription tier), not
-     concierge-only.
+  5. Confirmed and documented the shared callback parser fix (`src/lib/mpesa.ts`) that
+     makes Daraja 3.0 callbacks parse app-wide (verification + every subscription tier),
+     not concierge-only.
 - **Files touched**: `src/lib/mpesa.ts`, `src/services/payment.service.ts`,
   `src/components/dashboard/payments/payment-success-notice.tsx` (new),
   `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` (new),
   `src/components/dashboard/mjakazi/verification/pay-verification.tsx`,
   `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
   `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx`,
-  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
-  deleted `src/app/actions/dev.ts`,
-  deleted `src/components/dashboard/dev/dev-payment-simulate.tsx`.
-- **Notes**: Offline/at-handset workarounds are intentionally gone — M-Pesa is online-only.
-  If the tunnel is down or Safaricom is slow, a payment sits at `stk_sent` and self-expires
-  after the 2-minute timeout. `pnpm lint` (0 errors) and `pnpm build` pass.
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`, deleted
+  `src/app/actions/dev.ts`, deleted
+  `src/components/dashboard/dev/dev-payment-simulate.tsx`.
+- **Notes**: Offline/at-handset workarounds are intentionally gone — M-Pesa is
+  online-only. If the tunnel is down or Safaricom is slow, a payment sits at `stk_sent`
+  and self-expires after the 2-minute timeout. `pnpm lint` (0 errors) and `pnpm build`
+  pass.
 
 ### 2026-09-09 — Phase 11: Concierge
 
 - **What was built**: Concierge cases end to end:
-  1. `concierge-cases` Payload collection with states (`intake`, `in_review`, `shortlist_delivered`, `closed`, `replacement_requested`), structured brief group, shortlist candidate array with match notes, and assigned staff tracking.
-  2. Automatic case creation in `concierge.service.ts` on confirmed payment for an `isConcierge` subscription tier.
-  3. Mwajiri brief intake form at `/dashboard/mwajiri/concierge` with Zod validation, plus a `ConciergeStatusCard` on both `/dashboard/mwajiri` and `/dashboard/mwajiri/concierge`.
-  4. Staff queue at `/dashboard/staff/concierge` and case detail at `/dashboard/staff/concierge/[id]` with case claim action, verified candidate search, 3–5 shortlist builder with match notes, and shortlist delivery.
-  5. Shortlist delivery creates durable `contact-unlocks` using `contact.service.ts`, sends `sendConciergeShortlistDeliveredEmail`, and writes audit entries.
-  6. Mwajiri outcome recording (`closed` with `hired` / `none_suitable`) and 1-time replacement guarantee within 30 days of a confirmed hire (`replacement_requested`).
-  7. PostHog events `concierge_brief_submitted` and `concierge_shortlist_delivered` (`size`, `daysToDeliver`).
-- **Files touched**: `src/payload/collections/concierge-cases/schema.ts` (new), `src/payload/collections/index.ts`, `src/lib/audit.ts`, `src/payload/collections/audit-logs/schema.ts`, `src/services/concierge.service.ts` (new), `src/services/subscription.service.ts`, `src/lib/email.ts`, `src/app/actions/concierge.ts` (new), `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx` (new), `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx` (new), `src/components/dashboard/staff/concierge/concierge-queue.tsx` (new), `src/components/dashboard/staff/concierge/concierge-case-detail.tsx` (new), `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx` (new), `src/app/(saas)/dashboard/staff/concierge/page.tsx` (new), `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx` (new), `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/staff/page.tsx`, `src/lib/dashboard-nav.ts`, `context/ui-registry.md`, `context/progress-tracker.md`, `src/payload-types.ts` (regenerated).
-- **Notes**: All 11.1–11.3 deliverables complete. `pnpm lint` (0 errors) and `pnpm build` pass cleanly.
+  1. `concierge-cases` Payload collection with states (`intake`, `in_review`,
+     `shortlist_delivered`, `closed`, `replacement_requested`), structured brief group,
+     shortlist candidate array with match notes, and assigned staff tracking.
+  2. Automatic case creation in `concierge.service.ts` on confirmed payment for an
+     `isConcierge` subscription tier.
+  3. Mwajiri brief intake form at `/dashboard/mwajiri/concierge` with Zod validation, plus
+     a `ConciergeStatusCard` on both `/dashboard/mwajiri` and
+     `/dashboard/mwajiri/concierge`.
+  4. Staff queue at `/dashboard/staff/concierge` and case detail at
+     `/dashboard/staff/concierge/[id]` with case claim action, verified candidate search,
+     3–5 shortlist builder with match notes, and shortlist delivery.
+  5. Shortlist delivery creates durable `contact-unlocks` using `contact.service.ts`,
+     sends `sendConciergeShortlistDeliveredEmail`, and writes audit entries.
+  6. Mwajiri outcome recording (`closed` with `hired` / `none_suitable`) and 1-time
+     replacement guarantee within 30 days of a confirmed hire (`replacement_requested`).
+  7. PostHog events `concierge_brief_submitted` and `concierge_shortlist_delivered`
+     (`size`, `daysToDeliver`).
+- **Files touched**: `src/payload/collections/concierge-cases/schema.ts` (new),
+  `src/payload/collections/index.ts`, `src/lib/audit.ts`,
+  `src/payload/collections/audit-logs/schema.ts`, `src/services/concierge.service.ts`
+  (new), `src/services/subscription.service.ts`, `src/lib/email.ts`,
+  `src/app/actions/concierge.ts` (new),
+  `src/components/dashboard/mwajiri/concierge/concierge-brief-form.tsx` (new),
+  `src/components/dashboard/mwajiri/concierge/concierge-status-card.tsx` (new),
+  `src/components/dashboard/staff/concierge/concierge-queue.tsx` (new),
+  `src/components/dashboard/staff/concierge/concierge-case-detail.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/concierge/page.tsx` (new),
+  `src/app/(saas)/dashboard/staff/concierge/page.tsx` (new),
+  `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx` (new),
+  `src/app/(saas)/dashboard/mwajiri/page.tsx`, `src/app/(saas)/dashboard/staff/page.tsx`,
+  `src/lib/dashboard-nav.ts`, `context/ui-registry.md`, `context/progress-tracker.md`,
+  `src/payload-types.ts` (regenerated).
+- **Notes**: All 11.1–11.3 deliverables complete. `pnpm lint` (0 errors) and `pnpm build`
+  pass cleanly.
 
 ---
 
@@ -1447,51 +1569,50 @@ finished.
   `src/lib/audit.ts` + `src/payload/collections/audit-logs/schema.ts` (`hire_ended`),
   `src/app/actions/hire.ts` (`endHireAction`), `src/app/actions/reviews.ts` (revalidate
   overview), `src/components/dashboard/mwajiri/hire-confirm-card.tsx` (end/review UI),
-  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx` (End contract on agreed),
-  `src/app/(saas)/dashboard/mwajiri/page.tsx` (enrich hires with reviewed).
+  `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx` (End contract on
+  agreed), `src/app/(saas)/dashboard/mwajiri/page.tsx` (enrich hires with reviewed).
 - **Notes**: `listHires` is now mjakazi-only; the mwajiri overview uses the new
   `listHiresForMwajiri` (includes `ended`). `Reverse` remains only for `pending_agreement`
   (the "this hire is wrong" case before agreement). No PostHog event for `hire_ended` (not
   in the fixed list). Ending a contract notifies the counterpart via the new
   `sendHireEndedEmail` template ("Contract Ended" — the agreement is closed and the
-  wajakazi is available again). **Manual
-  verification done**: on an `agreed` hire Reverse was absent and End contract present on
-  both sides; ending it marked the hire `ended` and the worker reappeared in the directory;
-  the review form opened for the mwajiri (not the mjakazi) and a submitted review went to
-  moderation.
+  wajakazi is available again). **Manual verification done**: on an `agreed` hire Reverse
+  was absent and End contract present on both sides; ending it marked the hire `ended` and
+  the worker reappeared in the directory; the review form opened for the mwajiri (not the
+  mjakazi) and a submitted review went to moderation.
 
 ### 2026-09-09 — hire_ended PostHog event + subscription "Extend" CTA variant
 
 - **What was built**: Two small follow-ups. (1) The `hire_ended` PostHog event now fires
-  when either party ends a completed contract — `posthog.capture("hire_ended", { endedBy })`
-  from `HireConfirmCard` (`"mwajiri"`) and `HireInbox` (`"mjakazi"`), mirroring the
-  existing client-side `hire_confirmed` pattern — closing the analytics blind spot at the
-  terminal stage of the hire funnel. (2) The active-subscription **Extend** link in
-  `SubscriptionStatusCard` now uses the accent CTA treatment (`bg-accent
-  text-accent-foreground font-semibold`) instead of the outline variant, matching the
-  "Choose a plan" / "Renew" CTA in the same card.
+  when either party ends a completed contract —
+  `posthog.capture("hire_ended", { endedBy })` from `HireConfirmCard` (`"mwajiri"`) and
+  `HireInbox` (`"mjakazi"`), mirroring the existing client-side `hire_confirmed` pattern —
+  closing the analytics blind spot at the terminal stage of the hire funnel. (2) The
+  active-subscription **Extend** link in `SubscriptionStatusCard` now uses the accent CTA
+  treatment (`bg-accent text-accent-foreground font-semibold`) instead of the outline
+  variant, matching the "Choose a plan" / "Renew" CTA in the same card.
 - **Files touched**: `context/code-standards.md` (`hire_ended` row),
   `src/components/dashboard/mwajiri/hire-confirm-card.tsx`,
   `src/components/dashboard/mjakazi/opportunities/hire-inbox.tsx`,
   `src/components/dashboard/mwajiri/subscription-status-card.tsx`.
 - **Notes**: No schema change, so no `generate:types`. The deferred Phase 5 sandbox
-  verification (STK push, callback replay idempotency, subscription expiry) is now recorded
-  as a test item at the end of Phase 10 (`build-plan.md` 10.5). **Manual verification**:
-  build is green (see session); the `hire_ended` event and the accent Extend CTA are
-  visual/analytics-only changes to confirm in a running dev environment.
+  verification (STK push, callback replay idempotency, subscription expiry) is now
+  recorded as a test item at the end of Phase 10 (`build-plan.md` 10.5). **Manual
+  verification**: build is green (see session); the `hire_ended` event and the accent
+  Extend CTA are visual/analytics-only changes to confirm in a running dev environment.
 
 ### 2026-09-09 — Phase 10.1: Moderation (suspend / reinstate / delete)
 
 - **What was built**: Account moderation for wajakazi + waajiri. Staff can suspend; admin
   can suspend, reinstate and delete. Every action requires a reason and writes an audit
   entry (`account_suspended`, `account_reinstated`, `account_deleted` + the
-  `subscription_suspended`/`subscription_reinstated` sub-transitions). A suspended wajakazi
-  leaves the directory and can no longer be contact-revealed (new `suspended` flag on
-  `wajakazi-profiles`, folded into `DIRECTORY_VISIBLE`); a suspended mwajiri's subscription
-  is suspended. Suspended users are redirected to `/suspended`, which shows the reason.
-  Deletion is the existing hard recursive cascade, now reason-required. A single
-  `/dashboard/moderation` screen (staff + admin, linked from both overviews + the sidebar)
-  replaces the two `/dashboard/accounts/*` pages.
+  `subscription_suspended`/`subscription_reinstated` sub-transitions). A suspended
+  wajakazi leaves the directory and can no longer be contact-revealed (new `suspended`
+  flag on `wajakazi-profiles`, folded into `DIRECTORY_VISIBLE`); a suspended mwajiri's
+  subscription is suspended. Suspended users are redirected to `/suspended`, which shows
+  the reason. Deletion is the existing hard recursive cascade, now reason-required. A
+  single `/dashboard/moderation` screen (staff + admin, linked from both overviews + the
+  sidebar) replaces the two `/dashboard/accounts/*` pages.
 - **Files touched**: `src/services/moderation.service.ts` (new),
   `src/app/actions/moderation.ts` (new), `src/app/(saas)/dashboard/moderation/page.tsx`
   (new), `src/app/(web)/suspended/page.tsx` (new),
@@ -1510,9 +1631,10 @@ finished.
   `blacklistState`, `subscriptionState: blacklisted`) is left inert, not wired. Staff
   moderation is out of scope (internal HR). Suspension email stays deferred to Phase 12.1;
   the reason is shown on `/suspended` instead. `pnpm generate:types`, `pnpm lint` and
-  `pnpm build` are green. **Manual verification** (deferred sandbox): suspend as staff then
-  attempt reinstate (must fail), admin reinstate restores directory + subscription, admin
-  delete cascades, suspended wajakazi absent from directory and contact reveal refused.
+  `pnpm build` are green. **Manual verification** (deferred sandbox): suspend as staff
+  then attempt reinstate (must fail), admin reinstate restores directory + subscription,
+  admin delete cascades, suspended wajakazi absent from directory and contact reveal
+  refused.
 
 ### 2026-09-09 — Phase 10.2: Admin dashboard
 
@@ -1521,11 +1643,11 @@ finished.
   verification fees vs subscriptions, plus the backlog fixtures. New
   `services/admin.service.ts` (`getRevenueSnapshot` sums confirmed payments all-time and
   last 30 days, split by `paymentType`; `getVerificationThroughput` counts
-  `verification_approved`/`verification_rejected` audit entries in the last 30 days). A new
-  server component `RevenueCard` (all-time + 30-day totals, each split verification vs
-  subscription). The overview now renders: pending verifications, verified wajakazi, active
-  subscriptions, waajiri + wajakazi account counts, total profiles, suspended accounts,
-  revenue, verification throughput and quick actions.
+  `verification_approved`/`verification_rejected` audit entries in the last 30 days). A
+  new server component `RevenueCard` (all-time + 30-day totals, each split verification vs
+  subscription). The overview now renders: pending verifications, verified wajakazi,
+  active subscriptions, waajiri + wajakazi account counts, total profiles, suspended
+  accounts, revenue, verification throughput and quick actions.
 - **Files touched**: `src/services/admin.service.ts` (new),
   `src/components/dashboard/admin/revenue-card.tsx` (new),
   `src/app/(saas)/dashboard/admin/page.tsx`, `context/{build-plan,ui-registry}.md`.

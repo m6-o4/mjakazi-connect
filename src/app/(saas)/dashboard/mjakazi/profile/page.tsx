@@ -50,6 +50,13 @@ const MjakaziProfilePage = async () => {
 		about: profile.about ?? "",
 		yearsExperience: profile.yearsExperience ?? undefined,
 		educationLevel: profile.educationLevel ?? "",
+		employmentHistory:
+			profile.employmentHistory?.map((entry) => ({
+				employer: entry.employer,
+				role: entry.role,
+				startDate: toDateInputValue(entry.startDate),
+				endDate: toDateInputValue(entry.endDate),
+			})) ?? [],
 		languages: profile.languages ?? [],
 		workPreference: profile.workPreference ?? "",
 		availableFrom: toDateInputValue(profile.availableFrom),

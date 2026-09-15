@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FormProvider, useForm, useWatch, type FieldErrors } from "react-hook-form";
 
 import { updateProfileAction } from "@/app/actions/profile";
+import { EmploymentHistoryField } from "@/components/dashboard/mjakazi/profile-form/employment-history-field";
 import { FormDatePicker } from "@/components/dashboard/mjakazi/profile-form/form-date-picker";
 import { FormSelect } from "@/components/dashboard/mjakazi/profile-form/form-select";
 import { OptionChips } from "@/components/dashboard/mjakazi/profile-form/option-chips";
@@ -150,10 +151,20 @@ const ProfileForm = ({
 
 	// send focus to the first invalid field on a failed submit so the error is
 	// never off-screen on a long form. every possible error here is a registered
-	// input or textarea, so setFocus resolves reliably
+	// input or textarea, so setFocus resolves reliably — except inside a placement,
+	// which has no registered input of its own, so that lands on the employer input
 	const onInvalid = (formErrors: FieldErrors<ProfileFormValues>) => {
 		const firstError = (Object.keys(formErrors) as (keyof ProfileFormValues)[])[0];
-		if (firstError) methods.setFocus(firstError, { shouldSelect: true });
+		if (!firstError) return;
+
+		if (firstError === "employmentHistory") {
+			const rows = formErrors.employmentHistory;
+			const index = Array.isArray(rows) ? rows.findIndex((row) => Boolean(row)) : -1;
+			if (index >= 0) methods.setFocus(`employmentHistory.${index}.employer`);
+			return;
+		}
+
+		methods.setFocus(firstError, { shouldSelect: true });
 	};
 
 	return (
@@ -194,6 +205,8 @@ const ProfileForm = ({
 								)}
 							</div>
 
+							<FormDatePicker name="dateOfBirth" label="Date of birth" />
+
 							<div className="flex flex-col gap-1.5">
 								<Label htmlFor="legalFirstName">
 									<span>
@@ -213,8 +226,6 @@ const ProfileForm = ({
 								</Label>
 								<Input id="legalLastName" {...register("legalLastName")} />
 							</div>
-
-							<FormDatePicker name="dateOfBirth" label="Date of birth" />
 
 							<FormSelect
 								name="nationality"
@@ -328,6 +339,8 @@ const ProfileForm = ({
 								options={EDUCATION_LEVEL_OPTIONS}
 							/>
 						</div>
+
+						<EmploymentHistoryField />
 
 						<OptionChips
 							name="languages"

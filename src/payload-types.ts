@@ -789,6 +789,31 @@ export interface WajakaziProfile {
   about?: string | null;
   yearsExperience?: number | null;
   educationLevel?: ('primary' | 'secondary' | 'certificate' | 'diploma' | 'degree' | 'postgraduate') | null;
+  /**
+   * Up to 5 previous placements. Optional — this is shown to employers but is not verified.
+   */
+  employmentHistory?:
+    | {
+        /**
+         * A short description such as 'A family in Kilimani'. Do not enter anyone's full name or contact details.
+         */
+        employer: string;
+        role:
+          | 'nanny'
+          | 'housekeeping'
+          | 'chef'
+          | 'driver'
+          | 'gardener'
+          | 'caregiver'
+          | 'laundry'
+          | 'security'
+          | 'personal_assistant'
+          | 'tutor';
+        startDate: string;
+        endDate: string;
+        id?: string | null;
+      }[]
+    | null;
   languages?:
     | (
         | 'english'
@@ -1876,6 +1901,15 @@ export interface WajakaziProfilesSelect<T extends boolean = true> {
   about?: T;
   yearsExperience?: T;
   educationLevel?: T;
+  employmentHistory?:
+    | T
+    | {
+        employer?: T;
+        role?: T;
+        startDate?: T;
+        endDate?: T;
+        id?: T;
+      };
   languages?: T;
   workPreference?: T;
   availableFrom?: T;

@@ -185,6 +185,13 @@ mjakazi profile page — the worker can list up to 5 previous employers. Storage
 whether it shows on the public profile are open questions to settle before building.
 Recorded in `memory.md`.
 
+**Built 2026-09-15.** Structured, 4 fields per entry (`employer`, `role` from
+`JOB_OPTIONS`, `startDate`, `endDate`), max 5, all optional. Deliberately outside
+`profileComplete` and `PROFILE_UI_REQUIRED_FIELDS` — display content, never gated on
+verification. Renders on every profile-detail page (`DIRECTORY_PUBLIC_FIELDS`), so the
+public directory and the mwajiri browse detail both show it; detail pages only. See the
+`progress-tracker.md` entry for the full decision set.
+
 ### 2.2 — Document vault
 
 **Role**: the evidence behind the Verified badge, and the most sensitive data this system
@@ -469,8 +476,8 @@ Staff suspend only; admin reinstates and deletes. Mandatory reason on every acti
 entry on every action. A suspended wajakazi leaves the directory and can no longer be
 contact-revealed; a suspended mwajiri's subscription is suspended. Suspended users are
 redirected to a `/suspended` notice showing the reason. **Done when**: staff can suspend
-and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate — the
-second must fail.
+and cannot reinstate. **Verify**: as staff, suspend an account, then try to reinstate —
+the second must fail.
 
 ### 10.2 — Admin dashboard — DONE 2026-09-09
 
@@ -516,8 +523,8 @@ sandbox before the product handles more of the funnel.
 - **Callback replay idempotency** — replay the same confirmation callback by hand; the
   second must be refused and audit-logged, and access must never be granted twice.
 - **Subscription expiry** — backdate an active subscription's expiry, run
-  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are blocked,
-  and previously unlocked contacts remain visible.
+  `subscription-expiry`, and confirm the state flips to `expired`, new reveals are
+  blocked, and previously unlocked contacts remain visible.
 
 **Verified 2026-09-09**: all three checks passed in the sandbox — STK push end to end
 (prompt reached the handset, record moved `stk_sent` → `confirmed` on a real callback),
