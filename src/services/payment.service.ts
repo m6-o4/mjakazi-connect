@@ -42,9 +42,12 @@ type PaymentInput = {
 	paymentType: PaymentType;
 	amount: number;
 	phoneNumber: string;
-	// tier snapshots — required for subscription payments, null for verification
+	// tier snapshots — required for subscription payments, null for verification.
+	// the duration is snapshotted so the subscription stacking carry-over can
+	// reproduce the cycle this payment bought, without reading live settings
 	tierId?: string | null;
 	tierName?: string | null;
+	tierDurationDays?: number | null;
 };
 
 // creates a payment record and fires the stk push. the record starts at
@@ -73,6 +76,17 @@ const initiatePayment = async (
 		return fail("A tier is required for a subscription payment.", "tier_required");
 	}
 
+	// the duration is snapshotted onto the payment because the subscription
+	// stacking carry-over reproduces this cycle later. a subscription payment
+	// without a usable duration could not be read back, so it is refused here
+	// rather than discovered at the next purchase
+	if (
+		input.paymentType === "subscription" &&
+		(!Number.isInteger(input.tierDurationDays) || (input.tierDurationDays ?? 0) < 1)
+	) {
+		return fail("The tier duration is required.", "tier_duration_required");
+	}
+
 	const phoneNumber = normalizeKenyanPhone(input.phoneNumber);
 	if (!phoneNumber) {
 		return fail("Invalid Kenyan phone number.", "invalid_phone");
@@ -92,6 +106,8 @@ const initiatePayment = async (
 				amount: input.amount,
 				tierId: input.paymentType === "subscription" ? (input.tierId ?? null) : null,
 				tierName: input.paymentType === "subscription" ? (input.tierName ?? null) : null,
+				tierDurationDays:
+					input.paymentType === "subscription" ? (input.tierDurationDays ?? null) : null,
 				phoneNumber,
 				mpesaReference,
 				initiatedAt,
@@ -176,6 +192,7 @@ const initiatePayment = async (
 			paymentType: input.paymentType,
 			tierId: input.tierId ?? null,
 			tierName: input.tierName ?? null,
+			tierDurationDays: input.tierDurationDays ?? null,
 		},
 	});
 
@@ -308,6 +325,7 @@ const settleCallback = async (
 			paymentType: payment.paymentType,
 			tierId: payment.tierId ?? null,
 			tierName: payment.tierName ?? null,
+			tierDurationDays: payment.tierDurationDays ?? null,
 			checkoutRequestId: payment.checkoutRequestId ?? null,
 			resultCode: detail.resultCode,
 			resultDesc: detail.resultDesc,

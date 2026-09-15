@@ -1009,6 +1009,7 @@ export interface Payment {
 	amount: number;
 	tierId?: string | null;
 	tierName?: string | null;
+	tierDurationDays?: number | null;
 	phoneNumber?: string | null;
 	mpesaReference: string;
 	merchantRequestId?: string | null;
@@ -2035,6 +2036,7 @@ export interface PaymentsSelect<T extends boolean = true> {
 	amount?: T;
 	tierId?: T;
 	tierName?: T;
+	tierDurationDays?: T;
 	phoneNumber?: T;
 	mpesaReference?: T;
 	merchantRequestId?: T;

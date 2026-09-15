@@ -297,12 +297,14 @@ hand — nothing applies twice.
 ### 5.1 — Subscriptions collection and state machine
 
 **Builds**: `subscriptions` collection, `services/subscription.service.ts`, six states,
-stacking logic that appends to existing expiry rather than to `now()`. Tier prices and
-durations read live from `platform-settings.subscriptionTiers`, never hardcoded.
-`payments.tier` (currently `'1'|'2'|'3'`) is replaced by `tierId` + `tierName` string
-snapshots in the same pass. **Done when**: every transition is guarded and stacking is
-correct. **Verify**: with an active window, purchase again. Confirm the new expiry is old
-expiry plus duration, not today plus duration.
+stacking logic that converts the unexpired value of the current window into extra days at
+the new tier's daily rate, with the new window running from the moment of purchase. Tier
+prices and durations read live from `platform-settings.subscriptionTiers`, never
+hardcoded. `payments.tier` (currently `'1'|'2'|'3'`) is replaced by `tierId` + `tierName`
+string snapshots in the same pass. **Done when**: every transition is guarded and stacking
+is correct. **Verify**: with an active window, purchase again. Confirm the new expiry
+extends past the old one and that the extra days reflect the unexpired value converted at
+the new tier's daily rate.
 
 ### 5.2 — Purchase flow
 

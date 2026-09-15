@@ -102,6 +102,24 @@ const Payments: CollectionConfig = {
 			},
 		},
 		{
+			// the duration is snapshotted with the tier identity because the
+			// subscription stacking carry-over has to reproduce the cycle that was
+			// actually in force when this payment was made. reading it live from
+			// platform-settings would let a later admin edit change the arithmetic
+			// applied to a window that was already paid for. the amount actually
+			// paid is already snapshotted as `amount`, so the price needs no
+			// second field
+			name: "tierDurationDays",
+			type: "number",
+			label: "Tier Duration (Days)",
+			min: 1,
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				condition: (data) => data?.paymentType === "subscription",
+			},
+		},
+		{
 			name: "phoneNumber",
 			type: "text",
 			label: "Phone Number",

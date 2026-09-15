@@ -290,10 +290,34 @@ const beginPurchase = async (
 	return fail("This account cannot start a purchase.", "illegal_transition");
 };
 
-// active → active (stacking/upgrade).
-// Option 2 implementation:
-// If upgrading to a higher tier or higher-priced plan mid-cycle, convert the remaining
-// unexpired monetary value into extra days on the new tier based on the actual amounts on file.
+// the cycle length that was in force when the previous payment was made. the
+// payment's own snapshot is authoritative; a payment written before that field
+// existed falls back to the tier's current duration, which is the only
+// remaining read for a legacy record. null means the carry-over cannot be
+// measured at all, and the caller must not guess
+const resolvePreviousCycleDays = async (
+	payload: Payload,
+	prevPayment: Payment | null,
+): Promise<number | null> => {
+	if (!prevPayment) return null;
+	if (
+		typeof prevPayment.tierDurationDays === "number" &&
+		prevPayment.tierDurationDays > 0
+	) {
+		return prevPayment.tierDurationDays;
+	}
+	if (!prevPayment.tierId) return null;
+
+	const prevTier = await getTierById(payload, prevPayment.tierId);
+	return prevTier && prevTier.durationDays > 0 ? prevTier.durationDays : null;
+};
+
+// active → active (stacking/upgrade). the new window runs from now and carries
+// over what is left of the current one: the unexpired share of the previous
+// cycle is expressed in days at the new tier's rate, so a same-tier renewal
+// lands on the existing expiry plus the new duration and any tier change
+// converts the remainder at the ratio of what was paid to what is now charged.
+// nothing is refunded in cash, on any tier change
 const stackSubscription = async (
 	payload: Payload,
 	subscription: Subscription,
@@ -306,43 +330,54 @@ const stackSubscription = async (
 
 	let extraDaysFromProration = 0;
 
-	// check if current subscription is still active with time remaining
+	// carry-over only applies to a window that is still running and has a
+	// purchase behind it to measure the remainder against
 	if (currentExpiry > now && subscription.lastPaymentId) {
-		try {
-			const prevPaymentId = toId(subscription.lastPaymentId);
-			if (prevPaymentId) {
-				// read the previous payment from file
-				const prevPayment = (await payload.findByID({
+		const prevPaymentId = toId(subscription.lastPaymentId);
+		let prevPayment: Payment | null = null;
+
+		if (prevPaymentId) {
+			try {
+				prevPayment = await payload.findByID({
 					collection: "payments",
 					id: prevPaymentId,
 					depth: 0,
 					overrideAccess: true,
-				})) as Payment | null;
-
-				if (prevPayment && prevPayment.amount > 0 && prevPayment.tierId) {
-					const prevTier = await getTierById(payload, prevPayment.tierId);
-					if (prevTier && prevTier.durationDays > 0 && prevTier.price > 0) {
-						// calculate remaining unused fraction of the previous cycle
-						const totalCycleMs = prevTier.durationDays * 24 * 60 * 60 * 1000;
-						const remainingMs = Math.max(0, currentExpiry.getTime() - now.getTime());
-						const unusedFraction = Math.min(1, remainingMs / totalCycleMs);
-
-						// unexpired monetary value based on actual amount paid on file
-						const unexpiredValue = prevPayment.amount * unusedFraction;
-
-						// daily rate of the new tier based on the new payment/tier price
-						const newTierPrice = payment.amount > 0 ? payment.amount : tier.price;
-						const newDailyRate = newTierPrice / tier.durationDays;
-
-						if (newDailyRate > 0) {
-							extraDaysFromProration = Math.round(unexpiredValue / newDailyRate);
-						}
-					}
-				}
+				});
+			} catch (err) {
+				console.error("[services/subscription] previous payment read failed:", err);
 			}
-		} catch (err) {
-			console.error("[services/subscription] proration calculation failed:", err);
 		}
+
+		const prevCycleDays = await resolvePreviousCycleDays(payload, prevPayment);
+		const newPaymentAmount = payment.amount > 0 ? payment.amount : tier.price;
+
+		// a running window that cannot be measured is not applied at all. the
+		// alternative — committing `now + duration` — would silently shorten a
+		// window that has already been paid for and overwrite the payment that
+		// funded it. failing leaves the payment confirmed and lets the caller's
+		// activation-failure path raise it for investigation
+		if (
+			!prevPayment ||
+			prevPayment.amount <= 0 ||
+			!prevCycleDays ||
+			newPaymentAmount < 1
+		) {
+			return fail(
+				"Could not carry over the current subscription window.",
+				"carry_over_unavailable",
+			);
+		}
+
+		// two dimensionless ratios — no fractional money is ever formed. the
+		// share of the previous cycle still unexpired, and what the new tier
+		// charges relative to the amount actually paid on file
+		const cycleMs = prevCycleDays * 24 * 60 * 60 * 1000;
+		const remainingMs = Math.max(0, currentExpiry.getTime() - now.getTime());
+		const priceRatio = prevPayment.amount / newPaymentAmount;
+		extraDaysFromProration = Math.round(
+			(remainingMs / cycleMs) * priceRatio * tier.durationDays,
+		);
 	}
 
 	// base expiration: starts from now on tier switch / upgrade so new tier is effective immediately

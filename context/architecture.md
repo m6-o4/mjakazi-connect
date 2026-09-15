@@ -796,7 +796,9 @@ ask.
 8. Only a verified M-Pesa callback moves a payment to `confirmed`.
 9. A confirmed payment is immutable.
 10. A duplicate transaction ID never activates anything twice.
-11. All money is integer KSh. No floats in the money path.
+11. All money is integer KSh. No floats in the money path. Arithmetic on a window that has
+    already been paid for reads the terms snapshotted on that payment — never live
+    `platform-settings`, which an admin can change afterwards.
 12. Prices come from `platform-settings`, never from a literal in application code.
 13. No payment bypass, mock route or dev shortcut exists in the codebase. Development
     settles payments from the real Daraja callback over the tunnel, exactly as production

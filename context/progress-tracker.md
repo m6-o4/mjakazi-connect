@@ -20,6 +20,103 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-15 — Mwajiri subscription: stacking policy aligned to the code, validation findings
+
+- **What was built**: The stacking carry-over was corrected and the context set aligned to
+  the policy the code implements. `stackSubscription` lost its one-cycle clamp, gained an
+  integer-only credit formula, and now reads the previous cycle length from a duration
+  snapshotted on the payment instead of from live settings. The mwajiri sign-up →
+  subscription → unlock → expiry journey was read end to end for defects, and the change
+  was put through review.
+- **Stacking policy settled (Michael, this session)**: `stackSubscription` implemented
+  what its comment at the time called **Option 2** — the unexpired value of the current
+  window is converted into extra days at the new tier's daily rate, and `tierExpiry` is
+  recomputed from the moment of purchase. **The code is authoritative; the docs were
+  wrong.** Four sources had claimed the opposite ("appends the new duration to the
+  existing expiry. No credit is calculated"), so they were corrected in this pass:
+  - `context/project-overview.md` → the binding policy bullet, now "Stacking converts the
+    unexpired value".
+  - `context/build-plan.md` → Phase 5.1 "Builds" and "Verify".
+  - `context/library-docs.md` → the `date-fns` project rule (and its now-wrong pointer at
+    `architecture.md`; `architecture.md` does not document stacking).
+  - Superseded: the **5.1 progress-tracker entry** above, which recorded append-to-expiry.
+    Not rewritten — this entry is the correction.
+- **Fixed — the credit was capped at one cycle, so a further same-tier purchase could
+  grant nothing.** `stackSubscription` computed
+  `unusedFraction = Math.min(1, remainingMs / totalCycleMs)` before converting value to
+  days. For any subscription with more than one cycle of runway (i.e. after a previous
+  stack) the clamp discarded the excess, and because the new expiry is always recomputed
+  from `now`, the purchase could be a total loss. Worked example, Essentials at KSh 5,000
+  / 14 days: stack 1 → expiry `now + 28`; buy again immediately → `remainingMs` is 28
+  days, the fraction clamped `2 → 1`, `extraDays` was 14, `totalNewDays` was 28 → expiry
+  `now + 28`. KSh 5,000 paid and the expiry did not move. The clamp is gone; the same
+  example now yields 42 days, which is exactly old expiry plus duration, and an upgrade
+  converts the remainder at the ratio of what was paid to what is now charged.
+- **Fixed — the conversion formed fractional monetary amounts.** The old arithmetic
+  computed `unexpiredValue = prevPayment.amount * unusedFraction` and
+  `newDailyRate = newTierPrice / durationDays`, putting floats in the money path, which
+  `architecture.md` invariant #11 and `code-standards.md` forbid. The credit is now
+  `unexpiredShare × priceRatio × durationDays`, two dimensionless ratios multiplied into
+  days: every monetary term stays integral and only the day count is rounded. Also dropped
+  a redundant `as Payment | null` on the previous-payment read while rewriting the block.
+  Michael approved both fixes in this session.
+- **Fixed at the root — the carry-over no longer depends on live settings.** Review of
+  this change found two things the clamp had been hiding. First, the credit was bounded
+  only by the clamp that had just been removed, while `cycleMs` still came from the
+  previous tier's **live** `durationDays`: an admin editing that duration between two
+  purchases would rescale the credit with no bound (a 30-day remainder against a tier
+  since edited to 7 days granted 129 extra days for a 30-day purchase, where 30 was
+  correct). Second, a zeroed credit — previous tier deactivated, or the read throwing —
+  silently committed `now + duration`, which can end _before_ the window it replaces,
+  while `lastPaymentId` was overwritten to the new payment, destroying the pointer to the
+  purchase that funded the remaining time. Both are gone:
+  - `tierDurationDays` is snapshotted onto the payment at initiation
+    (`payments.tierDurationDays`, beside `tierId`/`tierName`). The amount actually paid is
+    already snapshotted as `amount`, so `priceRatio` needed no second price field — adding
+    one would have duplicated it. `initiatePayment` now refuses a subscription payment
+    without a usable duration (`tier_duration_required`), so no new payment can lack it.
+  - `resolvePreviousCycleDays` reads that snapshot first. A running window whose
+    carry-over cannot be measured **fails the stack** (`carry_over_unavailable`) instead
+    of guessing, so the payment stays `confirmed` and the caller's activation-failure path
+    raises it for investigation.
+  - A payment that predates the snapshot falls back to the tier's current duration, so
+    nothing that works today breaks at deploy. That fallback is now the only path that can
+    still fail, and only when a legacy payment's tier has also been deactivated.
+  - `architecture.md` invariant #11 was extended: arithmetic on a window already paid for
+    reads the terms snapshotted on that payment, never live `platform-settings`.
+- **Stale path corrected**: `memory.md` and this file's previous next-session note named
+  `src/components/dashboard/mwajiri/paywall-overlay/index.tsx`. That file does not exist —
+  the reveal affordance is
+  `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx` (the only "subscribe
+  to unlock" surface).
+- **Read and found sound** (no change needed): `ensureSubscription` creates the `none`
+  record at registration via `ensureProfile`; tiers are read live and `getTierById` fails
+  closed on an inactive tier — correct on the **buy** path, and the very reason the
+  carry-over no longer consults it for the _previous_ tier (see above); the client sends
+  only `tierId` + `phone` and the price is resolved server-side; `handleCallback` verifies
+  merchant correlation, amount and phone before `confirmed` and treats a terminal payment
+  as a duplicate; a rejected STK push leaves the subscription at `pending_payment`, which
+  self-heals on retry because `beginPurchase` is a no-op in that state;
+  `expireExpiredSubscriptions` polls and CASes so a missed window self-corrects;
+  `contact.service` gates **new** reveals on `active` and deliberately does not re-check
+  anything for an existing unlock, so unlocks stay permanent across expiry.
+- **Files touched**: `context/project-overview.md`, `context/build-plan.md`,
+  `context/library-docs.md`, `context/architecture.md` (invariant #11 extended),
+  `context/progress-tracker.md` (this entry), `src/services/subscription.service.ts`
+  (`stackSubscription` — clamp removed, credit reformulated in integer terms, new
+  `resolvePreviousCycleDays`, fail-closed carry-over), `src/services/payment.service.ts`
+  (`PaymentInput.tierDurationDays`, required for subscription payments, recorded in the
+  initiation and callback audit metadata), `src/app/actions/subscription.ts` (passes
+  `tier.durationDays`), `src/payload/collections/payments/schema.ts` (new
+  `tierDurationDays` field), `src/payload-types.ts` (regenerated).
+- **Notes**: Schema change, so `pnpm generate:types` was run and `src/payload-types.ts`
+  reformatted. `payments.tierDurationDays` is `min: 1`, read-only, sidebar, shown only for
+  subscription payments; existing rows are null and take the legacy fallback.
+  `pnpm format`, `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and
+  `pnpm build` (49 routes) pass. Michael's sandbox walkthrough (tier → STK → real callback
+  → active → unlock → expiry) remains the acceptance test; the agent cannot drive a
+  handset or the tunnel.
+
 ### 2026-09-15 — Verification + M-Pesa end-to-end validation, payment toast, document next-step cue
 
 - **What was built**: No domain logic changed. After a successful manual validation of the

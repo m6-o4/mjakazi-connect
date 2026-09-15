@@ -442,9 +442,11 @@ on the server — client validation is a courtesy, server validation is the cont
 
 ### Project rules
 
-Datetimes are stored UTC and rendered `Africa/Nairobi`. Subscription stacking appends
-duration to the existing expiry rather than to `now()` — see `architecture.md`. Never
-compute an expiry with raw millisecond arithmetic.
+Datetimes are stored UTC and rendered `Africa/Nairobi`. Subscription stacking converts the
+unexpired value of the current window into extra days at the new tier's daily rate, and
+the new window runs from the moment of purchase — the policy is in `project-overview.md`,
+the arithmetic in `subscription.service.ts`. Never compute an expiry with raw millisecond
+arithmetic.
 
 A date-only field round-trips as UTC midnight, so pin the timezone whenever one is
 formatted (`timeZone: "Africa/Nairobi"`), or the runtime's own timezone decides which day

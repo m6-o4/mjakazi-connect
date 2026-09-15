@@ -414,8 +414,10 @@ Unlocks are unlimited within an active window.
 - **No auto-renewal.** Access expires. Nothing recurring is ever created. The codebase
   contains no recurring-billing primitives.
 - **No cash refunds.** Access to the vault constitutes delivery of service.
-- **Stacking, not pro-rating.** Buying while active appends the new duration to the
-  existing expiry. No credit is calculated, no refund is issued on a downgrade.
+- **Stacking converts the unexpired value.** Buying while active converts what is left of
+  the current window into extra days at the new tier's daily rate and starts a fresh
+  window from the moment of purchase. A same-tier renewal therefore lands on the existing
+  expiry plus the full new duration. Nothing is ever refunded in cash.
 - **Permanent unlocks.** A contact revealed during an active window stays visible after
   expiry. New reveals require a new active window.
 - **Replacement guarantee.** Concierge only, once, within 30 days of a confirmed hire.
