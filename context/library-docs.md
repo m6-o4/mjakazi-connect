@@ -387,9 +387,13 @@ adding.
   directly: `notifySuccess` (5s), `notifyInfo` (8s), `notifyError` (high priority, no
   auto-dismiss). Pass a stable per-entity `id` so repeat actions upsert one toast instead
   of stacking.
-- **Persistent state and field-level validation errors stay inline** — payment notices,
-  M-Pesa awaiting/timeout, document badges, contact reveal, Save/Saved toggle,
-  availability status, review "hidden" note, and form field errors.
+- **Persistent state and field-level validation errors stay inline** — M-Pesa
+  awaiting/timeout, document badges, contact reveal, Save/Saved toggle, availability
+  status, review "hidden" note, and form field errors.
+- **A payment confirmation is the one thing that gets both.** The inline
+  `PaymentSuccessNotice` is the persistent record; a `notifySuccess` toast is the
+  immediate cue on the live transition. Both pay flows do this, each with its own stable
+  `id` (`verification-payment-received`, `subscription-payment-received`).
 - Toasts survive `router.refresh()` / `router.push()` within the dashboard because
   `<Toaster>` lives in the `(saas)` layout.
 
@@ -482,3 +486,16 @@ never commits, so this entry is context, not instruction.
 If you use something not listed here and not covered by a skill: research its current
 documentation first, write the code, then add an entry recording the traps you hit. The
 next session should not have to rediscover them.
+
+---
+
+# React 19
+
+### Traps
+
+- **Never run a side effect inside a `setState` updater.** React double-invokes updaters
+  in development to surface impurity, so a `posthog.capture(...)` or a toast fired from
+  inside `setDocs((prev) => { … })` fires twice. Do the state merge in the updater and
+  detect the resulting condition in a `useEffect` keyed on the state. Found here in
+  `DocumentVault`: the `documents_uploaded` PostHog event was firing twice on the third
+  document upload before the check moved into an effect.

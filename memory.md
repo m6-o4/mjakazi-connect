@@ -1,173 +1,157 @@
-# Memory — Document vault: National ID front and back
+# Memory — Mjakazi verification + M-Pesa journey signed off; mwajiri subscription is next
 
-Last updated: 2026-09-15 03:22 UTC
+Last updated: 2026-09-15 05:25 UTC
 
 ## What was built
 
-**The vault moved from one file per document type to one file per slot** — a (document
-type, side) pair. The National ID is now captured as front and back, the Certificate of
-Good Conduct keeps a single slot, and all three are required before a worker can submit
-for verification.
+**No domain logic changed this session.** A manual validation of the mjakazi verification
+and payment journey was run, then three pieces of feedback from it were built and a review
+pass was completed.
 
-- `src/lib/vault.ts` — the whole slot model: `DOCUMENT_SLOTS` (type → label, description,
-  sides, `required`), `DOCUMENT_TYPE_OPTIONS` / `DOCUMENT_SIDE_SELECT_OPTIONS` derived
-  from it, `documentTypeSchema` / `documentSideSchema`, `documentSideLabel`,
-  `documentSlotLabel`, `normalizeDocumentSide`, `documentSlotKey`, `documentSlotWhere`,
-  `isDocumentSlot`, `REQUIRED_DOCUMENT_SLOTS`, `getMissingDocumentSlots`,
-  `isDocumentSetComplete`, plus the existing `VAULT_MAX_BYTES` / `VAULT_MIME_TYPES`.
-- `src/payload/collections/vault-documents/schema.ts` — required `side` select
-  (`defaultValue: "front"`), added to `defaultColumns`. `pnpm generate:types` run.
-- `src/services/vault.service.ts` — `uploadVaultDocument` takes and validates `side`,
-  checks the pair against `DOCUMENT_SLOTS`, and finds/replaces by slot; all three audit
-  actions (`document_uploaded`, `document_viewed`, `document_deleted`) carry `side`.
-- `src/app/(payload)/api/actions/vault/route.ts` — parses, validates and forwards `side`,
-  rejects an invalid pair, returns `side` in the document payload.
-- `src/services/verification.service.ts` — `getMissingRequiredDocuments` (explicit
-  `select` + `depth: 0`) replaces the old two-document boolean; `assessReadiness` uses it,
-  and **`approveVerification` re-checks it before granting `verified`**.
-- `src/components/dashboard/mjakazi/document-vault/index.tsx` — one card per document with
-  a slot per side; per-slot upload/replace/remove/view, per-slot errors,
-  `documents_uploaded` fired once when every required slot is present.
-- `src/app/(saas)/dashboard/mjakazi/documents/page.tsx`,
-  `.../mjakazi/verification/page.tsx`, `.../mjakazi/page.tsx` — pass `side`, and the
-  readiness checklist is the required-slot set.
-- `src/components/dashboard/mjakazi/verification/submit-verification.tsx` — prop is now
-  `missingDocuments: string[]`; one checklist row per missing slot.
-- `src/components/dashboard/staff/verifications/document-viewer.tsx` and
-  `src/app/(saas)/dashboard/staff/verifications/[id]/page.tsx` — every side renders, front
-  and back side by side inside the document's card, "N of M uploaded".
-- Docs: `context/architecture.md` (Documents schema + `side`, per-slot locking, the
-  badge-boundary rule), `context/project-overview.md`, `context/build-plan.md` (2.2 scope
-  addition), `context/progress-tracker.md` (full entry + a review-fixes section),
-  `context/ui-registry.md` (`DocumentVault`, `DocumentViewer`, `SubmitVerification`,
-  `VerificationStatusCard`), `context/library-docs.md` (the select-`defaultValue` backfill
-  trap).
-
-**Review pass**: `/review uncommitted` with all six tracks. Eight findings, all fixed —
-see Problems solved for what each one was.
+- `src/components/dashboard/mjakazi/verification/submit-verification.tsx` — the submit
+  toast no longer claims review has begun. It was `"Submitted for review"` /
+  `"Our team will review your profile and documents."`, fired at the moment the action
+  moves `draft → pending_payment`. It now reads `"Profile submitted"` /
+  `"Pay the verification fee to send your profile to our team for review."`
+- `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` — fires
+  `notifySuccess("Payment received")` (`id: "verification-payment-received"`) on the live
+  transition out of `pending_payment` while a payment was awaiting confirmation, alongside
+  the existing inline `PaymentSuccessNotice`.
+- `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — the same
+  toast (`id: "subscription-payment-received"`) when the newest payment, matched by id,
+  settles at `confirmed`.
+- `src/components/dashboard/mjakazi/document-vault/index.tsx` — exports
+  `DocumentNextStep = { href, label, description }`; takes `nextStep?`; renders a "All
+  required documents uploaded" panel with the step's description and a
+  `buttonVariants()`-styled `Link` whenever the live set is complete and a `nextStep`
+  exists; fires a `"Documents complete"` toast naming that step on the same transition as
+  `documents_uploaded`. The `documents_uploaded` capture and the toast now run in a
+  `useEffect` keyed on `docs` instead of inside the `setDocs` updater, and the updater is
+  back to a pure merge.
+- `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` —
+  `NEXT_STEP_BY_VERIFICATION_STATE` (`draft` → Submit for verification, `pending_payment`
+  → Pay the verification fee, `rejected` → Resubmit for review), `PROFILE_GATED_STATES`,
+  `INCOMPLETE_PROFILE_NEXT_STEP` (→ `/dashboard/mjakazi/profile`) and
+  `getNextStep(state, profileComplete)`. The panel itself moved into `DocumentVault`; the
+  page only resolves the step.
+- Docs: `context/progress-tracker.md` (full entry + review fixes + copy fix + the sign-off
+  and next-session note), `context/ui-registry.md` (`DocumentVault`,
+  `VerificationPaymentFlow`, `PurchaseSubscription`, `SubmitVerification`),
+  `context/library-docs.md` (the payment-confirmation dual-cue convention and the React
+  state-updater trap).
 
 ## Decisions made
 
-- **A `side` field, not a document type per side.** Type says what the document is, side
-  says which face; a slot is the unit uploaded, replaced, removed and checked. Adding a
-  side later is a row in `DOCUMENT_SLOTS`, not a new enum value.
-- **Required set**: National ID front + back + Certificate of Good Conduct. The
-  certificate stays single-sided because that is how it is issued. All three required.
-- **`DOCUMENT_SLOTS` is the single source of truth.** The collection options, the upload
-  UI, the staff viewer, the dashboard checklist and the submit gate all read it, and they
-  share `documentSlotKey` so they cannot disagree about which slot a record occupies.
-- **No new audit action and no new PostHog event.** `documents_uploaded` keeps its meaning
-  — "the document set is complete" — now over three slots. Audit metadata gained `side`.
-- **Storage and delivery untouched.** Same bucket, same `signedDownloads`, same 5MB/MIME
-  limits, same audited `/api/actions/vault/{id}` route.
-- **A record stored before `side` existed reads as the front** (`normalizeDocumentSide`),
-  and the replace lookup matches it with `{ side: { exists: false } }` so a legacy upload
-  is replaced rather than orphaned.
-- **An additive upload does not revert a verified worker.** Only an actual overwrite does
-  (`wasVerified && previousId`). See Problems solved.
-- **The badge boundary is the enforced one, not the review entry.** `approveVerification`
-  re-checks the required set. Deliberately _not_ locking edits during `pending_payment`
-  and _not_ failing inside `advanceToReview`, because a refused transition leaves a worker
-  who has already paid with no way back to `draft` (see Open questions).
+- **A payment confirmation gets both cues.** The inline `PaymentSuccessNotice` is the
+  persistent record; a `notifySuccess` toast is the immediate cue on the live transition.
+  Both pay flows do this, each with a stable `id` so a repeat upserts.
+- **A toast describes the transition that just happened and the step it leaves outstanding
+  — never the end of the journey.** `draft → pending_payment` confirms the submission and
+  names the fee; `"under review"` is only true at `pending_payment → pending_review`. This
+  is now recorded in `library-docs.md` and the progress tracker.
+- **The next-step cue is resolved from the verification state on the server, but
+  completeness is decided on the client.** The server render that supplies `nextStep`
+  happens before the upload that completes the set, so it must not be gated on the server
+  document list — `isDocumentSetComplete(docs)` gates it inside `DocumentVault`. The panel
+  lives in the same client component so it appears without a reload.
+- **`submit` / `resubmit` are only offered once the profile is complete**, because
+  entering review runs through the readiness rule (`SubmitVerification` disables submit
+  otherwise). While the profile is incomplete, the profile is the next step.
+- **`ResubmitVerification`'s `"Resubmitted for review"` toast is correct and stays** — a
+  resubmission goes straight to `pending_review` with no fee.
+- **No new audit action and no new PostHog event.** `documents_uploaded` keeps its
+  meaning.
 
 ## Problems solved
 
-- **Adding a required slot to a live collection makes every existing verified worker's set
-  incomplete.** Their National ID has no `side` (reads as front) and no back, so the vault
-  UI shows an empty back slot and invites them to fill it. The original revert rule
-  (`wasVerified` alone) was only equivalent to "replaced a document" while both documents
-  were required slots — so filling that slot would have cost them the badge, their
-  directory listing and a locked vault. Now gated on `wasVerified && previousId`.
-- **The two enums are flat, so the pair was unvalidated.** A POST with
-  `certificate_of_good_conduct` + `back` passed both checks and was persisted — a document
-  no UI enumerates and the gate ignores. `isDocumentSlot` now rejects any pair that is not
-  in `DOCUMENT_SLOTS`, in the route and the service.
-- **The submit gate could be undone.** The gate runs on entry to `pending_payment`, but
-  the vault stays editable until `pending_review` (`uploadVaultDocument` and
-  `deleteVaultDocument` lock only `pending_review`, with `verified` additionally requiring
-  replacement over removal), and `advanceToReview`/`approveVerification` re-checked
-  nothing. So a worker could pass the gate, drop a required slot, pay, and be approved on
-  incomplete evidence. Fixed at approval. **Rejected alternative:** re-checking inside
-  `advanceToReview` or locking `pending_payment` — the payment path never rolls back and
-  `TRANSITIONS.pending_payment` has no route to `draft`, so a refused activation strands a
-  paid worker.
-- **The front/back rule had two definitions.** The replace query encoded it inline while
-  `normalizeDocumentSide` owned it. Now `documentSlotWhere` derives the constraint from
-  the same normalization.
-- **Slot identity was re-implemented three times** (a local `slotKey` in the component
-  plus inline template literals in the dashboard page). Now one `documentSlotKey`, which
-  normalizes internally.
-- **Stale-closure state merge.** The upload handler computed its next list from a captured
-  `docs`, so two slots uploaded in quick succession could drop each other (and fire
-  `documents_uploaded` early). Now a functional `setDocs` update.
-- **Payload `select` `defaultValue` does not backfill existing documents** — recorded in
-  `context/library-docs.md` with the `exists: false` matching pattern.
-- **`pnpm format` also reformatted 15 untouched files** (prettier drift that predated this
-  session). Michael chose to keep it; it is recorded in the progress-tracker entry.
+- **The next-step cue was inert.** Both the panel and the toast label were derived from
+  the server-rendered document list, which by definition predates the upload that
+  completes the set — so `nextStep` was always `null` at the transition, the toast only
+  ever showed its generic line, and the panel needed a reload that made the cue pointless.
+  Fixed by deriving both from the live client `docs` list. Found by the review, not by me.
+- **The cue overpromised for an incomplete profile.** A `draft` worker with all three
+  slots but an incomplete profile was told to submit, then blocked by the disabled button.
+  `getNextStep` now returns "Complete your profile" for `draft`/`rejected` while
+  `profileComplete !== true`.
+- **The `"Submitted for review"` toast fired before the fee.** It invited the worker to
+  think the next step was unnecessary, exactly as Michael said. Reworded to drive to the
+  fee; the review message now lives only where it is true.
+- **`documents_uploaded` fired twice on the third upload.** A side effect inside the
+  `setDocs` updater, which React double-invokes in development. Moved to an effect and
+  recorded as a trap in `library-docs.md`.
+- **`next build` rewrites generated files in Payload's own unformatted style.**
+  `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js` come back with single
+  quotes and different import order, producing a ~4,370-line phantom diff that wipes the
+  repo's prettier formatting. Run prettier on those two after a build, before committing.
+  They are clean in the working tree right now.
+- **The old `pending_payment` dead-end question is answered — no code change needed.** The
+  pay card re-renders whenever the state is `pending_payment`, and after the 150s poll
+  timeout the button returns, so a fresh STK push can always be started.
+  `expireTimedOutPayments` expires only the payment record and the profile stays
+  `pending_payment` by design.
 
 ## Current state
 
-- Built, reviewed and fixed. `pnpm lint` 0 errors (1 pre-existing React-Compiler warning
-  in `concierge-brief-form.tsx`); `pnpm build` compiles, type-checks and generates 49
-  pages. The `sharp` EPERM symlink warnings on Windows are known-harmless.
-- **Michael has verified the upload of each slot and the invocation of the next step** —
-  "This works well." The vault UI, the per-slot upload and the submit transition are
-  confirmed working.
-- **One check deferred by Michael to a later step:** a verified worker uploading only the
-  back keeps their badge and directory listing (the fix for the add-vs-replace revert).
-- `pnpm` must be invoked as `pnpm.cmd` in this shell — `pnpm` alone is blocked by the
-  PowerShell execution policy.
+- **Michael tested the workflows and reports they all work as required.** This is the
+  sign-off for the mjakazi verification and M-Pesa payment journey.
+- `pnpm lint` 0 errors (1 pre-existing React-Compiler warning in
+  `concierge-brief-form.tsx`); `pnpm build` compiles, type-checks and generates 49 pages.
+  The `sharp` EPERM symlink warnings on Windows are known-harmless.
+- The uncommitted set is exactly five source files — `submit-verification.tsx`,
+  `verification-payment-flow.tsx`, `purchase-subscription.tsx`,
+  `document-vault/index.tsx`, `documents/page.tsx` — plus four context/memory docs.
+  **Nothing else is dirty.**
 - This session's work is **uncommitted by design**. Michael commits after
   `/remember save`, so a dirty tree is the expected end-of-session state, not an
-  outstanding item. It includes `memory.md` and the updated context files alongside the
-  code, plus the 15 prettier-drift files he chose to keep.
-- The M-Pesa verification payment flow was **not** modified this session, apart from the
-  new approval-time document check.
+  outstanding item.
+- `pnpm` must be invoked as `pnpm.cmd` in this shell — `pnpm` alone is blocked by the
+  PowerShell execution policy.
 
 ## Next session starts with
 
-- **The next step is the user verification process plus paying the registration fee by
-  M-Pesa.** Before changing anything, read the existing flow end to end and confirm with
-  Michael what he actually wants here — end-to-end validation of what exists, or new work.
-  What exists today:
-  - `src/services/verification.service.ts` — `submitForVerification` (draft →
-    `pending_payment`), `resubmitForVerification` (rejected → free window while
-    `verificationAttempts <= FREE_REJECTIONS`, then paid), `renewVerification`
-    (`verification_expired` → `pending_payment`), `advanceToReview` (`pending_payment` →
-    `pending_review`), `approveVerification` / `rejectVerification`, and the transition
-    table `TRANSITIONS`.
-  - `src/services/payment.service.ts` — `initiatePayment` (STK push), `handleCallback` →
-    `settleCallback` → `activateVerificationOnPayment` → `advanceToReview`, and
-    `expireTimedOutPayments` (2-minute window, run every minute by
-    `src/jobs/payment-timeout.ts`).
-  - `src/services/settings.service.ts` — `getVerificationFee`; the verification page
-    passes it when the state is `pending_payment`.
-  - `src/lib/mpesa.ts` — `initiateStkPush`, `getCallbackMetadataValue`; the callback route
-    is `src/app/(payload)/api/webhooks/payments/callback/route.ts`.
-  - A dev-only `simulatePaymentCallbackAction` was removed in an earlier session; payments
-    settle identically in dev and production, and the dev tunnel is `app-dev.s3.co.ke`.
-- Then run the same loop as this session: `/architect` for anything non-trivial,
-  implement, `pnpm.cmd format` → `pnpm.cmd lint` → `pnpm.cmd build`, then
-  `/review uncommitted`.
+- **The mwajiri sign-up and subscription process** — the counterpart journey to the one
+  signed off today. Same shape of work: read the existing flow end to end first, then
+  confirm with Michael whether this is end-to-end validation of what exists or new work,
+  then `/architect` before building anything. Files to read:
+  - `src/services/subscription.service.ts` — the six states, stacking logic, activation.
+  - `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — the tier
+    list, phone input, STK push and the confirmation poll (just given the payment toast).
+  - `src/components/dashboard/mwajiri/subscription-status-card.tsx`.
+  - `src/payload/collections/subscriptions/schema.ts` and
+    `src/payload/blocks/globals/platform-settings/schema.ts` (tier prices and durations
+    are read live, never hardcoded).
+  - `src/jobs/subscription-expiry.ts` — hourly; an expired subscription must block new
+    reveals while leaving existing unlocks intact.
+  - `src/components/dashboard/mwajiri/paywall-overlay/index.tsx` and the `contact-unlocks`
+    collection — the contact reveal path.
+  - `context/build-plan.md` Phase 5.1–5.3 for the original acceptance criteria.
+- Then the same loop: implement, `pnpm.cmd format` → `pnpm.cmd lint` → `pnpm.cmd build`,
+  then `/review uncommitted`. After a build, re-run prettier on `src/payload-types.ts` and
+  `src/app/(payload)/admin/importMap.js`.
 
 ## Open questions
 
-- **`pending_payment` may be a dead end after an expired STK push.**
-  `expireTimedOutPayments` expires only the payment record — the profile stays in
-  `pending_payment`, whose only transitions are `pending_review`, `blacklisted` and
-  `deactivated`: there is no route back to `draft`. Confirm the worker can always retry
-  the payment from the verification page, and decide whether an expired payment should
-  return them to `draft` or keep producing a fresh payment. This is squarely in the next
-  step's area.
-- **Deferred manual check:** a `verified` worker uploading only the back keeps their badge
-  and their directory listing (the `wasVerified && previousId` fix). Michael will check
-  this at a later step.
-- **Carried over from the previous session, still unresolved:** `dateOfBirth` is identity
-  data yet is neither starred nor in the completeness list; `displayName` is
-  schema-required while `PROFILE_REQUIRED_FIELDS` omits it, and its helper text promises a
-  first-name fallback that `toProfileData` does not implement.
+- **`renewVerification` is still unwired** — `verification_expired → pending_payment`
+  exists in `verification.service.ts` with no Server Action and no button, so the state
+  card's "Renewal will be available shortly" is accurate. Deliberately out of scope today;
+  an expired worker cannot currently renew.
+- **Two forward-looking descriptions skip the fee** and Michael has not ruled on them:
+  `SubmitVerification`'s card description ("…then submit them for our team to review") and
+  the documents-page `draft` panel ("Submit your profile so our team can review your
+  documents"). They instruct toward the journey's end rather than claiming review has
+  started, so they were left as is.
+- **Whether to add `DONE` markers to the `build-plan.md` Phase 3 and 4.4 headings**,
+  matching the precedent on 10.1, 10.2 and 10.5. The file says completion is tracked in
+  `progress-tracker.md`, not there, so it was left untouched.
+- **Not explicitly confirmed:** that a `verified` worker uploading only the missing back
+  slot keeps their badge and directory listing (the `wasVerified && previousId` fix from
+  the previous session). Carried over.
+- **Carried over, still unresolved:** `dateOfBirth` is identity data yet is neither
+  starred nor in the completeness list; `displayName` is schema-required while
+  `PROFILE_REQUIRED_FIELDS` omits it, and its helper text promises a first-name fallback
+  that `toProfileData` does not implement.
 - **Carried over, still unresolved:** the "public free-text must reject contact details"
-  rule lives only in `code-standards.md`; promote it to a numbered invariant in
-  `architecture.md` or leave it as an implementation rule?
+  rule lives only in `code-standards.md` — promote it to a numbered invariant in
+  `architecture.md`, or leave it as an implementation rule?
 - If a real worker ever hits the `employer` contact-details rejection as a false positive,
   revisit the patterns in `profile-schema.ts` rather than removing the check.

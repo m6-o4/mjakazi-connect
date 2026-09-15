@@ -193,17 +193,29 @@ codebase.
   and back, Certificate of Good Conduct as a single slot. Upload, replace, view and remove
   are per slot, and each remove is guarded by a confirmation
 - **Props**:
-  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean }`
-- **Visual pattern**: one shadcn `Card` per entry in `DOCUMENT_SLOTS` in a
-  `grid gap-4 md:grid-cols-2`; each side is a `border-border rounded-lg border p-3` block
-  holding a semibold side label (rendered only for a multi-sided document), a `Badge`
-  "Uploaded" + truncated filename, and `Button` outline/ghost actions with a
-  `buttonVariants`-styled "View" link; the empty state pairs a `FileText`/`ShieldCheck`
-  lucide icon with "Not uploaded yet" and a small `Upload` button; per-slot
-  `text-destructive` error line; remove is guarded by `AlertDialog` and hidden entirely
-  while `isVerified` (only `Replace` shows); fires `documents_uploaded` once on the
-  transition to every required `DOCUMENT_SLOTS` slot being present. Slot identity comes
-  from `documentSlotKey` in `src/lib/vault.ts` — shared with the gate and the dashboard
+  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean; nextStep?: DocumentNextStep | null }`
+  where `DocumentNextStep` = `{ href, label, description }`, exported from the same file.
+  `nextStep` is passed **ungated** on purpose: the server render that supplies it predates
+  the upload that completes the set, so completeness is decided here, from the live client
+  `docs` state — gating it on the server list would gate it on a stale one
+- **Visual pattern**: a `flex flex-col gap-6` wrapper holding one shadcn `Card` per entry
+  in `DOCUMENT_SLOTS` in a `grid gap-4 md:grid-cols-2`; each side is a
+  `border-border rounded-lg border p-3` block holding a semibold side label (rendered only
+  for a multi-sided document), a `Badge` "Uploaded" + truncated filename, and `Button`
+  outline/ghost actions with a `buttonVariants`-styled "View" link; the empty state pairs
+  a `FileText`/`ShieldCheck` lucide icon with "Not uploaded yet" and a small `Upload`
+  button; per-slot `text-destructive` error line; remove is guarded by `AlertDialog` and
+  hidden entirely while `isVerified` (only `Replace` shows). On the transition to every
+  required `DOCUMENT_SLOTS` slot being present it fires `documents_uploaded` **and** a
+  `notifySuccess` "Documents complete" toast naming `nextStep.label`. Both side effects
+  run in an effect rather than inside the `setDocs` updater: an updater must stay pure,
+  and React double-invokes it in development, which had been firing `documents_uploaded`
+  twice. Below the grid it renders the completion panel — `border-success/40`, a
+  `CheckCircle2` in `text-success`, the heading "All required documents uploaded", the
+  step's description and a `buttonVariants()`-styled `Link` — whenever the live set is
+  complete and a `nextStep` exists. The panel and the toast therefore share one source and
+  appear in the session that completes the set, with no reload. Slot identity comes from
+  `documentSlotKey` in `src/lib/vault.ts` — shared with the gate and the dashboard
   checklist, and it normalizes internally, so a record with no side reads as the front.
   The upload merge uses a functional `setDocs` update so two slots uploaded in quick
   succession cannot drop each other
@@ -233,8 +245,12 @@ codebase.
   done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending) — one row per
   missing document slot from `getMissingDocumentSlots`, collapsing to a single "Identity
   documents uploaded" row once they are all present; `Button` disabled until ready; fires
-  `verification_submitted` PostHog event and a `notifySuccess` toast on success, then
-  `router.refresh()`
+  `verification_submitted` PostHog event and a `notifySuccess` "Profile submitted" toast
+  on success, then `router.refresh()`. The toast drives to the **fee**, not to review —
+  submitting moves `draft → pending_payment` and it is the payment that triggers review
+  (`advanceToReview`), so copy claiming review here would let a worker think the next step
+  is unnecessary. "Under review" messaging belongs to the payment-received toast and the
+  `pending_review` state card
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `VerificationStateCard`
@@ -276,10 +292,12 @@ codebase.
   `ring-2 ring-primary`, unselected = `ring-1 ring-border`); `Badge variant="outline"`
   "Concierge" with a `Crown` icon; active banner `Card` with `CheckCircle2` in
   `text-primary`; `PaymentSuccessNotice` shown once the newest payment (matched by id, so
-  renewals/upgrades are detected too) settles at `confirmed`; phone `Label` + `Input`;
-  `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2` spinner + muted
-  copy while awaiting; fires `plan_selected` (`tierId`) and `payment_initiated`
-  (`paymentType: "subscription"`, `tierId`) PostHog events
+  renewals/upgrades are detected too) settles at `confirmed`, with a matching
+  `notifySuccess` "Payment received" toast (`id: "subscription-payment-received"`) on that
+  transition — inline notice persists, the toast is the immediate cue; phone `Label` +
+  `Input`; `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2`
+  spinner + muted copy while awaiting; fires `plan_selected` (`tierId`) and
+  `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog events
 - **Used in**: `(saas)/dashboard/mwajiri/subscription/page.tsx`
 
 ### `VerificationQueue`
@@ -461,7 +479,10 @@ codebase.
 - **Visual pattern**: delegates to `PayVerification` (pending) or
   `VerificationStateCard` + optional `ResubmitVerification`; renders
   `PaymentSuccessNotice` once a payment that was awaiting confirmation leaves
-  `pending_payment`
+  `pending_payment`; on that same live transition it also fires a `notifySuccess` "Payment
+  received" toast (`id: "verification-payment-received"`). The inline notice is the
+  persistent record, the toast is the immediate cue — a later visit mounts with the state
+  already past `pending_payment`, so nothing re-fires
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `PaymentSuccessNotice`

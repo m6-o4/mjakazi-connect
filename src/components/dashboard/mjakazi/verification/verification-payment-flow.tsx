@@ -9,6 +9,7 @@ import {
 	type StatusState,
 } from "@/components/dashboard/mjakazi/verification/verification-state";
 import { PaymentSuccessNotice } from "@/components/dashboard/payments/payment-success-notice";
+import { notifySuccess } from "@/lib/notify";
 import type { WajakaziProfile } from "@/payload-types";
 
 type VerificationState = NonNullable<WajakaziProfile["verificationState"]>;
@@ -42,6 +43,17 @@ const VerificationPaymentFlow = ({
 	useEffect(() => {
 		if (wasPendingRef.current && state !== "pending_payment" && awaiting) {
 			setJustPaid(true);
+			// the inline notice is the persistent record; this toast is the
+			// immediate cue the moment the callback lands. it fires once, on the
+			// live transition — a later visit mounts with the state already past
+			// pending_payment, so `awaiting` is false and nothing re-fires
+			if (state === "pending_review") {
+				notifySuccess("Payment received", {
+					id: "verification-payment-received",
+					description:
+						"Your verification fee is paid — our team is reviewing your documents.",
+				});
+			}
 		}
 		wasPendingRef.current = state === "pending_payment";
 	}, [state, awaiting]);

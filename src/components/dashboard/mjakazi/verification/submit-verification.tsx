@@ -68,9 +68,15 @@ const SubmitVerification = ({
 				return;
 			}
 			posthog.capture("verification_submitted");
-			notifySuccess("Submitted for review", {
+			// submit moves draft -> pending_payment, so this must not claim the
+			// profile is under review: no fee has been paid yet and the review is
+			// what the payment triggers (advanceToReview runs on payment
+			// confirmation). the toast drives to the fee as the next step instead,
+			// and the "under review" message belongs to the payment moment
+			notifySuccess("Profile submitted", {
 				id: "verification-submit",
-				description: "Our team will review your profile and documents.",
+				description:
+					"Pay the verification fee to send your profile to our team for review.",
 			});
 			router.refresh();
 		} catch {

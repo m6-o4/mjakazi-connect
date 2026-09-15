@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifySuccess } from "@/lib/notify";
 
 type TierOption = {
 	tierId: string;
@@ -105,8 +106,17 @@ const PurchaseSubscription = ({
 		) {
 			setPaymentReceived(true);
 			setStatus("idle");
+			// the inline notice is the persistent record; this toast is the
+			// immediate cue. the payment id anchor above means it fires once, on
+			// the transition into a confirmed newest payment
+			notifySuccess("Payment received", {
+				id: "subscription-payment-received",
+				description: wasActiveAtMount
+					? "Your payment is confirmed and your plan has been extended."
+					: "Your payment is confirmed and your subscription is now active.",
+			});
 		}
-	}, [latestPaymentId, latestPaymentStatus, paymentReceived]);
+	}, [latestPaymentId, latestPaymentStatus, paymentReceived, wasActiveAtMount]);
 
 	useEffect(() => {
 		if (!awaiting) return;

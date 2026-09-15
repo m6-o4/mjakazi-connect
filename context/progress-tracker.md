@@ -20,6 +20,100 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-15 — Verification + M-Pesa end-to-end validation, payment toast, document next-step cue
+
+- **What was built**: No domain logic changed. After a successful manual validation of the
+  whole verification journey, two feedback gaps Michael identified were closed:
+  1. **A toast on payment confirmation.** Both pay flows already rendered the inline
+     `PaymentSuccessNotice`; each now also fires `notifySuccess("Payment received")` on
+     the live transition that shows it — `VerificationPaymentFlow` when the profile leaves
+     `pending_payment` while a payment was awaiting confirmation, and
+     `PurchaseSubscription` when the newest payment (matched by id) settles at
+     `confirmed`. The inline notice remains the persistent record; the toast is the
+     immediate cue. Stable ids (`verification-payment-received`,
+     `subscription-payment-received`) so a repeat upserts.
+  2. **A "where do I go next" cue once the document set is complete.** `DocumentVault`
+     renders a success panel below the cards — "All required documents uploaded", the
+     step's description and a button — and fires a "Documents complete" toast on the same
+     transition that fires `documents_uploaded`, naming that step. Both are driven by one
+     `nextStep` object resolved on the page from the verification state (and profile
+     completeness), so the panel and the toast cannot disagree. Steps:
+     `Submit for verification` in `draft`, `Pay the verification fee` in
+     `pending_payment`, `Resubmit for review` in `rejected`, and `Complete your profile`
+     when the profile is still incomplete — because entering review runs through the
+     readiness rule, which requires a complete profile as well as a complete document set,
+     and offering "submit" without it sends the worker to a page whose submit button is
+     disabled. No cue for `verified` (its own banner covers it) or the terminal states
+     (nothing left to do), and none for `verification_expired`, whose renewal is still
+     unwired.
+  3. **Side effects moved out of a `setState` updater.** The `documents_uploaded` PostHog
+     capture lived inside `setDocs((prev) => …)`, which React double-invokes in
+     development — it was firing twice on the third upload. The merge stays in the
+     updater; the completion check moved to a `useEffect` keyed on `docs`. Recorded as a
+     trap in `library-docs.md`.
+- **Files touched**:
+  - `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` —
+    payment toast.
+  - `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — payment
+    toast.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` — `DocumentNextStep` type
+    (exported), the completion panel and toast, side effects moved to an effect, pure
+    `setDocs` merge.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` —
+    `NEXT_STEP_BY_VERIFICATION_STATE`, `PROFILE_GATED_STATES` and `getNextStep`.
+  - `context/ui-registry.md`, `context/library-docs.md` (toast convention + React trap),
+    `context/progress-tracker.md`.
+- **Notes**: No schema change, so no `generate:types`. No new audit action and no new
+  PostHog event — `documents_uploaded` keeps its meaning. `pnpm format`, `pnpm lint` (0
+  errors, 1 pre-existing concierge-form warning) and `pnpm build` (49 routes) pass; the
+  `sharp` EPERM symlink warnings on Windows are known-harmless.
+- **Validation (2026-09-15, manual, sandbox)**: Michael confirmed the M-Pesa callback end
+  to end — the profile moved to `pending_review` on a real callback and the receipt email
+  arrived — and confirmed the **badge-boundary guard works** (a profile missing a required
+  slot cannot be approved). Wanted and now built: the payment toast and the documents
+  next-step cue. **Michael then re-tested the whole worked set — documents upload, submit,
+  pay, staff review, the payment toast, the next-step cue and the corrected submit copy —
+  and confirmed they all work as required.** This is the sign-off for the mjakazi
+  verification and payment journey. Still unwired and deliberately out of scope:
+  `renewVerification` (`verification_expired → pending_payment`) has no Server Action and
+  no button, so the state card's "Renewal will be available shortly" is accurate.
+- **Review fixes (`/review uncommitted`, same day)**: two findings, both fixed;
+  `pnpm lint` and `pnpm build` re-run clean.
+  - **The next-step cue could not fire in the session that completed the set.** The panel
+    was server-rendered and the toast label came from the same render, which by definition
+    happened before the upload that completes the set — so `nextStep` was always `null` at
+    the transition, the toast showed only its generic line, and the panel needed a reload
+    to appear. Both now derive from the live client `docs` list: the panel moved into
+    `DocumentVault` and `nextStep` is passed down ungated, with `isDocumentSetComplete`
+    deciding display there. The page now resolves the step from the verification state
+    alone.
+  - **The cue overpromised for an incomplete profile.** Readiness for review requires a
+    complete profile as well as a complete document set (`SubmitVerification` disables
+    submit otherwise), so a `draft` worker with all three slots but an incomplete profile
+    was told to submit and then blocked. `getNextStep` now returns `Complete your profile`
+    (pointing at the profile page) for `draft`/`rejected` while
+    `profileComplete !== true`.
+- **Copy fix (same day, Michael's feedback)**: `SubmitVerification` toasted "Submitted for
+  review / Our team will review your profile and documents." at the moment it moves
+  `draft → pending_payment` — before any fee is paid and before any review has started,
+  which invites the worker to think the next step is unnecessary. It now reads "Profile
+  submitted / Pay the verification fee to send your profile to our team for review." The
+  review message stays where it is true: the payment-received toast
+  (`VerificationPaymentFlow`) and the `pending_review` state card.
+  `ResubmitVerification`'s "Resubmitted for review" is correct and unchanged — a
+  resubmission goes straight to `pending_review` with no fee. **Rule for future copy**: a
+  toast must describe the transition that just happened and the step it actually leaves
+  outstanding, never the end of the journey — `draft → pending_payment` confirms
+  submission and names the fee; `pending_payment → pending_review` is where "under review"
+  is true.
+- **Next session (agreed 2026-09-15)**: the **mwajiri sign-up and subscription process** —
+  the counterpart journey to the mjakazi one signed off today. Same shape of work: read
+  the flow end to end first (`subscription.service.ts`, `purchase-subscription.tsx`,
+  `subscription-status-card.tsx`, the `subscriptions` collection,
+  `jobs/subscription-expiry.ts`, and the `PaywallOverlay` / `contact-unlocks` path),
+  confirm with Michael whether it is validation of what already exists or new work, then
+  `/architect` before building if it is new work.
+
 ### 2026-09-15 — Document vault: National ID front and back
 
 - **What was built**: The vault moved from one file per document type to **one file per
