@@ -29,7 +29,7 @@ const errorMessage = (error: unknown, fallback: string): string => {
 };
 
 // stages a complete profile for verification (draft → pending_payment). the
-// readiness guard (complete profile + both documents) lives in the service; this
+// readiness guard (complete profile + every required document side) lives in the service; this
 // action only authenticates, authorizes and delegates
 const submitForVerificationAction = async (): Promise<ActionResult> => {
 	try {

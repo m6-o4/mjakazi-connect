@@ -20,6 +20,92 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-15 — Document vault: National ID front and back
+
+- **What was built**: The vault moved from one file per document type to **one file per
+  slot** — a (document type, side) pair. The National ID is now captured as front and
+  back, the Certificate of Good Conduct as a single slot, and all three are required
+  before the worker can submit for verification. Planned with `/architect`; two decisions
+  settled with Michael before any code:
+  - **Required set**: ID front + ID back + certificate. The certificate stays
+    single-sided, because that is how it is issued.
+  - **Model**: a required `side` select on `vault-documents`, not a document type per
+    side. Type says what the document is, side says which face; a slot is the unit
+    uploaded, replaced, removed and checked. `DOCUMENT_SLOTS` in `src/lib/vault.ts` is the
+    single source of truth for the collection options, the upload UI, the staff viewer and
+    the submit gate.
+- **Files touched**:
+  - `src/lib/vault.ts` — `DOCUMENT_SLOTS` (type → label, description, sides, required),
+    `DOCUMENT_SIDE_OPTIONS` / `DOCUMENT_SIDE_SELECT_OPTIONS`, `documentSideSchema`,
+    `documentSlotLabel`, `documentSideLabel`, `normalizeDocumentSide`,
+    `getMissingDocumentSlots`, `isDocumentSetComplete`. `DOCUMENT_TYPE_OPTIONS` now
+    derives from `DOCUMENT_SLOTS`, and the unused `DocumentType` export is dropped.
+  - `src/payload/collections/vault-documents/schema.ts` — required `side` select
+    (`defaultValue: "front"`), added to `defaultColumns`.
+  - `src/services/vault.service.ts` — `uploadVaultDocument` takes and validates `side` and
+    finds/replaces by (profile, type, side); a front upload also matches a record with no
+    side, so a pre-side upload is replaced rather than orphaned. All three audit actions
+    (`document_uploaded`, `document_viewed`, `document_deleted`) now carry `side`.
+  - `src/app/(payload)/api/actions/vault/route.ts` — parses, validates and forwards
+    `side`, 400 on an invalid one, and returns `side` in the document payload.
+  - `src/services/verification.service.ts` — `hasBothDocuments` → `hasRequiredDocuments`
+    (every required slot populated); the missing-documents message names the ID sides and
+    the certificate.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` — one card per document
+    with a slot per side; upload/replace/remove/view are per slot, errors are per slot,
+    and `documents_uploaded` fires once on the transition to every required slot present.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — selects and passes `side`.
+  - `src/app/(saas)/dashboard/mjakazi/verification/page.tsx` and
+    `.../verification/submit-verification.tsx` — readiness is the required-slot set;
+    `SubmitVerification` takes `missingDocuments: string[]` and lists each missing slot.
+  - `src/app/(saas)/dashboard/mjakazi/page.tsx` — the overview checklist is three rows
+    built from `REQUIRED_DOCUMENT_SLOTS`.
+  - `src/components/dashboard/staff/verifications/document-viewer.tsx` and
+    `src/app/(saas)/dashboard/staff/verifications/[id]/page.tsx` — every side renders,
+    with front and back side by side inside the document's card and an "N of M uploaded"
+    line.
+  - `src/payload-types.ts` (regenerated).
+- **Notes**: No new audit action and no new PostHog event — `documents_uploaded` keeps its
+  meaning ("the document set is complete"), now over three slots. Storage,
+  `signedDownloads` delivery and the verified-replacement rule are unchanged; the
+  `pending_review` lock is per slot. A record stored before `side` existed reads as the
+  front. `pnpm format` also corrected pre-existing formatter drift in 15 unrelated files
+  (prose wrapping, table alignment, import order) — kept deliberately at Michael's call.
+  `pnpm lint` (0 errors, 1 pre-existing concierge-form warning) and `pnpm build` (49
+  routes) pass. **Verification: Michael confirmed the upload of each slot and the
+  invocation of the next step work ("This works well"). Still to check at a later step: a
+  verified worker uploading only the back keeps their badge and directory listing.**
+- **Review fixes (`/review uncommitted`, same day)**: `pnpm build` + `pnpm lint` re-run
+  clean after all of these.
+  - **A `verified` worker is no longer reverted by an additive upload.** The revert was
+    gated on `wasVerified` alone, which was equivalent to "replaced a document" only while
+    both documents were required slots. Every verified worker predating this change has a
+    National ID with no `side` (read as the front) and an empty back slot, so uploading
+    the newly-required back would have cost them the badge, their directory listing and a
+    locked vault. Now gated on `wasVerified && previousId`.
+  - **The slot pair is enforced at the write boundary.** The two enums are flat, so
+    `certificate_of_good_conduct` + `back` passed both checks and was persisted as a
+    record no UI enumerates and the gate ignores. `isDocumentSlot` (`src/lib/vault.ts`)
+    now rejects any pair that is not in `DOCUMENT_SLOTS`, in both the upload route and the
+    service.
+  - **The badge boundary is now enforced.** The gate ran only on entry to
+    `pending_payment`, and the vault stays editable until `pending_review`, so a worker
+    could pass the gate, drop a required slot, pay, and be approved on incomplete evidence
+    — `approveVerification` now refuses with the missing slot labels. Deliberately chosen
+    over locking edits during `pending_payment`: refusing the transition would leave a
+    worker who has already paid with no way back to `draft`, and the payment path never
+    rolls back.
+  - **Slot identity has one definition.** `documentSlotKey` and `documentSlotWhere` live
+    in `src/lib/vault.ts` and normalize internally; the upload component no longer keeps a
+    local `slotKey`, the dashboard checklist derives from the shared key, and the replace
+    query no longer re-encodes the front/back rule that `normalizeDocumentSide` owns.
+  - **The vault upload merge is a functional state update**, so two slots uploaded in
+    quick succession can no longer read the same stale list and drop each other (which
+    could show "Uploaded" for a slot the gate counted as missing, and fire
+    `documents_uploaded` early).
+  - Minor: the gate read now passes `select: { documentType, side }` and `depth: 0`, and
+    the dead `?? ""` on `documentType` is gone.
+
 ### 2026-09-15 — Mjakazi profile form: identity field order (minor UI fix)
 
 - **What was built**: Reordered the Identity card's fields so the legal first name and

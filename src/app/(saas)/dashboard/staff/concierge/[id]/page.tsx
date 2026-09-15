@@ -1,11 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { getPayload } from "payload";
 
-import config from "@/payload-config";
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { ConciergeCaseDetail } from "@/components/dashboard/staff/concierge/concierge-case-detail";
-import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
+import config from "@/payload-config";
 import type { ConciergeCase } from "@/payload-types";
+import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ const Page = async ({ params }: Props) => {
 	}));
 
 	return (
-		<div className="space-y-6 max-w-4xl">
+		<div className="max-w-4xl space-y-6">
 			<ConciergeCaseDetail
 				conciergeCase={conciergeCase}
 				availableCandidates={availableCandidates}

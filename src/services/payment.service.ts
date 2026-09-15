@@ -571,5 +571,10 @@ const getLatestPaymentForUser = async (
 	}
 };
 
-export { expireTimedOutPayments, getLatestPaymentForUser, handleCallback, initiatePayment };
+export {
+	expireTimedOutPayments,
+	getLatestPaymentForUser,
+	handleCallback,
+	initiatePayment,
+};
 export type { CallbackOutcome, PaymentInput };

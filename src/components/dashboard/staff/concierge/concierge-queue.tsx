@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { Clock, Crown, Inbox, UserCheck } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,10 +15,10 @@ type Props = {
 const ConciergeQueue = ({ cases }: Props) => {
 	if (cases.length === 0) {
 		return (
-			<Card className="p-8 text-center space-y-3">
-				<Inbox className="mx-auto size-8 text-muted-foreground" />
-				<h3 className="text-lg font-medium text-heading">No Concierge Cases</h3>
-				<p className="text-sm text-muted-foreground">
+			<Card className="space-y-3 p-8 text-center">
+				<Inbox className="text-muted-foreground mx-auto size-8" />
+				<h3 className="text-heading text-lg font-medium">No Concierge Cases</h3>
+				<p className="text-muted-foreground text-sm">
 					There are no active or pending concierge cases in the queue.
 				</p>
 			</Card>
@@ -28,21 +28,24 @@ const ConciergeQueue = ({ cases }: Props) => {
 	return (
 		<div className="space-y-4">
 			{cases.map((item) => {
-				const mwajiriUser = typeof item.mwajiri === "object" ? (item.mwajiri as User) : null;
-				const assignedUser = typeof item.assignedTo === "object" ? (item.assignedTo as User) : null;
+				const mwajiriUser =
+					typeof item.mwajiri === "object" ? (item.mwajiri as User) : null;
+				const assignedUser =
+					typeof item.assignedTo === "object" ? (item.assignedTo as User) : null;
 				const brief = item.brief;
 
 				const mwajiriName = mwajiriUser
-					? [mwajiriUser.firstName, mwajiriUser.lastName].filter(Boolean).join(" ") || mwajiriUser.email
+					? [mwajiriUser.firstName, mwajiriUser.lastName].filter(Boolean).join(" ") ||
+						mwajiriUser.email
 					: "Unknown Mwajiri";
 
 				return (
 					<Card key={item.id} className="hover:border-primary/40 transition-colors">
-						<CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+						<CardContent className="flex flex-col justify-between gap-4 p-5 md:flex-row md:items-center">
 							<div className="space-y-2">
 								<div className="flex flex-wrap items-center gap-2">
-									<Crown className="size-4 text-accent shrink-0" />
-									<span className="font-semibold text-foreground text-base">
+									<Crown className="text-accent size-4 shrink-0" />
+									<span className="text-foreground text-base font-semibold">
 										{mwajiriName}
 									</span>
 									<Badge
@@ -65,29 +68,35 @@ const ConciergeQueue = ({ cases }: Props) => {
 								</div>
 
 								{brief && brief.jobCategory ? (
-									<p className="text-sm text-muted-foreground">
-										<span className="font-medium text-foreground capitalize">
+									<p className="text-muted-foreground text-sm">
+										<span className="text-foreground font-medium capitalize">
 											{brief.jobCategory.replace("_", " ")}
 										</span>{" "}
 										in <span className="capitalize">{brief.location}</span> &bull; KSh{" "}
-										{brief.salaryMin?.toLocaleString()} - {brief.salaryMax?.toLocaleString()} / mo &bull;{" "}
-										<span className="capitalize">{brief.workPreference?.replace("_", "-")}</span>
+										{brief.salaryMin?.toLocaleString()} -{" "}
+										{brief.salaryMax?.toLocaleString()} / mo &bull;{" "}
+										<span className="capitalize">
+											{brief.workPreference?.replace("_", "-")}
+										</span>
 									</p>
 								) : (
-									<p className="text-sm text-muted-foreground italic">
+									<p className="text-muted-foreground text-sm italic">
 										Brief not yet submitted by Mwajiri
 									</p>
 								)}
 
-								<div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+								<div className="text-muted-foreground flex flex-wrap items-center gap-4 text-xs">
 									<span className="flex items-center gap-1">
 										<Clock className="size-3" />
 										Updated {new Date(item.updatedAt).toLocaleDateString("en-GB")}
 									</span>
 									{assignedUser && (
 										<span className="flex items-center gap-1">
-											<UserCheck className="size-3 text-primary" />
-											Assigned: {[assignedUser.firstName, assignedUser.lastName].filter(Boolean).join(" ")}
+											<UserCheck className="text-primary size-3" />
+											Assigned:{" "}
+											{[assignedUser.firstName, assignedUser.lastName]
+												.filter(Boolean)
+												.join(" ")}
 										</span>
 									)}
 								</div>

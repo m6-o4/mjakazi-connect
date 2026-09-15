@@ -189,22 +189,32 @@ codebase.
 ### `DocumentVault`
 
 - **Location**: `src/components/dashboard/mjakazi/document-vault/index.tsx`
-- **Purpose**: The two document slots (National ID + Certificate of Good Conduct) —
-  upload, replace, view and remove, each remove guarded by a confirmation
+- **Purpose**: One card per identity document, with a slot per side — National ID front
+  and back, Certificate of Good Conduct as a single slot. Upload, replace, view and remove
+  are per slot, and each remove is guarded by a confirmation
 - **Props**:
-  `{ documents: { id: string; documentType: string; filename: string | null }[]; isVerified?: boolean }`
-- **Visual pattern**: two shadcn `Card`s in a `grid gap-4 md:grid-cols-2`; `Badge`
-  "Uploaded" + truncated filename; `Button` outline/ghost actions with a
-  `buttonVariants`-styled "View" link; empty state with a `FileText`/`ShieldCheck` lucide
-  icon; remove guarded by shadcn `AlertDialog` and hidden entirely while `isVerified`
-  (only `Replace` shows); fires `documents_uploaded` PostHog event when both slots fill
+  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean }`
+- **Visual pattern**: one shadcn `Card` per entry in `DOCUMENT_SLOTS` in a
+  `grid gap-4 md:grid-cols-2`; each side is a `border-border rounded-lg border p-3` block
+  holding a semibold side label (rendered only for a multi-sided document), a `Badge`
+  "Uploaded" + truncated filename, and `Button` outline/ghost actions with a
+  `buttonVariants`-styled "View" link; the empty state pairs a `FileText`/`ShieldCheck`
+  lucide icon with "Not uploaded yet" and a small `Upload` button; per-slot
+  `text-destructive` error line; remove is guarded by `AlertDialog` and hidden entirely
+  while `isVerified` (only `Replace` shows); fires `documents_uploaded` once on the
+  transition to every required `DOCUMENT_SLOTS` slot being present. Slot identity comes
+  from `documentSlotKey` in `src/lib/vault.ts` — shared with the gate and the dashboard
+  checklist, and it normalizes internally, so a record with no side reads as the front.
+  The upload merge uses a functional `setDocs` update so two slots uploaded in quick
+  succession cannot drop each other
 - **Used in**: `(saas)/dashboard/mjakazi/documents/page.tsx`
 
 ### `VerificationStatusCard`
 
 - **Location**: `src/components/dashboard/mjakazi/verification-status-card/index.tsx`
 - **Purpose**: The post-profile step of the verification journey on the dashboard Overview
-  — shows which documents are missing, and "ready for verification" once both are uploaded
+  — shows which document slots are missing, and "ready for verification" once all required
+  ones are uploaded
 - **Props**: `{ documents: { label: string; uploaded: boolean }[] }`
 - **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when
   done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending);
@@ -216,13 +226,15 @@ codebase.
 
 - **Location**: `src/components/dashboard/mjakazi/verification/submit-verification.tsx`
 - **Purpose**: The draft-state submit flow on the verification page — a readiness
-  checklist (profile complete + both documents) with links to fix each gap, and the submit
-  button
-- **Props**: `{ profileComplete: boolean; hasBothDocuments: boolean }`
+  checklist (profile complete + every required document slot) with links to fix each gap,
+  and the submit button
+- **Props**: `{ profileComplete: boolean; missingDocuments: string[] }`
 - **Visual pattern**: shadcn `Card`; checklist rows (`CheckCircle2` in `text-accent` when
-  done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending); `Button`
-  disabled until ready; fires `verification_submitted` PostHog event and a `notifySuccess`
-  toast on success, then `router.refresh()`
+  done, `Circle` in `text-muted-foreground` + `ArrowRight` when pending) — one row per
+  missing document slot from `getMissingDocumentSlots`, collapsing to a single "Identity
+  documents uploaded" row once they are all present; `Button` disabled until ready; fires
+  `verification_submitted` PostHog event and a `notifySuccess` toast on success, then
+  `router.refresh()`
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `VerificationStateCard`
@@ -285,12 +297,15 @@ codebase.
 ### `DocumentViewer`
 
 - **Location**: `src/components/dashboard/staff/verifications/document-viewer.tsx`
-- **Purpose**: Renders a profile's two identity documents side by side via the audited
-  vault route
-- **Props**: `{ documents: ReviewDocument[] }` (`id`, `documentType`, `filename`)
-- **Visual pattern**: two `Card`s in `grid gap-4 md:grid-cols-2`; each holds an
-  `<iframe src="/api/actions/vault/{id}">` (auth + audit + signed-URL redirect) with an
-  "Open in new tab" fallback link; `FileText` empty state per missing document
+- **Purpose**: Renders every side of a profile's identity documents through the audited
+  vault route, so a reviewer can compare the National ID front and back
+- **Props**: `{ documents: ReviewDocument[] }` (`id`, `documentType`, `side`, `filename`)
+- **Visual pattern**: one `Card` per entry in `DOCUMENT_SLOTS` in
+  `grid gap-4 md:grid-cols-2`, each described as "N of M uploaded"; inside a multi-sided
+  document the sides sit in `grid gap-4 sm:grid-cols-2` with a semibold side label above
+  each `<iframe src="/api/actions/vault/{id}">` (auth + audit + signed-URL redirect), a
+  truncated filename and an "Open in new tab" fallback link; `FileText` empty state per
+  missing slot
 - **Used in**: `(saas)/dashboard/staff/verifications/[id]/page.tsx`
 
 ### `ReviewForm`

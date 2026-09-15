@@ -38,14 +38,15 @@ const MwajiriDashboardPage = async () => {
 
 	// limit: 1 keeps the fetch cheap — only totalDocs (the live verified+available
 	// count) is needed, which comes from the same guarded path as the directory
-	const [subscription, conciergeCase, directory, sentEois, hireCandidates, hires] = await Promise.all([
-		getOwnSubscription(payload, user),
-		getConciergeCaseForMwajiri(payload, user),
-		listDirectoryProfiles(payload, { limit: 1 }),
-		listSentEois(payload, user),
-		listHireCandidatesForMwajiri(payload, user),
-		listHiresForMwajiri(payload, user),
-	]);
+	const [subscription, conciergeCase, directory, sentEois, hireCandidates, hires] =
+		await Promise.all([
+			getOwnSubscription(payload, user),
+			getConciergeCaseForMwajiri(payload, user),
+			listDirectoryProfiles(payload, { limit: 1 }),
+			listSentEois(payload, user),
+			listHireCandidatesForMwajiri(payload, user),
+			listHiresForMwajiri(payload, user),
+		]);
 
 	const reviewedIds = await listReviewedMjakaziIds(
 		payload,
@@ -77,7 +78,10 @@ const MwajiriDashboardPage = async () => {
 			/>
 
 			{conciergeCase && (
-				<ConciergeStatusCard conciergeCase={conciergeCase} eligibleForReplacement={true} />
+				<ConciergeStatusCard
+					conciergeCase={conciergeCase}
+					eligibleForReplacement={true}
+				/>
 			)}
 
 			<div className="grid gap-4 md:grid-cols-2">

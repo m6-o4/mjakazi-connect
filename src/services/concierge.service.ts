@@ -139,7 +139,10 @@ const submitRequirementsBrief = async (
 		return fail("Forbidden", "forbidden");
 	}
 
-	if (conciergeCase.state !== "intake" && conciergeCase.state !== "replacement_requested") {
+	if (
+		conciergeCase.state !== "intake" &&
+		conciergeCase.state !== "replacement_requested"
+	) {
 		return fail("Brief has already been submitted.", "invalid_state");
 	}
 
@@ -263,7 +266,10 @@ const deliverConciergeShortlist = async (
 	}
 
 	if (shortlistItems.length < 3 || shortlistItems.length > 5) {
-		return fail("Shortlist must contain between 3 and 5 candidates.", "invalid_shortlist");
+		return fail(
+			"Shortlist must contain between 3 and 5 candidates.",
+			"invalid_shortlist",
+		);
 	}
 
 	const conciergeCase = await loadCaseById(payload, caseId, 0);
@@ -289,7 +295,10 @@ const deliverConciergeShortlist = async (
 			})) as WajakaziProfile | null;
 
 			if (!profile || profile.verificationState !== "verified") {
-				return fail(`Candidate ${item.candidateId} is not verified.`, "invalid_candidate");
+				return fail(
+					`Candidate ${item.candidateId} is not verified.`,
+					"invalid_candidate",
+				);
 			}
 
 			shortlistData.push({
@@ -338,7 +347,10 @@ const deliverConciergeShortlist = async (
 				});
 			}
 		} catch (error) {
-			console.error(`[services/concierge] unlock error for candidate ${item.candidateId}:`, error);
+			console.error(
+				`[services/concierge] unlock error for candidate ${item.candidateId}:`,
+				error,
+			);
 			return fail("Failed processing candidate shortlist.");
 		}
 	}
@@ -372,7 +384,10 @@ const deliverConciergeShortlist = async (
 		if (conciergeCase.brief?.submittedAt) {
 			const submittedTime = new Date(conciergeCase.brief.submittedAt).getTime();
 			const deliveredTime = new Date(deliveredAt).getTime();
-			daysToDeliver = Math.max(0, Math.round((deliveredTime - submittedTime) / (1000 * 60 * 60 * 24)));
+			daysToDeliver = Math.max(
+				0,
+				Math.round((deliveredTime - submittedTime) / (1000 * 60 * 60 * 24)),
+			);
 		}
 
 		captureServerEvent({
@@ -488,7 +503,10 @@ const requestConciergeReplacement = async (
 	});
 
 	if (recentHires.docs.length === 0) {
-		return fail("No eligible confirmed hire found within the 30-day window.", "no_eligible_hire");
+		return fail(
+			"No eligible confirmed hire found within the 30-day window.",
+			"no_eligible_hire",
+		);
 	}
 
 	const previousState = conciergeCase.state;

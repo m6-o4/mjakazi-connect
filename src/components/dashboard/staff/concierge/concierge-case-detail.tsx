@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { Crown, Loader2, Plus, Send, Trash2, UserCheck } from "lucide-react";
+import { useState, useTransition } from "react";
 
-import { claimConciergeCaseAction, deliverConciergeShortlistAction } from "@/app/actions/concierge";
+import {
+	claimConciergeCaseAction,
+	deliverConciergeShortlistAction,
+} from "@/app/actions/concierge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,11 +48,14 @@ const ConciergeCaseDetail = ({
 	const mwajiriUser =
 		typeof conciergeCase.mwajiri === "object" ? (conciergeCase.mwajiri as User) : null;
 	const assignedUser =
-		typeof conciergeCase.assignedTo === "object" ? (conciergeCase.assignedTo as User) : null;
+		typeof conciergeCase.assignedTo === "object"
+			? (conciergeCase.assignedTo as User)
+			: null;
 	const brief = conciergeCase.brief;
 
 	const mwajiriName = mwajiriUser
-		? [mwajiriUser.firstName, mwajiriUser.lastName].filter(Boolean).join(" ") || mwajiriUser.email
+		? [mwajiriUser.firstName, mwajiriUser.lastName].filter(Boolean).join(" ") ||
+			mwajiriUser.email
 		: "Mwajiri";
 
 	// Shortlist state
@@ -52,7 +64,8 @@ const ConciergeCaseDetail = ({
 	>(() => {
 		if (conciergeCase.shortlist && conciergeCase.shortlist.length > 0) {
 			return conciergeCase.shortlist.map((item) => {
-				const cand = typeof item.candidate === "object" ? (item.candidate as WajakaziProfile) : null;
+				const cand =
+					typeof item.candidate === "object" ? (item.candidate as WajakaziProfile) : null;
 				return {
 					candidateId: cand?.id ?? String(item.candidate),
 					displayName: cand?.displayName ?? "Candidate",
@@ -92,7 +105,9 @@ const ConciergeCaseDetail = ({
 	};
 
 	const handleRemoveCandidate = (candidateId: string) => {
-		setSelectedCandidates(selectedCandidates.filter((s) => s.candidateId !== candidateId));
+		setSelectedCandidates(
+			selectedCandidates.filter((s) => s.candidateId !== candidateId),
+		);
 	};
 
 	const handleMatchNoteChange = (candidateId: string, note: string) => {
@@ -127,17 +142,19 @@ const ConciergeCaseDetail = ({
 			{/* Case Overview & Claim Header */}
 			<Card>
 				<CardHeader>
-					<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+					<div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
 						<div className="space-y-1">
 							<div className="flex items-center gap-2">
-								<Crown className="size-5 text-accent shrink-0" />
+								<Crown className="text-accent size-5 shrink-0" />
 								<CardTitle className="text-xl">Case for {mwajiriName}</CardTitle>
 								<Badge variant="outline">{conciergeCase.state}</Badge>
 							</div>
 							<CardDescription>
 								Assigned staff:{" "}
 								{assignedUser
-									? [assignedUser.firstName, assignedUser.lastName].filter(Boolean).join(" ")
+									? [assignedUser.firstName, assignedUser.lastName]
+											.filter(Boolean)
+											.join(" ")
 									: "Unassigned"}
 							</CardDescription>
 						</div>
@@ -156,43 +173,45 @@ const ConciergeCaseDetail = ({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{brief ? (
-						<div className="grid gap-4 md:grid-cols-2 rounded-lg border border-border p-4 bg-muted/30">
+						<div className="border-border bg-muted/30 grid gap-4 rounded-lg border p-4 md:grid-cols-2">
 							<div>
-								<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+								<span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
 									Requirements
 								</span>
-								<p className="text-sm font-medium text-foreground mt-1 capitalize">
+								<p className="text-foreground mt-1 text-sm font-medium capitalize">
 									Role: {brief.jobCategory?.replace("_", " ")}
 								</p>
-								<p className="text-sm text-foreground capitalize">Location: {brief.location}</p>
-								<p className="text-sm text-foreground capitalize">
+								<p className="text-foreground text-sm capitalize">
+									Location: {brief.location}
+								</p>
+								<p className="text-foreground text-sm capitalize">
 									Work Preference: {brief.workPreference?.replace("_", "-")}
 								</p>
-								<p className="text-sm text-foreground">
+								<p className="text-foreground text-sm">
 									Salary Range: KSh {brief.salaryMin?.toLocaleString()} - KSh{" "}
 									{brief.salaryMax?.toLocaleString()} / mo
 								</p>
 							</div>
 
 							<div>
-								<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+								<span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
 									Household & Duties
 								</span>
-								<p className="text-sm text-foreground mt-1">
+								<p className="text-foreground mt-1 text-sm">
 									<strong>Family:</strong> {brief.familyDetails || "N/A"}
 								</p>
-								<p className="text-sm text-foreground">
+								<p className="text-foreground text-sm">
 									<strong>Duties:</strong> {brief.duties || "N/A"}
 								</p>
 								{brief.specialRequirements && (
-									<p className="text-sm text-foreground">
+									<p className="text-foreground text-sm">
 										<strong>Special Notes:</strong> {brief.specialRequirements}
 									</p>
 								)}
 							</div>
 						</div>
 					) : (
-						<p className="text-sm text-muted-foreground italic">
+						<p className="text-muted-foreground text-sm italic">
 							Mwajiri has not submitted their requirements brief yet.
 						</p>
 					)}
@@ -204,7 +223,8 @@ const ConciergeCaseDetail = ({
 				<CardHeader>
 					<CardTitle>Curate Shortlist (3 to 5 Verified Candidates)</CardTitle>
 					<CardDescription>
-						Select candidates matching the brief and add a match note for each worker before delivering the shortlist.
+						Select candidates matching the brief and add a match note for each worker
+						before delivering the shortlist.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
@@ -214,35 +234,36 @@ const ConciergeCaseDetail = ({
 							<Label className="text-sm font-semibold">
 								Selected Candidates ({selectedCandidates.length} / 5)
 							</Label>
-							<span className="text-xs text-muted-foreground">
+							<span className="text-muted-foreground text-xs">
 								Requires 3 to 5 candidates
 							</span>
 						</div>
 
 						{selectedCandidates.length === 0 ? (
-							<div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-								No candidates selected yet. Search and pick from the available verified wajakazi list below.
+							<div className="border-border text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+								No candidates selected yet. Search and pick from the available verified
+								wajakazi list below.
 							</div>
 						) : (
 							<div className="space-y-3">
 								{selectedCandidates.map((item, index) => (
 									<div
 										key={item.candidateId}
-										className="rounded-lg border border-border p-4 space-y-3"
+										className="border-border space-y-3 rounded-lg border p-4"
 									>
 										<div className="flex items-center justify-between gap-2">
 											<div className="flex items-center gap-2">
-												<span className="size-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+												<span className="bg-primary/10 text-primary flex size-6 items-center justify-center rounded-full text-xs font-semibold">
 													{index + 1}
 												</span>
-												<span className="font-semibold text-foreground text-sm">
+												<span className="text-foreground text-sm font-semibold">
 													{item.displayName}
 												</span>
 											</div>
 											<Button
 												size="icon"
 												variant="ghost"
-												className="size-8 text-destructive"
+												className="text-destructive size-8"
 												onClick={() => handleRemoveCandidate(item.candidateId)}
 											>
 												<Trash2 className="size-4" />
@@ -250,7 +271,10 @@ const ConciergeCaseDetail = ({
 										</div>
 
 										<div className="space-y-1">
-											<Label htmlFor={`note-${item.candidateId}`} className="text-xs text-muted-foreground">
+											<Label
+												htmlFor={`note-${item.candidateId}`}
+												className="text-muted-foreground text-xs"
+											>
 												Match Note for Mwajiri (Explain why this worker fits their brief)
 											</Label>
 											<Textarea
@@ -270,32 +294,35 @@ const ConciergeCaseDetail = ({
 					</div>
 
 					{/* Candidate Search & Picker */}
-					<div className="space-y-3 border-t border-border pt-4">
-						<Label className="text-sm font-semibold">Search Available Verified Wajakazi</Label>
+					<div className="border-border space-y-3 border-t pt-4">
+						<Label className="text-sm font-semibold">
+							Search Available Verified Wajakazi
+						</Label>
 						<Input
 							placeholder="Search by name, location, or skill..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
 						/>
 
-						<div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+						<div className="max-h-60 space-y-2 overflow-y-auto pr-1">
 							{filteredCandidates.length === 0 ? (
-								<p className="text-xs text-muted-foreground py-2">
+								<p className="text-muted-foreground py-2 text-xs">
 									No matching available verified wajakazi found.
 								</p>
 							) : (
 								filteredCandidates.map((cand) => (
 									<div
 										key={cand.id}
-										className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/30"
+										className="border-border hover:bg-muted/30 flex items-center justify-between gap-3 rounded-lg border p-2.5"
 									>
 										<div className="space-y-0.5">
-											<span className="text-sm font-medium text-foreground">
+											<span className="text-foreground text-sm font-medium">
 												{cand.displayName}
 											</span>
-											<p className="text-xs text-muted-foreground">
-												{cand.location} &bull; {cand.yearsExperience ?? 0} yrs exp &bull; KSh{" "}
-												{cand.salaryMin?.toLocaleString()} - {cand.salaryMax?.toLocaleString()}
+											<p className="text-muted-foreground text-xs">
+												{cand.location} &bull; {cand.yearsExperience ?? 0} yrs exp &bull;
+												KSh {cand.salaryMin?.toLocaleString()} -{" "}
+												{cand.salaryMax?.toLocaleString()}
 											</p>
 										</div>
 										<Button
@@ -313,11 +340,15 @@ const ConciergeCaseDetail = ({
 						</div>
 					</div>
 
-					{actionError && <p className="text-sm text-destructive">{actionError}</p>}
+					{actionError && <p className="text-destructive text-sm">{actionError}</p>}
 
-					<div className="border-t border-border pt-4 flex justify-end">
+					<div className="border-border flex justify-end border-t pt-4">
 						<Button
-							disabled={isPending || selectedCandidates.length < 3 || selectedCandidates.length > 5}
+							disabled={
+								isPending ||
+								selectedCandidates.length < 3 ||
+								selectedCandidates.length > 5
+							}
 							onClick={handleDeliver}
 						>
 							{isPending ? (

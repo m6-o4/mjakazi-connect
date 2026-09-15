@@ -5,6 +5,7 @@ import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { DocumentVault } from "@/components/dashboard/mjakazi/document-vault";
+import { normalizeDocumentSide } from "@/lib/vault";
 import config from "@/payload-config";
 import { getOwnProfile } from "@/services/profile.service";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: "Documents" };
 type DocumentInfo = {
 	id: string;
 	documentType: string;
+	side: string;
 	filename: string | null;
 };
 
@@ -31,7 +33,7 @@ const MjakaziDocumentsPage = async () => {
 		collection: "vault-documents",
 		where: { profile: { equals: profile.id } },
 		limit: 10,
-		select: { id: true, documentType: true, filename: true },
+		select: { id: true, documentType: true, side: true, filename: true },
 		overrideAccess: false,
 		req: { user },
 	});
@@ -39,6 +41,7 @@ const MjakaziDocumentsPage = async () => {
 	const documents: DocumentInfo[] = result.docs.map((doc) => ({
 		id: doc.id,
 		documentType: doc.documentType,
+		side: normalizeDocumentSide(doc.side),
 		filename: doc.filename ?? null,
 	}));
 
@@ -47,8 +50,8 @@ const MjakaziDocumentsPage = async () => {
 			<div>
 				<h1 className="text-heading text-2xl font-semibold">My Documents</h1>
 				<p className="text-muted-foreground mt-1 text-sm">
-					Upload your National ID and Certificate of Good Conduct so our team can verify
-					you.
+					Upload both sides of your National ID and your Certificate of Good Conduct so
+					our team can verify you.
 				</p>
 			</div>
 

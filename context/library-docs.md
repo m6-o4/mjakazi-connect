@@ -186,6 +186,12 @@ renders is loaded by every list, saved list and count query too.
 - An array field that bounds user input carries `maxRows`, and the bound is imported from
   a shared constants module so the payload field, the zod schema and the form cannot
   disagree (employment history: `MAX_EMPLOYMENT_ENTRIES` in `profile-constants.ts`).
+- **A select `defaultValue` does not backfill existing documents.** Adding `side` to
+  `vault-documents` with `defaultValue: "front"` left records written before the field
+  without a `side` key. Match them with `{ side: { exists: false } }` (inside an `or`
+  alongside the real value) when a query must treat "no side" as the front — otherwise a
+  replace misses the legacy record and orphans it. Reads normalize a missing side rather
+  than rejecting it.
 
 ---
 

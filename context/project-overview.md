@@ -83,11 +83,11 @@ platform settings, manages staff accounts, deletes accounts, or overrides a stat
 
 ### Moderation authority
 
-| Action                               | `admin` | `staff` |
-| ------------------------------------ | ------- | ------- |
-| Suspend a mwajiri or mjakazi account | yes     | yes     |
-| Reinstate a suspended mwajiri/mjakazi| yes     | no      |
-| Delete a mwajiri or mjakazi account  | yes     | no      |
+| Action                                | `admin` | `staff` |
+| ------------------------------------- | ------- | ------- |
+| Suspend a mwajiri or mjakazi account  | yes     | yes     |
+| Reinstate a suspended mwajiri/mjakazi | yes     | no      |
+| Delete a mwajiri or mjakazi account   | yes     | no      |
 
 The asymmetry is deliberate. Staff can stop something happening immediately, which is what
 moderation needs. Undoing it, and anything terminal, requires `admin`. Every action writes
@@ -97,8 +97,8 @@ A suspension is for bad behaviour, harassment or similar offences, and is revers
 Deletion happens only after a warning (the suspension) and no sign of repentance. The
 affected user is told the reason on the `/suspended` notice they are redirected to.
 
-Staff accounts are an internal human-resources matter handled outside the system — they are
-never suspended, reinstated or deleted through moderation.
+Staff accounts are an internal human-resources matter handled outside the system — they
+are never suspended, reinstated or deleted through moderation.
 
 ### Admin panel access
 
@@ -175,7 +175,7 @@ half uses, never by querying profiles directly, and they never return contact fi
 | ---------------------------------- | -------------------------------------------------------------------------------- |
 | `/dashboard/mjakazi`               | Status at a glance: verification state, profile completeness, interest received. |
 | `/dashboard/mjakazi/profile`       | Profile form.                                                                    |
-| `/dashboard/mjakazi/documents`     | Upload National ID and Certificate of Good Conduct.                              |
+| `/dashboard/mjakazi/documents`     | Upload both sides of the National ID and the Certificate of Good Conduct.        |
 | `/dashboard/mjakazi/verification`  | Submit for verification, pay the fee, track state.                               |
 | `/dashboard/mjakazi/opportunities` | Availability toggle and expressions of interest received.                        |
 | `/dashboard/mjakazi/settings`      | Account settings, deletion request.                                              |
@@ -263,7 +263,8 @@ Staff and admin accounts are never self-registered. `admin` creates them.
 2. Completes the profile: legal name, date of birth, nationality, marital status,
    religion, phone, photo, jobs/skills, about, years of experience, education, languages,
    work preference, availability date, salary range, location.
-3. Uploads National ID and Certificate of Good Conduct to the document vault.
+3. Uploads both sides of their National ID and their Certificate of Good Conduct to the
+   document vault.
 4. Submits for verification → `pending_payment`.
 5. Pays KSh 1,500 by M-Pesa STK push. On **confirmed callback** → `pending_review`.
    Documents lock against further edits.
@@ -438,8 +439,8 @@ The Verified badge is the entire product. Everything else is delivery mechanism.
 - A suspended account is hidden from the directory and blocked from revealing contacts;
   reinstatement restores both.
 - A profile is publicly visible only when verification is `verified` **and** availability
-  is `available` **and** the account is neither suspended, blacklisted nor deactivated. Any
-  other combination means fully invisible, not partially.
+  is `available` **and** the account is neither suspended, blacklisted nor deactivated.
+  Any other combination means fully invisible, not partially.
 
 ---
 

@@ -50,7 +50,8 @@ const getRevenueSnapshot = async (payload: Payload): Promise<RevenueSnapshot> =>
 
 		for (const payment of result.docs) {
 			const amount = payment.amount ?? 0;
-			const key = payment.paymentType === "subscription" ? "subscription" : "verification";
+			const key =
+				payment.paymentType === "subscription" ? "subscription" : "verification";
 
 			allTime[key] += amount;
 			allTime.total += amount;

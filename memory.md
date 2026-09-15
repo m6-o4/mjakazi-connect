@@ -1,149 +1,173 @@
-# Memory — Mjakazi employment history (planned, built, reviewed, verified)
+# Memory — Document vault: National ID front and back
 
-Last updated: 2026-09-15 01:52 UTC
+Last updated: 2026-09-15 03:22 UTC
 
 ## What was built
 
-**1. Employment history on the mjakazi profile — the queued 2.1 scope addition, now done**
+**The vault moved from one file per document type to one file per slot** — a (document
+type, side) pair. The National ID is now captured as front and back, the Certificate of
+Good Conduct keeps a single slot, and all three are required before a worker can submit
+for verification.
 
-Planned with `/architect` before any code. Five decisions settled with Michael first
-(below), then built as a full vertical slice:
+- `src/lib/vault.ts` — the whole slot model: `DOCUMENT_SLOTS` (type → label, description,
+  sides, `required`), `DOCUMENT_TYPE_OPTIONS` / `DOCUMENT_SIDE_SELECT_OPTIONS` derived
+  from it, `documentTypeSchema` / `documentSideSchema`, `documentSideLabel`,
+  `documentSlotLabel`, `normalizeDocumentSide`, `documentSlotKey`, `documentSlotWhere`,
+  `isDocumentSlot`, `REQUIRED_DOCUMENT_SLOTS`, `getMissingDocumentSlots`,
+  `isDocumentSetComplete`, plus the existing `VAULT_MAX_BYTES` / `VAULT_MIME_TYPES`.
+- `src/payload/collections/vault-documents/schema.ts` — required `side` select
+  (`defaultValue: "front"`), added to `defaultColumns`. `pnpm generate:types` run.
+- `src/services/vault.service.ts` — `uploadVaultDocument` takes and validates `side`,
+  checks the pair against `DOCUMENT_SLOTS`, and finds/replaces by slot; all three audit
+  actions (`document_uploaded`, `document_viewed`, `document_deleted`) carry `side`.
+- `src/app/(payload)/api/actions/vault/route.ts` — parses, validates and forwards `side`,
+  rejects an invalid pair, returns `side` in the document payload.
+- `src/services/verification.service.ts` — `getMissingRequiredDocuments` (explicit
+  `select` + `depth: 0`) replaces the old two-document boolean; `assessReadiness` uses it,
+  and **`approveVerification` re-checks it before granting `verified`**.
+- `src/components/dashboard/mjakazi/document-vault/index.tsx` — one card per document with
+  a slot per side; per-slot upload/replace/remove/view, per-slot errors,
+  `documents_uploaded` fired once when every required slot is present.
+- `src/app/(saas)/dashboard/mjakazi/documents/page.tsx`,
+  `.../mjakazi/verification/page.tsx`, `.../mjakazi/page.tsx` — pass `side`, and the
+  readiness checklist is the required-slot set.
+- `src/components/dashboard/mjakazi/verification/submit-verification.tsx` — prop is now
+  `missingDocuments: string[]`; one checklist row per missing slot.
+- `src/components/dashboard/staff/verifications/document-viewer.tsx` and
+  `src/app/(saas)/dashboard/staff/verifications/[id]/page.tsx` — every side renders, front
+  and back side by side inside the document's card, "N of M uploaded".
+- Docs: `context/architecture.md` (Documents schema + `side`, per-slot locking, the
+  badge-boundary rule), `context/project-overview.md`, `context/build-plan.md` (2.2 scope
+  addition), `context/progress-tracker.md` (full entry + a review-fixes section),
+  `context/ui-registry.md` (`DocumentVault`, `DocumentViewer`, `SubmitVerification`,
+  `VerificationStatusCard`), `context/library-docs.md` (the select-`defaultValue` backfill
+  trap).
 
-- `src/lib/profile-constants.ts` — `MAX_EMPLOYMENT_ENTRIES = 5` and
-  `EMPLOYER_MAX_LENGTH = 80`, the one place each bound is defined.
-- `src/payload/collections/wajakazi-profiles/schema.ts` — `employmentHistory` array
-  (`maxRows: 5`), unindexed, sub-fields `employer` (text), `role` (select over
-  `JOB_OPTIONS`), `startDate`, `endDate` (real `date` fields). `pnpm generate:types` run.
-- `src/lib/profile-schema.ts` — `employmentEntrySchema`, the `employmentHistory` array,
-  and the blanks/dates rules appended to the existing `superRefine`. Exports
-  `isFilledEmploymentEntry` (plus module-local `isBlankEmploymentEntry`) and
-  `CONTACT_DETAIL_PATTERNS` / `containsContactDetails`.
-- `src/services/profile.service.ts` — `toProfileData` maps and filters the rows.
-  Completeness logic untouched.
-- `src/components/dashboard/mjakazi/profile-form/employment-history-field.tsx` — **new**
-  `useFieldArray` editor: one block per row, Add disabled at 5, immediate Remove.
-- `src/components/dashboard/mjakazi/profile-form/index.tsx` — renders it in the
-  Professional card between years-of-experience/education and languages; `onInvalid`
-  resolves a nested array error to that row's employer input.
-- `src/components/dashboard/mjakazi/profile-form/form-select.tsx` and
-  `form-date-picker.tsx` — `name` widened to explicit unions including
-  `employmentHistory.${number}.*`, and `Controller` → `useController`.
-- `src/app/(saas)/dashboard/mjakazi/profile/page.tsx` — seeds `initialValues`.
-- `src/services/directory.service.ts` — `DIRECTORY_PUBLIC_FIELDS` (lists) split from the
-  new `DIRECTORY_DETAIL_FIELDS` (adds `employmentHistory` by explicit subfield).
-- `src/components/web/directory/directory-profile-detail.tsx` — read-only timeline,
-  newest-first, month + year, `Africa/Nairobi` pinned, omitted when empty.
-
-**2. Review pass on the uncommitted diff — 6 findings, all fixed**
-
-`/review uncommitted` with all six tracks. Fixes: employer cap centralised; `employer` now
-**rejects** Kenyan phone numbers and email addresses; the directory `select` split (list
-vs detail); `formatMonthYear` pins the timezone; the admin description interpolates the
-cap; two unused exports dropped.
-
-**3. Identity card field order (cosmetic)**
-
-`profile-form/index.tsx` — legal first and last names now share a row, date of birth moved
-up beside the display name. Pure JSX reorder in the existing `grid gap-4 md:grid-cols-2`.
-Rows: `display name | date of birth`, `legal first name | legal last name`,
-`nationality | marital status`, `religion | mobile phone`.
-
-**4. Docs updated**
-
-`context/progress-tracker.md` (two 2026-09-15 entries + the toast verification line
-corrected), `context/ui-registry.md` (`EmploymentHistoryField`, `FormSelect`,
-`FormDatePicker`, `ProfileForm`, `DirectoryProfileDetail`), `context/build-plan.md` (2.1
-scope addition marked built), `context/code-standards.md` (public free-text must reject
-contact details; date-only values are UTC midnight so formatting pins the timezone),
-`context/library-docs.md` (Payload nested `select`; the `react-hook-form` dotted-path
-error trap; `date-fns` timezone note).
+**Review pass**: `/review uncommitted` with all six tracks. Eight findings, all fixed —
+see Problems solved for what each one was.
 
 ## Decisions made
 
-- **Storage**: structured, 4 fields per entry. No "reason for leaving" — free text,
-  sensitive, no hiring value.
-- **Dates**: both required; `endDate >= startDate`; no future `startDate`; month + year
-  displayed; newest-first, so no reorder UI.
-- **Completeness**: deliberately **outside** `PROFILE_REQUIRED_FIELDS` and
-  `PROFILE_UI_REQUIRED_FIELDS`. No asterisk, no effect on `profileComplete`, never blocks
-  verification submission, and editing never triggers `revertToReview` — it is display
-  content staff cannot verify.
-- **Surfaces**: every profile-detail page, via the detail `select`. The public
-  `/directory/[slug]` and the mwajiri browse detail share `DirectoryProfileDetail`, so
-  there is no dashboard-only path. Detail pages only — no card shows it. Not
-  subscription-gated (only phone and email are).
-- **Editing**: forgiving. Add disabled at 5; immediate Remove, no `AlertDialog` (nothing
-  persists until "Save profile"); a fully blank row is dropped on save; a partially-filled
-  row errors.
-- **Public free text is a contact-leak vector.** Any free-text field an unauthenticated
-  read can reach must reject contact details; help text is not a control. Now in
-  `code-standards.md`.
-- **One `select` per read shape.** Sharing a single `select` across list and detail reads
-  fetches the union, so a `DIRECTORY_DETAIL_FIELDS` that spreads the list set keeps one
-  source of truth without the over-fetch.
+- **A `side` field, not a document type per side.** Type says what the document is, side
+  says which face; a slot is the unit uploaded, replaced, removed and checked. Adding a
+  side later is a row in `DOCUMENT_SLOTS`, not a new enum value.
+- **Required set**: National ID front + back + Certificate of Good Conduct. The
+  certificate stays single-sided because that is how it is issued. All three required.
+- **`DOCUMENT_SLOTS` is the single source of truth.** The collection options, the upload
+  UI, the staff viewer, the dashboard checklist and the submit gate all read it, and they
+  share `documentSlotKey` so they cannot disagree about which slot a record occupies.
+- **No new audit action and no new PostHog event.** `documents_uploaded` keeps its meaning
+  — "the document set is complete" — now over three slots. Audit metadata gained `side`.
+- **Storage and delivery untouched.** Same bucket, same `signedDownloads`, same 5MB/MIME
+  limits, same audited `/api/actions/vault/{id}` route.
+- **A record stored before `side` existed reads as the front** (`normalizeDocumentSide`),
+  and the replace lookup matches it with `{ side: { exists: false } }` so a legacy upload
+  is replaced rather than orphaned.
+- **An additive upload does not revert a verified worker.** Only an actual overwrite does
+  (`wasVerified && previousId`). See Problems solved.
+- **The badge boundary is the enforced one, not the review entry.** `approveVerification`
+  re-checks the required set. Deliberately _not_ locking edits during `pending_payment`
+  and _not_ failing inside `advanceToReview`, because a refused transition leaves a worker
+  who has already paid with no way back to `draft` (see Open questions).
 
 ## Problems solved
 
-- **`role: JobValue | ""` vs Payload rejecting `""`.** zod's empty placeholder is not
-  accepted by the select field. Solved with an `isFilledEmploymentEntry` type predicate
-  that narrows `role` — not a cast.
-- **Nested array paths cannot be read from `formState.errors`.** `errors["rows.0.role"]`
-  is `undefined` even though the error exists, so `Controller` + `formState.errors[name]`
-  would render no message while the form refused to submit. Solved by switching both
-  shared field components to `useController` and reading `fieldState.error`. Recorded in
-  `library-docs.md`.
-- **"No future start date" misfires across midnight.** `new Date().toISOString()` is the
-  UTC date, which is the previous day in Nairobi between 00:00 and 03:00 local, so a
-  legitimate "today" would be rejected. Solved with `nairobiToday()` via
-  `Intl.DateTimeFormat`.
-- **Blank rows dropped twice, consistently.** Client and server both read one predicate,
-  so they cannot disagree about what counts as an omitted row.
-- **Nested `select` was the one unverifiable risk.** Could not exercise it against a live
-  DB; confirmed by reading Payload's `getSelectMode` (it recurses into object-valued
-  entries) and then settled by Michael's manual test — it works.
-- **Timezone drift in month/year display.** Demonstrated empirically: `2021-03-01` renders
-  `Mar 2021` under UTC and `Africa/Nairobi` but `Feb 2021` under `America/New_York`. Fixed
-  by pinning the timezone.
+- **Adding a required slot to a live collection makes every existing verified worker's set
+  incomplete.** Their National ID has no `side` (reads as front) and no back, so the vault
+  UI shows an empty back slot and invites them to fill it. The original revert rule
+  (`wasVerified` alone) was only equivalent to "replaced a document" while both documents
+  were required slots — so filling that slot would have cost them the badge, their
+  directory listing and a locked vault. Now gated on `wasVerified && previousId`.
+- **The two enums are flat, so the pair was unvalidated.** A POST with
+  `certificate_of_good_conduct` + `back` passed both checks and was persisted — a document
+  no UI enumerates and the gate ignores. `isDocumentSlot` now rejects any pair that is not
+  in `DOCUMENT_SLOTS`, in the route and the service.
+- **The submit gate could be undone.** The gate runs on entry to `pending_payment`, but
+  the vault stays editable until `pending_review` (`uploadVaultDocument` and
+  `deleteVaultDocument` lock only `pending_review`, with `verified` additionally requiring
+  replacement over removal), and `advanceToReview`/`approveVerification` re-checked
+  nothing. So a worker could pass the gate, drop a required slot, pay, and be approved on
+  incomplete evidence. Fixed at approval. **Rejected alternative:** re-checking inside
+  `advanceToReview` or locking `pending_payment` — the payment path never rolls back and
+  `TRANSITIONS.pending_payment` has no route to `draft`, so a refused activation strands a
+  paid worker.
+- **The front/back rule had two definitions.** The replace query encoded it inline while
+  `normalizeDocumentSide` owned it. Now `documentSlotWhere` derives the constraint from
+  the same normalization.
+- **Slot identity was re-implemented three times** (a local `slotKey` in the component
+  plus inline template literals in the dashboard page). Now one `documentSlotKey`, which
+  normalizes internally.
+- **Stale-closure state merge.** The upload handler computed its next list from a captured
+  `docs`, so two slots uploaded in quick succession could drop each other (and fire
+  `documents_uploaded` early). Now a functional `setDocs` update.
+- **Payload `select` `defaultValue` does not backfill existing documents** — recorded in
+  `context/library-docs.md` with the `exists: false` matching pattern.
+- **`pnpm format` also reformatted 15 untouched files** (prettier drift that predated this
+  session). Michael chose to keep it; it is recorded in the progress-tracker entry.
 
 ## Current state
 
-- Employment history is **built, reviewed, and verified by Michael** — "I have tested the
-  new addition and it works fine." The identity field reorder is verified too.
-- `pnpm lint` passes with 0 errors (1 pre-existing React-Compiler warning in
-  `concierge-brief-form.tsx`); `pnpm build` compiles, type-checks and generates 49 pages.
-  The `sharp` EPERM symlink warnings on Windows are known-harmless.
-- The previous session's work is committed as
-  `d9ce05a feat(dashboard): standardize action confirmations with toasts`. **This
-  session's work is uncommitted by design** — Michael commits after `/remember save`, and
-  that commit is expected to include `memory.md` and the updated context files along with
-  the code (17 files changed plus the new `employment-history-field.tsx`). An uncommitted
-  tree here is the expected end-of-session state, not an outstanding item.
-- Nothing is queued for the next session. The feature backlog item for employment history
-  is closed out in `build-plan.md`.
+- Built, reviewed and fixed. `pnpm lint` 0 errors (1 pre-existing React-Compiler warning
+  in `concierge-brief-form.tsx`); `pnpm build` compiles, type-checks and generates 49
+  pages. The `sharp` EPERM symlink warnings on Windows are known-harmless.
+- **Michael has verified the upload of each slot and the invocation of the next step** —
+  "This works well." The vault UI, the per-slot upload and the submit transition are
+  confirmed working.
+- **One check deferred by Michael to a later step:** a verified worker uploading only the
+  back keeps their badge and directory listing (the fix for the add-vs-replace revert).
+- `pnpm` must be invoked as `pnpm.cmd` in this shell — `pnpm` alone is blocked by the
+  PowerShell execution policy.
+- This session's work is **uncommitted by design**. Michael commits after
+  `/remember save`, so a dirty tree is the expected end-of-session state, not an
+  outstanding item. It includes `memory.md` and the updated context files alongside the
+  code, plus the 15 prettier-drift files he chose to keep.
+- The M-Pesa verification payment flow was **not** modified this session, apart from the
+  new approval-time document check.
 
 ## Next session starts with
 
-- **Nothing is in progress.** Confirm with Michael what to pick up next — do not resume
-  employment history, it is done. Do not raise the uncommitted tree as an outstanding
-  item: Michael commits after `/remember save`, so it is expected to be dirty at this
-  point.
-- Worth offering, since both were surfaced by this session and left for him to decide:
-  promote the "public free-text must reject contact details" rule to a numbered invariant
-  in `context/architecture.md` (it currently lives only in `code-standards.md`), and
-  settle the carried-over profile-completeness inconsistencies in Open questions below.
+- **The next step is the user verification process plus paying the registration fee by
+  M-Pesa.** Before changing anything, read the existing flow end to end and confirm with
+  Michael what he actually wants here — end-to-end validation of what exists, or new work.
+  What exists today:
+  - `src/services/verification.service.ts` — `submitForVerification` (draft →
+    `pending_payment`), `resubmitForVerification` (rejected → free window while
+    `verificationAttempts <= FREE_REJECTIONS`, then paid), `renewVerification`
+    (`verification_expired` → `pending_payment`), `advanceToReview` (`pending_payment` →
+    `pending_review`), `approveVerification` / `rejectVerification`, and the transition
+    table `TRANSITIONS`.
+  - `src/services/payment.service.ts` — `initiatePayment` (STK push), `handleCallback` →
+    `settleCallback` → `activateVerificationOnPayment` → `advanceToReview`, and
+    `expireTimedOutPayments` (2-minute window, run every minute by
+    `src/jobs/payment-timeout.ts`).
+  - `src/services/settings.service.ts` — `getVerificationFee`; the verification page
+    passes it when the state is `pending_payment`.
+  - `src/lib/mpesa.ts` — `initiateStkPush`, `getCallbackMetadataValue`; the callback route
+    is `src/app/(payload)/api/webhooks/payments/callback/route.ts`.
+  - A dev-only `simulatePaymentCallbackAction` was removed in an earlier session; payments
+    settle identically in dev and production, and the dev tunnel is `app-dev.s3.co.ke`.
+- Then run the same loop as this session: `/architect` for anything non-trivial,
+  implement, `pnpm.cmd format` → `pnpm.cmd lint` → `pnpm.cmd build`, then
+  `/review uncommitted`.
 
 ## Open questions
 
-- **Carried over, still unresolved:** `dateOfBirth` is identity data yet is neither
-  starred nor in the completeness list; `displayName` is schema-required while
-  `PROFILE_REQUIRED_FIELDS` omits it, and its helper text promises a first-name fallback
-  that `toProfileData` does not implement.
-- Should the public-free-text contact rule become a numbered invariant in
-  `architecture.md`, or stay an implementation rule in `code-standards.md`?
-- Deliberately not done: a blank row dropped on save stays on screen until reload, because
-  `useForm` ignores new `defaultValues` after mount, so clearing it needs a `replace()`
-  inside the field-array component plus a save signal from the parent. Michael has not
-  asked for it.
-- `employer` rejects Kenyan phone numbers and email addresses by pattern. If a real user
-  hits a false positive, revisit the patterns in `profile-schema.ts` rather than removing
-  the check.
+- **`pending_payment` may be a dead end after an expired STK push.**
+  `expireTimedOutPayments` expires only the payment record — the profile stays in
+  `pending_payment`, whose only transitions are `pending_review`, `blacklisted` and
+  `deactivated`: there is no route back to `draft`. Confirm the worker can always retry
+  the payment from the verification page, and decide whether an expired payment should
+  return them to `draft` or keep producing a fresh payment. This is squarely in the next
+  step's area.
+- **Deferred manual check:** a `verified` worker uploading only the back keeps their badge
+  and their directory listing (the `wasVerified && previousId` fix). Michael will check
+  this at a later step.
+- **Carried over from the previous session, still unresolved:** `dateOfBirth` is identity
+  data yet is neither starred nor in the completeness list; `displayName` is
+  schema-required while `PROFILE_REQUIRED_FIELDS` omits it, and its helper text promises a
+  first-name fallback that `toProfileData` does not implement.
+- **Carried over, still unresolved:** the "public free-text must reject contact details"
+  rule lives only in `code-standards.md`; promote it to a numbered invariant in
+  `architecture.md` or leave it as an implementation rule?
+- If a real worker ever hits the `employer` contact-details rejection as a false positive,
+  revisit the patterns in `profile-schema.ts` rather than removing the check.

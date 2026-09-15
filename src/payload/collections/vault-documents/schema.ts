@@ -1,13 +1,17 @@
 import type { CollectionConfig } from "payload";
 
-import { DOCUMENT_TYPE_OPTIONS, VAULT_MIME_TYPES } from "@/lib/vault";
+import {
+	DOCUMENT_SIDE_SELECT_OPTIONS,
+	DOCUMENT_TYPE_OPTIONS,
+	VAULT_MIME_TYPES,
+} from "@/lib/vault";
 import { isAdminOrOwner, isRestricted } from "@/payload/access/access-control";
 
-// the private store for a mjakazi's two identity documents. the collection is
-// sealed — create/update/delete are refused at payload's own surface and happen
-// only through the vault service, which authorizes and audits each action. read
-// is owner + staff + admin, scoped by uploader, so a mjakazi can never resolve
-// another worker's documents.
+// the private store for a mjakazi's identity documents, one file per side of a
+// document. the collection is sealed — create/update/delete are refused at
+// payload's own surface and happen only through the vault service, which
+// authorizes and audits each action. read is owner + staff + admin, scoped by
+// uploader, so a mjakazi can never resolve another worker's documents.
 //
 // the binary lives in s3 with a private acl and signedDownloads enabled (see
 // plugins/schema.ts), so there is no public object path. the only route to the
@@ -16,7 +20,7 @@ const VaultDocuments: CollectionConfig = {
 	slug: "vault-documents",
 	labels: { singular: "Vault Document", plural: "Vault Documents" },
 	admin: {
-		defaultColumns: ["documentType", "profile", "uploadedBy", "updatedAt"],
+		defaultColumns: ["documentType", "side", "profile", "uploadedBy", "updatedAt"],
 		group: "SaaS",
 		useAsTitle: "documentType",
 	},
@@ -51,6 +55,19 @@ const VaultDocuments: CollectionConfig = {
 			label: "Document Type",
 			required: true,
 			options: DOCUMENT_TYPE_OPTIONS.map((option) => ({
+				label: option.label,
+				value: option.value,
+			})),
+		},
+		{
+			// which face of the document this file is. a record stored before this
+			// field existed has no side and is read as the front
+			name: "side",
+			type: "select",
+			label: "Side",
+			required: true,
+			defaultValue: "front",
+			options: DOCUMENT_SIDE_SELECT_OPTIONS.map((option) => ({
 				label: option.label,
 				value: option.value,
 			})),

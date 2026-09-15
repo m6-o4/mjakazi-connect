@@ -5,7 +5,7 @@ import { getPayload } from "payload";
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { SubmitVerification } from "@/components/dashboard/mjakazi/verification/submit-verification";
 import { VerificationPaymentFlow } from "@/components/dashboard/mjakazi/verification/verification-payment-flow";
-import { DOCUMENT_TYPE_OPTIONS } from "@/lib/vault";
+import { getMissingDocumentSlots } from "@/lib/vault";
 import config from "@/payload-config";
 import { getOwnProfile } from "@/services/profile.service";
 import { getVerificationFee } from "@/services/settings.service";
@@ -21,22 +21,18 @@ const MjakaziVerificationPage = async () => {
 	const profile = await getOwnProfile(payload, user);
 	if (!profile) redirect("/dashboard/mjakazi");
 
-	// which identity documents are uploaded. an explicit select omits the private
+	// which document sides are uploaded. an explicit select omits the private
 	// url, which must never reach the client
-	const uploadedTypes = new Set<string>();
 	const docsResult = await payload.find({
 		collection: "vault-documents",
 		where: { profile: { equals: profile.id } },
 		limit: 10,
-		select: { documentType: true },
+		select: { documentType: true, side: true },
 		overrideAccess: false,
 		req: { user },
 	});
-	for (const doc of docsResult.docs) {
-		uploadedTypes.add(doc.documentType);
-	}
-	const hasBothDocuments = DOCUMENT_TYPE_OPTIONS.every(({ value }) =>
-		uploadedTypes.has(value),
+	const missingDocuments = getMissingDocumentSlots(docsResult.docs).map(
+		(slot) => slot.label,
 	);
 	const profileComplete = profile.profileComplete === true;
 	const verificationFee =
@@ -56,7 +52,7 @@ const MjakaziVerificationPage = async () => {
 			{profile.verificationState === "draft" ? (
 				<SubmitVerification
 					profileComplete={profileComplete}
-					hasBothDocuments={hasBothDocuments}
+					missingDocuments={missingDocuments}
 				/>
 			) : (
 				<VerificationPaymentFlow

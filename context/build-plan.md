@@ -202,6 +202,14 @@ is logged. **Verify**: upload as a Mjakazi. Copy the URL, open it signed out —
 fail. Open it as another Mjakazi — it must fail. Open it as staff — it must work and write
 an audit entry.
 
+**Scope addition (built 2026-09-15):** the National ID is captured as two slots — front
+and back — and the Certificate of Good Conduct as one, all three required before
+submitting for verification. `vault-documents` gained a required `side` (`front | back`);
+a slot (document type + side) is now the unit uploaded, replaced, removed and checked, and
+`DOCUMENT_SLOTS` in `src/lib/vault.ts` is the single source of truth the collection
+options, the upload UI, the staff viewer and the pre-submission gate all read. See the
+`progress-tracker.md` entry.
+
 ---
 
 # Phase 3 — Verification

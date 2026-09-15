@@ -412,8 +412,8 @@ Professional: `jobsSkills` (multi-select), `about`, `yearsExperience`, `educatio
 
 Availability: `availabilityStatus` — `available | hired | on_break`.
 
-Moderation: `suspended` (checkbox) — mirrors the account-level suspension on `users` so the
-directory guard can exclude a suspended worker without joining `users`.
+Moderation: `suspended` (checkbox) — mirrors the account-level suspension on `users` so
+the directory guard can exclude a suspended worker without joining `users`.
 
 Verification (authoritative): `verificationState` —
 `draft | pending_payment | pending_review | verified | rejected | verification_expired | blacklisted | deactivated`.
@@ -440,10 +440,18 @@ cleanly on account erasure. `wajakazi-profiles.photo` points here.
 
 ### Documents
 
-**`vault-documents`** — encrypted identity documents. Never `media`.
+**`vault-documents`** — encrypted identity documents, one file per slot. Never `media`.
 
 `profile` (relationship), `uploadedBy` (relationship to `users`), `documentType`
-(`national_id | certificate_of_good_conduct`), `file`, `uploadedAt`.
+(`national_id | certificate_of_good_conduct`), `side` (`front | back`), `file`,
+`uploadedAt`.
+
+A slot is a (documentType, side) pair, and it is the unit uploaded, replaced, removed and
+checked — so a National ID front, a National ID back and a Certificate of Good Conduct are
+three separate records. The required set is declared once in `DOCUMENT_SLOTS`
+(`src/lib/vault.ts`) and read by the collection options, the upload UI, the staff viewer
+and the pre-submission gate. A record stored before `side` existed has no side and is read
+as the front.
 
 Access: `staff` and `admin`, plus the owning Mjakazi. No one else, ever.
 
@@ -486,10 +494,10 @@ to 5.
 subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
 `confirmedAt`, `agreedAt`, `reversedAt`, `endedAt`, `state`
 (`pending_agreement | agreed | reversed | ended`), `sourceEoi`. One record per (mwajiri,
-mjakazi) — compound unique index. The event Match Conversion Rate is measured from, and the
-clock the replacement guarantee starts. `ended` is the natural close (either party ends a
-completed contract, which also releases the mjakazi back to `available`), distinct from
-`reversed` ("did not hold"). `sourceConciergeCase` lands with the `concierge-cases`
+mjakazi) — compound unique index. The event Match Conversion Rate is measured from, and
+the clock the replacement guarantee starts. `ended` is the natural close (either party
+ends a completed contract, which also releases the mjakazi back to `available`), distinct
+from `reversed` ("did not hold"). `sourceConciergeCase` lands with the `concierge-cases`
 collection in Phase 11.
 
 **`reviews`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `reviewerName`
@@ -636,9 +644,16 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   is public and CDN-served; the vault is neither.
 - **Viewing is an event.** Every document view writes an audit entry naming the viewer,
   the subject, the document type and the time. No exceptions, including for `admin`.
-- **Locking.** Documents cannot be edited while verification is `pending_review`. A
-  `verified` worker can only _replace_ a document — which reverts them to `pending_review`
-  — never remove one, so a badge can never stand over missing evidence.
+- **Locking.** Documents cannot be edited while verification is `pending_review`, and the
+  lock is per slot (a document type and a side). A `verified` worker can only _replace_ a
+  slot — never remove one — and replacing one reverts them to `pending_review`. Adding a
+  slot that did not exist when they were verified is not a replacement, so it does not
+  cost them the badge.
+- **The badge boundary is the enforced one.** The required-slot gate runs on the way into
+  `pending_payment`, but the vault stays editable until `pending_review` — so
+  `approveVerification` checks the required set again before granting `verified`. A
+  partial document set can therefore never end up with a badge, whatever happened between
+  submit and review.
 - **Erasure.** Account deletion nullifies personal data, destroys vault documents and
   removes the account's payment records, which carry the payer's phone number and the raw
   Daraja callback body. Aggregate figures remain available from the audit trail.
@@ -679,10 +694,10 @@ tunnel (`app-dev.s3.co.ke`, already trusted in `allowedDevOrigins`) and points
 
 An earlier dev-only `simulatePaymentCallbackAction` (`src/app/actions/dev.ts`) existed to
 work around a callback that never arrived; it was removed once the real callback was
-correctly parsed (Daraja 3.0 omits `Value` on some metadata items like `Balance`, which the
-old strict parser rejected). Development and production now settle payments identically,
-and a payment with no callback self-expires after the timeout. M-Pesa is an online-only
-flow, so there is no offline testing path by design.
+correctly parsed (Daraja 3.0 omits `Value` on some metadata items like `Balance`, which
+the old strict parser rejected). Development and production now settle payments
+identically, and a payment with no callback self-expires after the timeout. M-Pesa is an
+online-only flow, so there is no offline testing path by design.
 
 ---
 
