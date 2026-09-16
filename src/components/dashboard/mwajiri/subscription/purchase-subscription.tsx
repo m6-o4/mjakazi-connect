@@ -47,7 +47,13 @@ type PurchaseSubscriptionProps = {
 };
 
 const POLL_INTERVAL_MS = 5000;
-const POLL_TIMEOUT_MS = 150000;
+// once the window has passed the card says it is still checking, so the cadence
+// drops rather than the check stopping — a forgotten tab must not poll every five
+// seconds forever
+const SLOW_POLL_INTERVAL_MS = 30000;
+// how long the card claims to be waiting on the handset before the copy admits
+// the window has passed. polling does not stop here
+const SPINNER_WINDOW_MS = 150000;
 
 // datetimes are stored utc and rendered in nairobi per code-standards
 const formatExpiry = (iso: string | null): string | null => {
@@ -79,7 +85,7 @@ const PurchaseSubscription = ({
 		tiers[0]?.tierId ?? null,
 	);
 	const [phoneValue, setPhoneValue] = useState<string>(phone ?? "");
-	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "timedOut">(
+	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "unconfirmed">(
 		"idle",
 	);
 	const [error, setError] = useState<string | null>(null);
@@ -93,9 +99,10 @@ const PurchaseSubscription = ({
 	const restricted = state === "suspended" || state === "blacklisted";
 	const selectedTier = tiers.find((tier) => tier.tierId === selectedTierId) ?? null;
 	// in flight for as long as an stk push is awaiting its callback. the poll
-	// stops when the success effect above flips `status` back to idle, or on the
-	// timeout — not on a state change, since an upgrade never changes the state
+	// stops when the success effect above flips `status` back to idle — not on a
+	// state change, since an upgrade never changes the state
 	const awaiting = status === "awaiting";
+	const unconfirmed = status === "unconfirmed";
 
 	useEffect(() => {
 		if (paymentReceived) return;
@@ -118,20 +125,25 @@ const PurchaseSubscription = ({
 		}
 	}, [latestPaymentId, latestPaymentStatus, paymentReceived, wasActiveAtMount]);
 
+	// poll for as long as a push is outstanding, the passed window included — the
+	// server still accepts a late callback, so the clock alone is not a reason to
+	// stop looking
 	useEffect(() => {
-		if (!awaiting) return;
+		if (status !== "awaiting" && status !== "unconfirmed") return;
 
-		const interval = setInterval(() => router.refresh(), POLL_INTERVAL_MS);
-		const timeout = setTimeout(() => {
-			clearInterval(interval);
-			setStatus("timedOut");
-		}, POLL_TIMEOUT_MS);
+		const interval = setInterval(
+			() => router.refresh(),
+			status === "unconfirmed" ? SLOW_POLL_INTERVAL_MS : POLL_INTERVAL_MS,
+		);
+		return () => clearInterval(interval);
+	}, [status, router]);
 
-		return () => {
-			clearInterval(interval);
-			clearTimeout(timeout);
-		};
-	}, [awaiting, router]);
+	useEffect(() => {
+		if (status !== "awaiting") return;
+
+		const window = setTimeout(() => setStatus("unconfirmed"), SPINNER_WINDOW_MS);
+		return () => clearTimeout(window);
+	}, [status]);
 
 	const pay = async () => {
 		if (!selectedTierId) return;
@@ -289,16 +301,22 @@ const PurchaseSubscription = ({
 						</div>
 					) : null}
 
-					{status === "timedOut" ? (
-						<p className="text-muted-foreground text-sm">
-							We have not received a confirmation yet. Your request may have expired — try
-							again.
-						</p>
+					{unconfirmed ? (
+						<div className="flex flex-col gap-2 text-sm">
+							<p className="text-muted-foreground">
+								M-Pesa has not confirmed this payment yet. This page is still checking.
+							</p>
+							<p>
+								If the fee has already left your M-Pesa, do not pay again — the payment is
+								recorded against your account and can be traced with your M-Pesa
+								reference.
+							</p>
+						</div>
 					) : null}
 
 					{error ? <p className="text-destructive text-xs">{error}</p> : null}
 
-					{!awaiting ? (
+					{!awaiting && !unconfirmed ? (
 						<Button
 							type="button"
 							onClick={pay}
@@ -309,6 +327,12 @@ const PurchaseSubscription = ({
 								: isActive
 									? `Extend — KSh ${selectedTier?.price ?? ""}`
 									: `Pay KSh ${selectedTier?.price ?? ""}`}
+						</Button>
+					) : null}
+
+					{unconfirmed ? (
+						<Button type="button" variant="outline" onClick={() => router.refresh()}>
+							Check again
 						</Button>
 					) : null}
 				</CardContent>

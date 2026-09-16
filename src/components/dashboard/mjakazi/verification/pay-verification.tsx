@@ -20,46 +20,56 @@ import { Label } from "@/components/ui/label";
 type PayVerificationProps = {
 	fee: number | null;
 	phone: string;
-	// reports whether an stk push is in flight, so the always-mounted parent
-	// (VerificationPaymentFlow) can show an explicit success cue once the profile
-	// leaves pending_payment while a payment was awaiting confirmation
-	onAwaitingChange?: (awaiting: boolean) => void;
+	// reports that an stk push was accepted for this profile, so the
+	// always-mounted parent (VerificationPaymentFlow) can show its success cue
+	// once the profile leaves pending_payment. reported once and never retracted:
+	// a cue gated on the spinner instead disappears the moment the confirm window
+	// passes, so a callback arriving after that is met with no notice at all —
+	// not even the one that is meant to be the persistent record
+	onPaymentInitiated?: () => void;
 };
 
 const POLL_INTERVAL_MS = 5000;
-const POLL_TIMEOUT_MS = 150000;
+// once the window has passed the card says it is still checking, so the cadence
+// drops rather than the check stopping — a forgotten tab must not poll every five
+// seconds forever
+const SLOW_POLL_INTERVAL_MS = 30000;
+// how long the card claims to be waiting on the handset before the copy admits
+// the window has passed. polling does not stop here
+const SPINNER_WINDOW_MS = 150000;
 
 // the pending_payment pay flow. the phone defaults to the profile number but is
 // editable, so a mjakazi can pay from any m-pesa number. sends the stk push via
 // the server action, then polls for the callback to flip the profile into
 // review. the page server component re-renders on router.refresh(), so once the
 // state changes this component unmounts and the review status takes its place
-const PayVerification = ({ fee, phone, onAwaitingChange }: PayVerificationProps) => {
+const PayVerification = ({ fee, phone, onPaymentInitiated }: PayVerificationProps) => {
 	const router = useRouter();
 	const [phoneValue, setPhoneValue] = useState<string>(phone);
-	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "timedOut">(
+	const [status, setStatus] = useState<"idle" | "paying" | "awaiting" | "unconfirmed">(
 		"idle",
 	);
 	const [error, setError] = useState<string | null>(null);
 
+	// poll for as long as a push is outstanding, the passed window included. the
+	// server expires a payment it never hears about, but it still accepts a late
+	// callback, so giving up on the clock alone would miss a real confirmation
 	useEffect(() => {
-		onAwaitingChange?.(status === "awaiting");
-	}, [status, onAwaitingChange]);
+		if (status !== "awaiting" && status !== "unconfirmed") return;
+
+		const interval = setInterval(
+			() => router.refresh(),
+			status === "unconfirmed" ? SLOW_POLL_INTERVAL_MS : POLL_INTERVAL_MS,
+		);
+		return () => clearInterval(interval);
+	}, [status, router]);
 
 	useEffect(() => {
 		if (status !== "awaiting") return;
 
-		const interval = setInterval(() => router.refresh(), POLL_INTERVAL_MS);
-		const timeout = setTimeout(() => {
-			clearInterval(interval);
-			setStatus("timedOut");
-		}, POLL_TIMEOUT_MS);
-
-		return () => {
-			clearInterval(interval);
-			clearTimeout(timeout);
-		};
-	}, [status, router]);
+		const window = setTimeout(() => setStatus("unconfirmed"), SPINNER_WINDOW_MS);
+		return () => clearTimeout(window);
+	}, [status]);
 
 	const pay = async () => {
 		setStatus("paying");
@@ -72,6 +82,7 @@ const PayVerification = ({ fee, phone, onAwaitingChange }: PayVerificationProps)
 				return;
 			}
 			posthog.capture("payment_initiated", { paymentType: "verification" });
+			onPaymentInitiated?.();
 			setStatus("awaiting");
 		} catch {
 			setError("Could not start the payment.");
@@ -118,22 +129,34 @@ const PayVerification = ({ fee, phone, onAwaitingChange }: PayVerificationProps)
 					</div>
 				) : null}
 
-				{status === "timedOut" ? (
-					<p className="text-muted-foreground text-sm">
-						We have not received a confirmation yet. Your request may have expired — try
-						again.
-					</p>
+				{status === "unconfirmed" ? (
+					<div className="flex flex-col gap-2 text-sm">
+						<p className="text-muted-foreground">
+							M-Pesa has not confirmed this payment yet, so your profile has not moved on
+							to review. This page is still checking.
+						</p>
+						<p>
+							If the fee has already left your M-Pesa, do not pay again — the payment is
+							recorded against your account and can be traced with your M-Pesa reference.
+						</p>
+					</div>
 				) : null}
 
 				{error ? <p className="text-destructive text-xs">{error}</p> : null}
 
-				{status !== "awaiting" ? (
+				{status !== "awaiting" && status !== "unconfirmed" ? (
 					<Button type="button" onClick={pay} disabled={disabled}>
 						{status === "paying"
 							? "Sending request..."
 							: fee === null
 								? "Fee not configured"
 								: `Pay KSh ${fee}`}
+					</Button>
+				) : null}
+
+				{status === "unconfirmed" ? (
+					<Button type="button" variant="outline" onClick={() => router.refresh()}>
+						Check again
 					</Button>
 				) : null}
 			</CardContent>

@@ -272,12 +272,16 @@ codebase.
 - **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
   the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
   `router.refresh()` until the callback flips the profile into review
-- **Props**:
-  `{ fee: number | null; phone: string; onAwaitingChange?: (awaiting: boolean) => void }`
+- **Props**: `{ fee: number | null; phone: string; onPaymentInitiated?: () => void }`
 - **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
   `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
-  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success;
-  reports its awaiting state up so `VerificationPaymentFlow` can show the success notice
+  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success and
+  reports the push up once via `onPaymentInitiated` so `VerificationPaymentFlow` can show
+  the success notice. After the 150 s `SPINNER_WINDOW_MS` the card switches to
+  `unconfirmed` copy — "do not pay again" plus a `Button variant="outline"` "Check again"
+  — and **keeps polling**; the Pay button does not come back on the clock alone, because a
+  payment may still be live at M-Pesa. Reported once and never retracted: gating the cue
+  on the spinner had let a slow confirmation land with no notice at all
 - **Used in**: `VerificationPaymentFlow`
 
 ### `PurchaseSubscription`
@@ -296,8 +300,11 @@ codebase.
   `notifySuccess` "Payment received" toast (`id: "subscription-payment-received"`) on that
   transition — inline notice persists, the toast is the immediate cue; phone `Label` +
   `Input`; `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2`
-  spinner + muted copy while awaiting; fires `plan_selected` (`tierId`) and
-  `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog events
+  spinner + muted copy while awaiting; after the 150 s `SPINNER_WINDOW_MS` it switches to
+  `unconfirmed` copy — "do not pay again" plus a `Button variant="outline"` "Check again"
+  — and **keeps polling**, since a late callback still settles. fires `plan_selected`
+  (`tierId`) and `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog
+  events
 - **Used in**: `(saas)/dashboard/mwajiri/subscription/page.tsx`
 
 ### `VerificationQueue`
@@ -478,11 +485,14 @@ codebase.
   `{ state: VerificationState; fee: number | null; phone: string; verificationExpiry?: string | null; rejectionReason?: string | null; freeResubmissionsRemaining?: number | null }`
 - **Visual pattern**: delegates to `PayVerification` (pending) or
   `VerificationStateCard` + optional `ResubmitVerification`; renders
-  `PaymentSuccessNotice` once a payment that was awaiting confirmation leaves
-  `pending_payment`; on that same live transition it also fires a `notifySuccess` "Payment
-  received" toast (`id: "verification-payment-received"`). The inline notice is the
-  persistent record, the toast is the immediate cue — a later visit mounts with the state
-  already past `pending_payment`, so nothing re-fires
+  `PaymentSuccessNotice` once a payment sent from this page leaves `pending_payment`; on
+  that same live transition it also fires a `notifySuccess` "Payment received" toast
+  (`id: "verification-payment-received"`). The inline notice is the persistent record, the
+  toast is the immediate cue — a later visit mounts with the state already past
+  `pending_payment` and nothing initiated there, so nothing re-fires. The gate is a
+  `paymentInitiated` flag owned by this wrapper and **not** the pay card's spinner state:
+  the spinner stops after 150 s, and gating on it made a slow confirmation show no cue at
+  all, losing even the persistent notice
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `PaymentSuccessNotice`

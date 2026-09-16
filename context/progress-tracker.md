@@ -20,6 +20,52 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-16 — Verification payment: the callback never arrived, pay-flow cue corrected
+
+- **What happened**: A mjakazi paid the KSh 2 verification fee in the Daraja sandbox and
+  the app showed no acceptance. The payment record (`2026-09-16T20:38:57Z`, phone
+  `254720…71`) is still `stk_sent` with no `callbackPayload` and no `confirmedAt`, and the
+  audit trail stops at `payment_initiated` — no `payment_callback_received`, no
+  `payment_confirmed`, no `payment_activation_failed`. **The callback never reached the
+  app**, so the profile is still `pending_payment` and there was genuinely nothing for the
+  UI to show. The endpoint itself is healthy:
+  `https://app-dev.s3.co.ke/api/webhooks/payments/callback` answers 405 to a GET, which is
+  a live POST-only route, and the last callbacks that landed were on 2026-09-15. The
+  environment is sandbox, so no money moved. The cause is delivery, not the app — either
+  the tunnel was not serving during that window or Daraja did not post. **Left unresolved:
+  it needs the tunnel and Daraja side checked, not code.**
+- **Fixed — the pay-flow cue gave up on the clock, then told the payer to pay again.** The
+  confirm window was 150 s, and on expiry the child reported `awaiting: false` while
+  `VerificationPaymentFlow` gated **both** cues on it — including `justPaid`, which drives
+  the inline `PaymentSuccessNotice` that its own comment calls the persistent record. A
+  confirmation landing after 2.5 minutes therefore produced no notice at all, and the copy
+  said "may have expired — try again" while the payment could still be live; a reload put
+  the Pay button back, inviting a second charge. Now `PayVerification` reports
+  `onPaymentInitiated` once and never retracts it, the wrapper owns a `paymentInitiated`
+  flag and gates the cue on that, the copy states the page is still checking and says **do
+  not pay again**, an outline `Check again` button refreshes on demand, and **polling
+  continues past the window** because the server still accepts a late callback. The same
+  copy and continued polling were applied to `PurchaseSubscription`, whose cue was already
+  server-anchored on the newest payment id and so never had the gating defect.
+- **Open — the `payment-timeout` job is not reaping.** It is scheduled `* * * * *`, yet
+  `payload-jobs` holds exactly one `payment-timeout` row (2026-09-04) while the other four
+  tasks each have a single row stamped `2026-09-16T20:39:00` — a catch-up enqueue at
+  instance init, not a ticking cron — and a payment from `2026-09-15T09:40:53` is still
+  `stk_sent` a day later. So a paid-but-unconfirmed payment is never flagged and nothing
+  surfaces "the customer paid and we never heard about it". Likely the in-process cron
+  being reset by dev-server reloads; driving the queue externally through
+  `/api/payload-jobs/run` with `CRON_SECRET` is the documented path and the endpoint
+  already accepts it. One side effect helped here: because the record was never expired, a
+  late callback would still have activated it.
+- **Files touched**: `pay-verification.tsx` (prop is now `onPaymentInitiated`, polling no
+  longer stops, `unconfirmed` copy + `Check again`), `verification-payment-flow.tsx`
+  (`paymentInitiated` gate), `purchase-subscription.tsx` (same copy, same continued
+  polling), `context/ui-registry.md` (the three entries), `context/progress-tracker.md`
+  (this entry).
+- **Notes**: No schema change and no money-path logic touched — this is client feedback
+  only. Still to confirm on the real flow: a payment confirmed _after_ the 150 s window
+  must now show both the inline notice and the toast.
+
 ### 2026-09-15 — Mwajiri subscription: stacking policy aligned to the code, validation findings
 
 - **What was built**: The stacking carry-over was corrected and the context set aligned to
