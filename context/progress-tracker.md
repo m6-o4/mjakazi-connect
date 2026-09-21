@@ -20,6 +20,253 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-21 — Payment recovery: hand reconciliation, M-Pesa status query, no blind expiry
+
+- **Why**: Michael asked why the pending items had not been built. Four were outstanding
+  from the callback investigation: a way to settle a stranded payment, a timeout rule that
+  cannot write off a paid customer, and two off-spec defects the Safaricom docs exposed.
+  He explicitly **left the callback route alone** — its always-200 behaviour stays until a
+  round of testing with one more mjakazi and three more waajiri says otherwise.
+- **Built — hand reconciliation (staff and admin).** A stranded payment is now recoverable
+  without posting a callback by hand.
+  - `src/payload/collections/payments/schema.ts` — `mpesaReceiptNumber` (indexed),
+    `reconciledBy` (relationship → users), `reconciledAt`. **The receipt is now a
+    first-class field for the first time**; until this change it existed only inside
+    `callbackPayload` and the audit metadata.
+  - `src/services/payment.service.ts` —
+    `reconcilePayment(payload, actor, { paymentId, mpesaReceiptNumber })`: staff/admin
+    only, receipt mandatory (`/^[A-Z0-9]{8,12}$/`, trimmed and upper-cased), only from
+    `stk_sent`, compare-and-swap so a concurrent callback wins, then the same
+    `activateConfirmedPayment` a callback runs. Also `listStuckPayments` and the extracted
+    `activateConfirmedPayment`, now shared by the callback path and this one so a
+    hand-confirmed payment behaves identically to a callback-confirmed one.
+  - `settleCallback` now writes the receipt onto the record from the callback metadata, so
+    both confirmation paths populate the same field.
+  - `src/app/actions/payment.ts` — `reconcilePaymentAction`;
+    `src/app/(saas)/dashboard/staff/ payments/page.tsx` +
+    `src/components/dashboard/staff/payments/stuck-payment-list.tsx`; "Payments" nav item
+    for admin and staff; `payment_reconciled` audit action.
+- **Built — the timeout rule no longer writes anyone off.** `expireTimedOutPayments` is
+  gone, replaced by `reconcileTimedOutPayments`, driven by `queryStkStatus` (new, in
+  `src/lib/mpesa.ts`) against `/mpesa/stkpushquery/v1/query`. At the two-minute mark it
+  asks M-Pesa what happened, and then:
+  - **M-Pesa says paid** → the payment stays `stk_sent` with a
+    `payment_confirmation_missing` audit entry and appears on the staff list. It is
+    **not** confirmed, because a receipt is required and the query can never supply one —
+    the receipt is only ever in the callback or the payer's SMS.
+  - **M-Pesa says not completed** → `failed`, carrying M-Pesa's own result code. This is
+    the only case where writing it off is safe, because no money moved.
+  - **No answer / still processing** → nothing changes. Each payment is asked about
+    **once**, tracked by a new `mpesaStatusCheckedAt`, so the queue cadence never decides
+    how much Daraja is called.
+- **Built — the two spec defects.** `TransactionDesc` was 24+ characters against a
+  documented 13-character cap (`"Mjakazi verification fee"`, and
+  `` `Subscription — <tier>` ``); it is now `"Verification"` / `"Subscription"`. And a
+  rejected push answers `{ requestId, errorCode, errorMessage }`, which `initiateStkPush`
+  ignored — `errorMessage` is now preferred over the generic fallback, so a rejection
+  records its real reason.
+- **Built — the audit viewer no longer blanks.** `audit-log-table.tsx` keeps exhaustive
+  label and variant maps; the three new actions were added to both. Without that the
+  filter would hide them and the rows would render the raw code.
+- **The wedged job was the cause — and un-sticking it proved why the new rule matters.**
+  `payload-jobs` held one `payment-timeout` row stamped `2026-09-04` with
+  `processing: true`; the other four tasks each had recent rows, so a stuck row **was**
+  blocking that task's scheduling. Marking it complete produced a tick within the minute.
+  **But that tick ran the old code** (the dev server had not reloaded the task module) and
+  expired both historical stuck sandbox payments at `22:09:00` by the two-minute rule.
+  Both are sandbox rows from 2026-09-15/16 with no real money moved, so nothing was lost —
+  but it is a live demonstration of the exact failure the new rule removes, and it is now
+  on the record as such.
+- **Verification**: `pnpm generate:types` (the new select option is a type change),
+  `pnpm build` passes with **50** routes (the new staff page), `src` lints clean (0
+  errors, 1 pre-existing concierge warning). The sweep was then exercised directly against
+  the local database through a throwaway `tsx` script on a synthetic `stk_sent` payment:
+  first run reported `{"checked":1,"paid":0,"failed":0,"unresolved":1}` for a bogus
+  checkout id, left the status at `stk_sent`, stamped `mpesaStatusCheckedAt`, and the row
+  was deleted afterwards. Script removed.
+- **Still open**: the callback route's always-200 (Michael's call, pending the next test
+  round); the Cloudflare edge log check for the two lost callbacks; and a customer-facing
+  cue for a payment the sweep has confirmed as paid — today the payer still sees the
+  "unconfirmed, do not pay again" copy while staff complete it from the receipt.
+- **Files touched**: `payload/collections/payments/schema.ts`,
+  `payload/collections/audit-logs/schema.ts`, `lib/audit.ts`, `lib/mpesa.ts`,
+  `lib/dashboard-nav.ts`, `services/payment.service.ts`, `jobs/payment-timeout.ts`,
+  `app/actions/payment.ts`, `app/(saas)/dashboard/staff/payments/page.tsx` (new),
+  `components/dashboard/staff/payments/stuck-payment-list.tsx` (new),
+  `components/dashboard/audit-logs/audit-log-table.tsx`, `payload-types.ts` (regenerated),
+  `context/{architecture,library-docs,build-plan,ui-registry}.md`.
+
+### 2026-09-21 — M-Pesa callback investigation: the missing arrival record
+
+- **What was reported**: for the third time (2026-09-15, 2026-09-16, 2026-09-21) a payment
+  completed on M-Pesa, the customer received the confirmation SMS, and the app never
+  registered it. Michael's direction: find what we are missing, not try options.
+- **What the Safaricom docs settled.** Michael supplied the M-Pesa Express pages (push
+  request and response, both callback samples, the error sample) and the full Express
+  Query page. Our push request matches the documented shape field for field; our callback
+  parser handles both documented callback variants, including a success with no `Balance`
+  item and a failure with no `CallbackMetadata` at all; and Express Query returns exactly
+  six fields and **no receipt** — confirmed from the source, which settles the earlier
+  debate. The query can tell us a customer paid; it can never supply the
+  `MpesaReceiptNumber`, which lives only in the callback or the customer's SMS. The
+  `CallBackURL` needs no registration or allowlisting, which rules out the
+  unwhitelisted-URL theory.
+- **Two off-spec findings in our own code** (recorded in `library-docs.md`, not fixed):
+  `TransactionDesc` is capped at 13 characters and we send 24
+  (`"Mjakazi verification fee"`, longer for subscriptions) — Daraja still accepts the
+  push, so it is not the cause, but it must be shortened before production credentials;
+  and a rejected push answers `{ requestId, errorCode, errorMessage }`, none of which we
+  read, so a rejection loses its real reason.
+- **What was actually missing — the arrival record (built).** Every path answers 200 so
+  Daraja never re-sends, and the only record of an arrival was a `console.error`. A
+  callback that reached us and could not be parsed or matched left no trace and was
+  indistinguishable in our data from one Daraja never sent — the reason this has been
+  undiagnosable three times. Added:
+  - `src/lib/audit.ts` — `payment_callback_received` action.
+  - `src/payload/collections/audit-logs/schema.ts` — its select option. **Required**:
+    `action` is a Payload select, so without the option the write is rejected and the
+    instrumentation would silently do nothing.
+  - `src/services/payment.service.ts` — `recordCallbackArrival`, writing the arrival (both
+    request ids, result code and description, a `parsed` flag, and the raw body when it
+    could not be parsed, capped at 2000 chars because the endpoint is public and
+    unauthenticated) **before** any decision about the payload.
+  - `src/app/(payload)/api/webhooks/payments/callback/route.ts` — reads the body with
+    `req.text()` and parses by hand rather than `req.json()`, so an unreadable body can be
+    recorded verbatim.
+- **Behaviour deliberately unchanged**: still 200 on every path, so retry semantics are
+  untouched. Answering non-200 when _our_ processing fails is still an open decision.
+- **Still open**: an audited staff reconciliation action; the wedged `payment-timeout` job
+  and its 2-minute expiry rule; and the Cloudflare edge check — the leading suspect,
+  because on 2026-09-16 one payment was lost at 20:38 while another confirmed twelve
+  seconds after the push at 21:01, same URL, same handset.
+- **Verification**: Michael to check Cloudflare → Security → Events for
+  `/api/webhooks/payments/callback` around 2026-09-16 20:38 and 2026-09-21 18:20. From now
+  on a lost confirmation is self-diagnosing — a `payment_callback_received` entry proves
+  Daraja posted, and its absence proves it did not. The instrumentation was proved end to
+  end by posting a valid but unmatched callback to the route: HTTP 200 `Accepted`, and a
+  `payment_callback_received` entry carrying the parsed ids and `parsed: true`, with no
+  payment touched. **That test entry is identifiable by its
+  `checkoutRequestId: ws_CO_INSTRUMENTATION_CHECK_20260921` — it is not a real callback.**
+  `pnpm build` passes (the new select option changed `payload-types.ts`, so
+  `pnpm generate:types` was required before the type check would pass — a `select` option
+  addition is a type change).
+
+### 2026-09-21 — Verification payment: callback never delivered again, settled by hand
+
+- **What happened**: Michael paid the KSh 2 verification fee and M-Pesa acknowledged it on
+  the handset, but the app showed no acceptance — the `unconfirmed` copy ("M-Pesa has not
+  confirmed this payment yet… do not pay again"). Same symptom as 2026-09-16, different
+  payment. **This is the second occurrence of the same delivery failure, so the diagnosis
+  below is now the established one, not a fresh hypothesis.**
+- **Evidence**: payment `7N5SQ4FU2Z5M` (`checkoutRequestId`
+  `ws_CO_210920262120320720999771`, KSh 2, 254720999771) sat at `stk_sent` from
+  `2026-09-21T18:20:30Z` with **no `callbackPayload` and no `confirmedAt`**, and the audit
+  trail stopped at `payment_initiated`. A callback that matched would have written
+  `payment_confirmed`; one that mismatched would have written `payment_failed`; neither
+  existed, so nothing reached the handler. The endpoint was healthy at the same time
+  (`https://app-dev.s3.co.ke/api/webhooks/payments/callback` → 405 to GET, 200 to POST),
+  `cloudflared` was running, port 3000 was listening, and an unauthenticated POST got a
+  200, so middleware is not blocking it either. The `stk_sent` row proves the push itself
+  succeeded — Daraja accepted it. **Delivery, not application logic**, for the second
+  time.
+- **Resolved by hand**: posted the correctly-matched Daraja callback for that
+  `checkoutRequestId` to the live route, using the real `MpesaReceiptNumber` `UIL0W6W3XX`
+  from Michael's confirmation SMS. Result: payment `confirmed` (`confirmedAt`
+  `18:32:24.865Z`), `callbackPayload` stored whole, audit `payment_initiated` →
+  `payment_confirmed` (receipt + resultCode 0), and the profile moved `pending_payment` →
+  `pending_review`. The confirmation is a genuine reconciliation of a real payment, not a
+  fabricated one — but note the ledger records the confirmation at `18:32:24Z` while the
+  payment happened at ~`18:20Z`, because the write was manual.
+- **Why hand-settling was necessary — two open defects:**
+  1. **No reconciliation path exists.** The in-app simulator was deliberately removed
+     (architecture invariant 13), `_scratch_fire_callback.ts` no longer exists at the repo
+     root, and no staff action can settle a `stk_sent` payment. So a paid-but-unconfirmed
+     payment is stranded permanently — the worker is told "do not pay again" with nothing
+     that can move it. **This needs a decision: an audited staff action to confirm a
+     `stk_sent` payment against a receipt number is the standard operational fallback and
+     is not a bypass.**
+  2. **The `payment-timeout` job is wedged.** `payload-jobs` holds exactly one
+     `payment-timeout` row, stamped `2026-09-04`, with `processing: true` — stuck, not
+     ticking. So nothing expires and nothing surfaces "the customer paid and we never
+     heard about it". As written it would be worse than idle: it would mark a
+     genuinely-paid payment `expired` after `STK_TIMEOUT_MINUTES = 2` and a late Daraja
+     callback would then be ignored by `isTerminal` as a duplicate — money taken,
+     verification never granted. Still open from the 2026-09-16 entry.
+- **Notes**: The second failure is the strongest available signal that the Daraja sandbox
+  does not reliably fire this callback (also recorded 2026-09-08: the Daraja 3.0 sandbox
+  often does not fire after PIN entry), so **future sandbox payments should be expected to
+  need settling by hand until defect 1 is addressed**. No application code was changed in
+  this session for this incident — the source edits in the accompanying entry are the
+  certificate work.
+- **Verification**: Michael to confirm his browser (which was still polling) shows the
+  "Under review" card and the "Payment received" toast, and that
+  `/dashboard/staff/verifications` lists the profile.
+
+### 2026-09-21 — Document vault: Certificate of Good Conduct front and back
+
+- **What was built**: The Certificate of Good Conduct is now captured as two slots — front
+  and back — matching the National ID. The required set is four slots (ID front, ID back,
+  certificate front, certificate back), all four required before submitting for
+  verification. A one-row change in `DOCUMENT_SLOTS` (`src/lib/vault.ts`); every consumer
+  — the collection's `documentType`/`side` options, the mjakazi upload UI, the staff
+  `DocumentViewer`, the dashboard checklist and the pre-submission gate — derives from
+  that list, so no per-screen change was needed.
+- **Files touched**:
+  - `src/lib/vault.ts` — `certificate_of_good_conduct` gains a required `back` slot; the
+    `isDocumentSlot` comment no longer uses a certificate back as its invalid example.
+  - `src/services/verification.service.ts` — the missing-documents message now says "both
+    sides of your National ID and your Certificate of Good Conduct".
+  - `src/services/vault.service.ts` — a verified worker is now reverted by **any** upload,
+    not only a replacement: `if (wasVerified && previousId)` became `if (wasVerified)`.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — the verified banner says "Any
+    change to your documents will require re-verification".
+  - `context/architecture.md`, `context/build-plan.md`, `context/ui-registry.md` — the
+    required set is described as four slots.
+- **Follow-up (Michael's feedback, same day): the state-change cues were audited and three
+  gaps closed.** Michael asked whether the field addition had disturbed the "the UI
+  announces the state change and says what to do next" behaviour, for an audience that
+  needs visual cues. The audit found the cues themselves intact — every one still derives
+  from the shared required-slot list, so the four-slot set flows through them — but the
+  document-change → re-review path had never announced itself live, and the new slot made
+  that path easier to hit. Fixed:
+  - `src/services/vault.service.ts` — `uploadVaultDocument` returns `reverted`, and
+    `src/app/(payload)/api/actions/vault/route.ts` passes it to the client.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` — on `reverted` it fires a
+    `notifyInfo` "Document changed" toast (`id: "document-reverted"`) and
+    `router.refresh()`, and the "Documents complete" toast stands down so the re-review
+    news is not competing with a success message that contradicts it.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — a `pending_review` banner
+    ("Your documents are with our team for review… cannot be changed until then") so the
+    page acknowledges the state whether the worker arrived there by paying or by changing
+    a document.
+  - `src/components/dashboard/mjakazi/verification-status-card/index.tsx` — the draft cue
+    said "Add the two documents below" while listing four rows; now "Upload the documents
+    below".
+  - `context/library-docs.md` — new rule: an action that changes the profile's state
+    announces it and refreshes, and a state-change toast replaces any success message the
+    same action would produce.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` and
+    `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — a `locked` prop (true while
+    `pending_review`) disables the upload, replace and remove controls and the file
+    inputs, so the server-side lock is a visible cue instead of a click that fails; `View`
+    stays enabled.
+- **Notes**: No schema change (`side` already exists), so no `pnpm generate:types`. No new
+  audit action and no new PostHog event — `documents_uploaded` keeps its meaning over the
+  now-four slots. A pre-change record has a certificate at `front` (or no side, read as
+  front), so the certificate back slot reads as missing. **Decision change (Michael, same
+  day): a document change always re-validates the profile.** Adding a newly-required slot
+  is evidence the review has not seen, so it reverts a verified worker to `pending_review`
+  like any other upload — reversing the previous session's additive-slot exception
+  (`wasVerified && previousId`), which had kept the badge. No attempt is incremented and
+  no fee is charged; the revert is the free re-review. A worker already in
+  `pending_review` cannot add the new slot — the vault locks — and `approveVerification`
+  will refuse their approval until staff reject so they can resubmit. Existing
+  single-sided certificate uploads are not backfilled.
+- **Verification**: Michael to confirm the upload of all four slots on
+  `/dashboard/mjakazi/documents`, the checklist on `/dashboard/mjakazi`, the disabled
+  submit until all four are present, and both certificate sides rendering for staff on the
+  review page.
+
 ### 2026-09-16 — Verification payment: the callback never arrived, pay-flow cue corrected
 
 - **What happened**: A mjakazi paid the KSh 2 verification fee in the Daraja sandbox and

@@ -189,15 +189,19 @@ codebase.
 ### `DocumentVault`
 
 - **Location**: `src/components/dashboard/mjakazi/document-vault/index.tsx`
-- **Purpose**: One card per identity document, with a slot per side — National ID front
-  and back, Certificate of Good Conduct as a single slot. Upload, replace, view and remove
-  are per slot, and each remove is guarded by a confirmation
+- **Purpose**: One card per identity document, with a slot per side — National ID and
+  Certificate of Good Conduct both captured as front and back. Upload, replace, view and
+  remove are per slot, and each remove is guarded by a confirmation
 - **Props**:
-  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean; nextStep?: DocumentNextStep | null }`
+  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean; locked?: boolean; nextStep?: DocumentNextStep | null }`
   where `DocumentNextStep` = `{ href, label, description }`, exported from the same file.
   `nextStep` is passed **ungated** on purpose: the server render that supplies it predates
   the upload that completes the set, so completeness is decided here, from the live client
-  `docs` state — gating it on the server list would gate it on a stale one
+  `docs` state — gating it on the server list would gate it on a stale one. `locked` is
+  true while the profile is `pending_review`; the server refuses the write regardless, so
+  it only turns failed clicks into a visible locked state (`View` stays enabled, the
+  `upload`/`remove` handlers early-return, and both the file inputs and the upload,
+  replace and remove buttons are disabled). The page banner above the vault says why.
 - **Visual pattern**: a `flex flex-col gap-6` wrapper holding one shadcn `Card` per entry
   in `DOCUMENT_SLOTS` in a `grid gap-4 md:grid-cols-2`; each side is a
   `border-border rounded-lg border p-3` block holding a semibold side label (rendered only
@@ -205,20 +209,25 @@ codebase.
   outline/ghost actions with a `buttonVariants`-styled "View" link; the empty state pairs
   a `FileText`/`ShieldCheck` lucide icon with "Not uploaded yet" and a small `Upload`
   button; per-slot `text-destructive` error line; remove is guarded by `AlertDialog` and
-  hidden entirely while `isVerified` (only `Replace` shows). On the transition to every
-  required `DOCUMENT_SLOTS` slot being present it fires `documents_uploaded` **and** a
-  `notifySuccess` "Documents complete" toast naming `nextStep.label`. Both side effects
+  hidden entirely while `isVerified` (only `Replace` shows). While `locked` every write
+  control is disabled rather than hidden, with `View` still live. On the transition to
+  every required `DOCUMENT_SLOTS` slot being present it fires `documents_uploaded` **and**
+  a `notifySuccess` "Documents complete" toast naming `nextStep.label`. Both side effects
   run in an effect rather than inside the `setDocs` updater: an updater must stay pure,
   and React double-invokes it in development, which had been firing `documents_uploaded`
-  twice. Below the grid it renders the completion panel — `border-success/40`, a
-  `CheckCircle2` in `text-success`, the heading "All required documents uploaded", the
-  step's description and a `buttonVariants()`-styled `Link` — whenever the live set is
-  complete and a `nextStep` exists. The panel and the toast therefore share one source and
-  appear in the session that completes the set, with no reload. Slot identity comes from
-  `documentSlotKey` in `src/lib/vault.ts` — shared with the gate and the dashboard
-  checklist, and it normalizes internally, so a record with no side reads as the front.
-  The upload merge uses a functional `setDocs` update so two slots uploaded in quick
-  succession cannot drop each other
+  twice. An upload by a verified worker reverts the profile to `pending_review`, so the
+  route returns `reverted` and the component then fires a `notifyInfo` "Document changed"
+  toast (stable `id: "document-reverted"`) and calls `router.refresh()`, and the
+  completion toast stands down — the revert news must not be competing with a "you're
+  done" success message. Below the grid it renders the completion panel —
+  `border-success/40`, a `CheckCircle2` in `text-success`, the heading "All required
+  documents uploaded", the step's description and a `buttonVariants()`-styled `Link` —
+  whenever the live set is complete and a `nextStep` exists. The panel and the toast
+  therefore share one source and appear in the session that completes the set, with no
+  reload. Slot identity comes from `documentSlotKey` in `src/lib/vault.ts` — shared with
+  the gate and the dashboard checklist, and it normalizes internally, so a record with no
+  side reads as the front. The upload merge uses a functional `setDocs` update so two
+  slots uploaded in quick succession cannot drop each other
 - **Used in**: `(saas)/dashboard/mjakazi/documents/page.tsx`
 
 ### `VerificationStatusCard`
@@ -319,11 +328,31 @@ codebase.
   timestamp; `Inbox` empty state
 - **Used in**: `(saas)/dashboard/staff/verifications/page.tsx`
 
+### `StuckPaymentList`
+
+- **Location**: `src/components/dashboard/staff/payments/stuck-payment-list.tsx`
+- **Purpose**: The payments a lost callback stranded — pushed, never confirmed, never
+  failed — with the one action that recovers them: confirm by hand from the receipt in the
+  payer's own M-Pesa SMS
+- **Props**: `{ items: StuckPaymentItem[] }` (`id`, `paymentType`, `amount`,
+  `phoneNumber`, `mpesaReference`, `payerName`, `initiatedAt`)
+- **Visual pattern**: `bg-card` + `divide-y` rows matching `VerificationQueue`, each with
+  the payer, a capitalized `Badge` for the payment type, the amount as `KSh n`, and one
+  muted line of phone + reference + `Sent {date}` (Africa/Nairobi); a
+  `Button variant="outline"` "Confirm with receipt" opens an `AlertDialog` carrying a
+  `Label` + `Input` for the receipt. The confirm action stays disabled until a receipt is
+  typed, and a per-row `text-destructive` line carries the server's refusal. Success fires
+  `notifySuccess` with a stable `id` (`payment-reconciled`) then `router.refresh()`;
+  `Inbox` empty state reads "Nothing waiting"
+- **Used in**: `(saas)/dashboard/staff/payments/page.tsx`
+- **Note**: the copy tells staff to act only on the customer's own SMS, because the
+  receipt is the proof and no automated check can produce it
+
 ### `DocumentViewer`
 
 - **Location**: `src/components/dashboard/staff/verifications/document-viewer.tsx`
 - **Purpose**: Renders every side of a profile's identity documents through the audited
-  vault route, so a reviewer can compare the National ID front and back
+  vault route, so a reviewer can compare each documented front and back
 - **Props**: `{ documents: ReviewDocument[] }` (`id`, `documentType`, `side`, `filename`)
 - **Visual pattern**: one `Card` per entry in `DOCUMENT_SLOTS` in
   `grid gap-4 md:grid-cols-2`, each described as "N of M uploaded"; inside a multi-sided

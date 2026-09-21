@@ -102,6 +102,10 @@ type StkPushResponse = {
 	ResponseCode?: string;
 	ResponseDescription?: string;
 	CustomerMessage?: string;
+	// a push rejected before it reaches the handset answers with this shape instead
+	// of a ResponseCode — see the "Sample error response" in the express docs
+	errorCode?: string;
+	errorMessage?: string;
 };
 
 type StkPushSuccess = {
@@ -177,12 +181,18 @@ const initiateStkPush = async ({
 	const raw = (await response.json()) as StkPushResponse;
 
 	// daraja returns http 200 even for a rejected push — the response code inside
-	// the body is the signal, not the http status
+	// the body is the signal, not the http status. a rejection carries
+	// `errorCode`/`errorMessage` instead of `ResponseCode`, and those are the only
+	// fields that say what actually went wrong, so they are preferred over the
+	// generic fallback
 	if (!response.ok || raw.ResponseCode !== "0" || !raw.CheckoutRequestID) {
 		return {
 			success: false,
 			error:
-				raw.ResponseDescription ?? raw.CustomerMessage ?? "M-Pesa rejected the request.",
+				raw.errorMessage ??
+				raw.ResponseDescription ??
+				raw.CustomerMessage ??
+				"M-Pesa rejected the request.",
 			raw,
 		};
 	}
@@ -192,6 +202,96 @@ const initiateStkPush = async ({
 		merchantRequestId: raw.MerchantRequestID ?? "",
 		checkoutRequestId: raw.CheckoutRequestID ?? "",
 		raw,
+	};
+};
+
+// --- status query -----------------------------------------------------------
+
+// the query response, exactly as safaricom documents it: six fields and nothing
+// else. there is deliberately no receipt here — the query asks about the request
+// we sent to the handset, not about the money that moved, so a `ResultCode` of 0
+// says the customer paid but can never produce the `MpesaReceiptNumber`. that
+// exists only in the callback, or in the customer's own sms
+type StkQueryResponse = {
+	ResponseCode?: string;
+	ResponseDescription?: string;
+	MerchantRequestID?: string;
+	CheckoutRequestID?: string;
+	ResultCode?: string | number;
+	ResultDesc?: string;
+	// a push still being processed, or one daraja does not recognise, answers with
+	// this shape rather than a result code
+	errorCode?: string;
+	errorMessage?: string;
+};
+
+type StkQueryResult =
+	| { success: true; paid: boolean; resultCode: number; resultDesc: string | null }
+	| { success: false; error: string };
+
+// asks daraja what happened to a push we already sent. used only when no callback
+// arrived — it is the substitute for the missing delivery, not a second opinion on
+// one we received. a failure here is inconclusive, never a "not paid" verdict
+const queryStkStatus = async (checkoutRequestId: string): Promise<StkQueryResult> => {
+	const token = await getAccessToken();
+	if (!token) {
+		return { success: false, error: "Could not authenticate with M-Pesa." };
+	}
+
+	const timestamp = formatDarajaTimestamp(new Date());
+	const password = generatePassword(
+		MPESA_SHORTCODE ?? "",
+		MPESA_PASSKEY ?? "",
+		timestamp,
+	);
+
+	const response = await fetch(`${getBaseUrl()}/mpesa/stkpushquery/v1/query`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${token}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			BusinessShortCode: MPESA_SHORTCODE,
+			Password: password,
+			Timestamp: timestamp,
+			CheckoutRequestID: checkoutRequestId,
+		}),
+	});
+
+	const raw = (await response.json()) as StkQueryResponse;
+
+	if (!response.ok) {
+		return { success: false, error: "M-Pesa could not be reached for a status check." };
+	}
+
+	if (raw.errorCode) {
+		return {
+			success: false,
+			error: raw.errorMessage ?? "M-Pesa could not report on this transaction.",
+		};
+	}
+
+	if (raw.ResponseCode && raw.ResponseCode !== "0") {
+		return {
+			success: false,
+			error: raw.ResponseDescription ?? "M-Pesa rejected the status check.",
+		};
+	}
+
+	const resultCode = Number(raw.ResultCode);
+	if (!Number.isInteger(resultCode)) {
+		return {
+			success: false,
+			error: raw.ResultDesc ?? "M-Pesa returned no result for this transaction.",
+		};
+	}
+
+	return {
+		success: true,
+		paid: resultCode === 0,
+		resultCode,
+		resultDesc: raw.ResultDesc ?? null,
 	};
 };
 
@@ -248,5 +348,5 @@ const getCallbackMetadataValue = (
 	return val ?? undefined;
 };
 
-export { getCallbackMetadataValue, initiateStkPush, parseStkCallback };
-export type { StkCallback, StkPushResult };
+export { getCallbackMetadataValue, initiateStkPush, parseStkCallback, queryStkStatus };
+export type { StkCallback, StkPushResult, StkQueryResult };

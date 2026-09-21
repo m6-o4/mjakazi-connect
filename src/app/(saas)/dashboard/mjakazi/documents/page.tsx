@@ -122,8 +122,18 @@ const MjakaziDocumentsPage = async () => {
 				<div className="bg-muted text-muted-foreground border-border flex items-start gap-2 rounded-lg border p-4 text-sm">
 					<Info className="text-accent mt-0.5 size-4 shrink-0" />
 					<p>
-						You&apos;re verified. Replacing a document will require re-verification and
-						send your profile back to our team for review.
+						You&apos;re verified. Any change to your documents will require
+						re-verification and send your profile back to our team for review.
+					</p>
+				</div>
+			) : null}
+
+			{profile.verificationState === "pending_review" ? (
+				<div className="bg-muted text-muted-foreground border-border flex items-start gap-2 rounded-lg border p-4 text-sm">
+					<Info className="text-accent mt-0.5 size-4 shrink-0" />
+					<p>
+						Your documents are with our team for review. You&apos;ll be notified of the
+						outcome, and your documents cannot be changed until then.
 					</p>
 				</div>
 			) : null}
@@ -131,6 +141,7 @@ const MjakaziDocumentsPage = async () => {
 			<DocumentVault
 				documents={documents}
 				isVerified={profile.verificationState === "verified"}
+				locked={profile.verificationState === "pending_review"}
 				nextStep={nextStep}
 			/>
 		</div>

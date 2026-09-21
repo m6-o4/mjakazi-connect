@@ -447,11 +447,11 @@ cleanly on account erasure. `wajakazi-profiles.photo` points here.
 `uploadedAt`.
 
 A slot is a (documentType, side) pair, and it is the unit uploaded, replaced, removed and
-checked — so a National ID front, a National ID back and a Certificate of Good Conduct are
-three separate records. The required set is declared once in `DOCUMENT_SLOTS`
-(`src/lib/vault.ts`) and read by the collection options, the upload UI, the staff viewer
-and the pre-submission gate. A record stored before `side` existed has no side and is read
-as the front.
+checked — so a National ID front, a National ID back, a Certificate of Good Conduct front
+and a Certificate of Good Conduct back are four separate records. The required set is
+declared once in `DOCUMENT_SLOTS` (`src/lib/vault.ts`) and read by the collection options,
+the upload UI, the staff viewer and the pre-submission gate. A record stored before `side`
+existed has no side and is read as the front.
 
 Access: `staff` and `admin`, plus the owning Mjakazi. No one else, ever.
 
@@ -472,9 +472,16 @@ Stores no amounts.
 `user`, `paymentType` (`verification | subscription`), `status`
 (`initiated | stk_sent | callback_received | confirmed | failed | expired | cancelled`),
 `amount` (integer KSh), `tierId` + `tierName` (text snapshots, null for verification
-payments), `phoneNumber`, `mpesaReference` (unique), `merchantRequestId`,
-`checkoutRequestId`, `callbackPayload` (json), `initiatedAt`, `confirmedAt`, `failedAt`,
-`expiredAt`.
+payments), `phoneNumber`, `mpesaReference` (unique), `mpesaReceiptNumber` (the code from
+the payer's SMS or the callback — the one thing a confirmation must carry),
+`merchantRequestId`, `checkoutRequestId`, `callbackPayload` (json),
+`mpesaStatusCheckedAt`, `reconciledBy` + `reconciledAt`, `initiatedAt`, `confirmedAt`,
+`failedAt`, `expiredAt`.
+
+A payment reaches `confirmed` two ways: the callback, or a hand reconciliation by staff or
+admin when no callback arrived — recording the receipt from the payer's own SMS. Both
+write `confirmedAt`; only the second sets `reconciledBy`/`reconciledAt`, so the ledger
+distinguishes them. **No path confirms a payment without a receipt.**
 
 **`contact-unlocks`** — durable access grants.
 
@@ -646,9 +653,9 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   the subject, the document type and the time. No exceptions, including for `admin`.
 - **Locking.** Documents cannot be edited while verification is `pending_review`, and the
   lock is per slot (a document type and a side). A `verified` worker can only _replace_ a
-  slot — never remove one — and replacing one reverts them to `pending_review`. Adding a
-  slot that did not exist when they were verified is not a replacement, so it does not
-  cost them the badge.
+  slot — never remove one — and **any** upload reverts them to `pending_review`, including
+  a slot added after they were verified: the badge stands on the document set, so evidence
+  the required set grew to include is still evidence the review must see.
 - **The badge boundary is the enforced one.** The required-slot gate runs on the way into
   `pending_payment`, but the vault stays editable until `pending_review` — so
   `approveVerification` checks the required set again before granting `verified`. A
@@ -675,8 +682,14 @@ into a client component.
   transaction-ID uniqueness before confirming anything.
 - Duplicate callbacks are ignored and logged. A confirmed payment never activates anything
   twice.
-- `stk_sent` transitions to `expired` after a timeout, driven by the `payment-timeout`
-  task on Payload's job queue.
+- **A payment is never written off because time passed.** When a push goes unanswered past
+  the two-minute window, the `payment-timeout` task asks M-Pesa directly what happened to
+  it (`queryStkStatus`). Only a definitive "the push did not complete" moves it to
+  `failed`. A "paid but no callback" verdict leaves it at `stk_sent`, writes a
+  `payment_confirmation_missing` audit entry and puts it on the staff list — because the
+  receipt is required and the query cannot supply one. An inconclusive answer changes
+  nothing. Each payment is asked about once (`mpesaStatusCheckedAt`), so the queue cadence
+  never decides how often Daraja is called.
 - Amounts are integer KSh. No floats anywhere in the money path.
 - If activation fails after a confirmed payment, the payment stays confirmed, an error
   state is flagged, an admin is alerted and activation is retried. It is never
@@ -696,8 +709,11 @@ An earlier dev-only `simulatePaymentCallbackAction` (`src/app/actions/dev.ts`) e
 work around a callback that never arrived; it was removed once the real callback was
 correctly parsed (Daraja 3.0 omits `Value` on some metadata items like `Balance`, which
 the old strict parser rejected). Development and production now settle payments
-identically, and a payment with no callback self-expires after the timeout. M-Pesa is an
-online-only flow, so there is no offline testing path by design.
+identically. A payment whose callback never arrives is **not** expired on a timer: the
+sweep asks M-Pesa, marks `failed` only on a definitive "not completed", and otherwise
+leaves it visible to staff, who complete it from the payer's receipt on
+`/dashboard/staff/payments`. M-Pesa is an online-only flow, so there is no offline testing
+path by design.
 
 ---
 
@@ -710,13 +726,13 @@ Payload's built-in job queue. Configured in `payload.config.ts` with `jobs.autoR
 Access to the queue is granted to `admin` and `staff` from the panel, or to an external
 scheduler presenting `CRON_SECRET` as a bearer token against `/api/payload-jobs/run`.
 
-| Task                  | Frequency    | Effect                                                                            |
-| --------------------- | ------------ | --------------------------------------------------------------------------------- |
-| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email              |
-| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                        |
-| `payment-timeout`     | every minute | `stk_sent` → `expired` past the window                                            |
-| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest |
-| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair    |
+| Task                  | Frequency    | Effect                                                                                                       |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email                                         |
+| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                                                   |
+| `payment-timeout`     | every minute | asks M-Pesa about unanswered pushes; `failed` only on a definitive "not completed", otherwise left for staff |
+| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest                            |
+| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair                               |
 
 Every task calls a domain service. None writes to the database directly. Every one is
 idempotent, writes an audit entry per transition, and must survive running twice against

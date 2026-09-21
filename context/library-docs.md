@@ -275,8 +275,10 @@ Normalize once, at the boundary, in `lib/mpesa.ts`. Validate the result against
   accepted, not that anyone paid. Never grant access on it.
 - **Callbacks can arrive twice.** `mpesaReference` is unique and the idempotency check is
   not optional.
-- **Callbacks can never arrive.** A user who ignores the prompt produces silence. The
-  `payment-timeout` task exists for this.
+- **Callbacks can never arrive.** A user who ignores the prompt, and a lost delivery, both
+  produce silence. The `payment-timeout` task asks M-Pesa about unanswered pushes instead
+  of writing them off: a "not paid" verdict has to come from M-Pesa, never from elapsed
+  time.
 - **The callback URL must be publicly reachable.** In development that means a tunnel, and
   the URL registered with Safaricom must match.
 - **Daraja 3.0 omits `Value` on some metadata items.** A paybill success callback includes
@@ -284,6 +286,27 @@ Normalize once, at the boundary, in `lib/mpesa.ts`. Validate the result against
   the entire callback is dropped — metadata items are coerced, never rejected.
 - **Validate the amount.** Confirm the paid amount equals the expected amount before
   confirming. Amounts come from `platform-settings`.
+- **Every callback that arrives is recorded before it is judged.** The handler answers 200
+  on every path so Daraja never re-sends, which means an arrival we cannot match or read
+  would otherwise leave no trace and look identical to one that was never delivered.
+  `recordCallbackArrival` writes `payment_callback_received` (with the raw body when it
+  could not be parsed) before any matching happens. Never move that write after the
+  decisions — it is the only evidence that Daraja posted.
+- **`TransactionDesc` is capped at 13 characters and we exceed it.** We send
+  `"Mjakazi verification fee"` (24) and `` `Subscription — <tier>` ``, which is longer.
+  Daraja still accepts the push today, so it is not the cause of the missing callbacks,
+  but it is off-spec and must be shortened before production credentials.
+- **A rejected push does not answer with `ResponseCode`.** It answers
+  `{ requestId, errorCode, errorMessage }` — see the "Sample error response" in the
+  Express docs. Neither field is read today, so a rejection records the generic "M-Pesa
+  rejected the request." and the real `errorCode`/`errorMessage` are discarded.
+- **Express Query cannot return the receipt.** Confirmed against Safaricom's own
+  documentation: the query response is exactly `ResponseCode`, `ResponseDescription`,
+  `MerchantRequestID`, `CheckoutRequestID`, `ResultCode`, `ResultDesc`. `ResultCode: 0`
+  says the customer paid; there is no `MpesaReceiptNumber`, and there cannot be, because
+  the query is about the request we sent to the handset, not the money that moved. The
+  receipt exists only in the callback, or in the customer's SMS. The CallBackURL also
+  needs no registration or allowlisting — the per-request `CallBackURL` is sufficient.
 
 ### Project rules
 
@@ -293,8 +316,40 @@ machine is in `architecture.md`.
 **Development uses real callbacks — there is no in-app simulator.** M-Pesa is an
 online-only flow, so development settles payments exactly as production does: the tunnel
 (`app-dev.s3.co.ke`, already in `allowedDevOrigins`) must be running and reachable, and
-the `MPESA_CALLBACK_URL` env must point at it. A payment that gets no callback sits at
-`stk_sent` and self-expires after the timeout.
+the `MPESA_CALLBACK_URL` env must point at it. Post a correctly-matched callback by hand,
+or use the staff list below, to settle a payment whose callback goes missing — it sits at
+`stk_sent` until the sweep asks M-Pesa what happened, and is never expired on a timer.
+
+**Known gap — the callback goes missing, and delivery is still unproven.** Daraja 3.0 has
+taken a KSh 2 sandbox payment and never posted the callback on three occasions
+(2026-09-15, 2026-09-16, 2026-09-21). Our push request and callback parsing match the
+Express documentation field for field, the endpoint answers 405 to a GET and 200 to a
+POST, and the `CallBackURL` needs no registration, so the application is not the suspected
+cause. What was missing was the ability to see: every path answered 200 and logged only to
+the console, so "Daraja never posted" and "we received it and dropped it" were
+indistinguishable. `payment_callback_received` (2026-09-21) closes that — the next lost
+confirmation shows its arrival, or its absence.
+
+Recovery no longer depends on knowing which it was. A payment whose callback is missing is
+completed from the payer's receipt by staff or admin on `/dashboard/staff/payments`
+(`reconcilePayment`), and the sweep asks M-Pesa directly when the two-minute window
+passes. Still open: the Cloudflare edge in front of the tunnel has not yet been checked
+for POSTs turned away before they reached the app — the leading suspect, because one
+payment was lost at 20:38 while another confirmed in twelve seconds at 21:01 on the same
+day, same URL, same handset.
+
+**A `select` option addition is a type change.** `audit-logs.action` is a Payload
+`select`, so a new audit action must be added to **both** `src/lib/audit.ts` and the
+collection's options, then `pnpm generate:types` must run before `pnpm build` will
+type-check. A writer whose action is missing from the options is silently rejected at
+runtime, which reads as "the feature does nothing".
+
+**The in-process job runner is not reliable enough to assume a run per minute.** Only the
+queue's writer determines _what_ is enqueued; only an external scheduler hitting
+`/api/payload-jobs/run` with `CRON_SECRET` guarantees _when_. Any sweep that must act
+inside a short window has to be written so a missed run self-corrects — that is why the
+payment sweep asks about each payment once (tracked by `mpesaStatusCheckedAt`) instead of
+depending on cadence.
 
 ---
 
@@ -394,6 +449,14 @@ adding.
   `PaymentSuccessNotice` is the persistent record; a `notifySuccess` toast is the
   immediate cue on the live transition. Both pay flows do this, each with its own stable
   `id` (`verification-payment-received`, `subscription-payment-received`).
+- **An action that changes the profile's state announces it, and refreshes.** A route
+  handler or Server Action that moves the profile to another verification state is not
+  revalidated by the client, so the acting component must fire a toast and call
+  `router.refresh()` in the same tick — otherwise the old state stays on screen. The vault
+  upload route therefore returns `reverted` and `DocumentVault` toasts "Document changed"
+  (`id: "document-reverted"`) + refreshes, rather than leaving "verified" showing after
+  the badge has gone. A state-change toast replaces any success message the same action
+  would otherwise produce; two toasts that disagree is worse than none.
 - Toasts survive `router.refresh()` / `router.push()` within the dashboard because
   `<Toaster>` lives in the `(saas)` layout.
 

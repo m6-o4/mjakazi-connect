@@ -266,7 +266,7 @@ const assessReadiness = async (
 
 	if ((await getMissingRequiredDocuments(payload, profile.id)).length > 0) {
 		return fail(
-			"Upload your National ID (front and back) and Certificate of Good Conduct before submitting for verification.",
+			"Upload both sides of your National ID and your Certificate of Good Conduct before submitting for verification.",
 			"missing_documents",
 		);
 	}

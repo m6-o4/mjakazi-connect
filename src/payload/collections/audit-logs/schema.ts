@@ -49,10 +49,16 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Verification Deactivated", value: "verification_deactivated" },
 				// payment lifecycle
 				{ label: "Payment Initiated", value: "payment_initiated" },
+				{ label: "Payment Callback Received", value: "payment_callback_received" },
 				{ label: "Payment Confirmed", value: "payment_confirmed" },
 				{ label: "Payment Duplicate", value: "payment_duplicate" },
 				{ label: "Payment Failed", value: "payment_failed" },
 				{ label: "Payment Expired", value: "payment_expired" },
+				{
+					label: "Payment Confirmation Missing",
+					value: "payment_confirmation_missing",
+				},
+				{ label: "Payment Reconciled", value: "payment_reconciled" },
 				{ label: "Payment Activation Failed", value: "payment_activation_failed" },
 				// subscription lifecycle
 				{

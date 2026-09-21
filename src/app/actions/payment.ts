@@ -1,12 +1,13 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getPayload } from "payload";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { normalizeKenyanPhone } from "@/lib/phone";
 import config from "@/payload-config";
-import { initiatePayment } from "@/services/payment.service";
+import { initiatePayment, reconcilePayment } from "@/services/payment.service";
 import { getOwnProfile } from "@/services/profile.service";
 import { getVerificationFee } from "@/services/settings.service";
 
@@ -74,4 +75,42 @@ const initiateVerificationPaymentAction = async (
 	}
 };
 
-export { initiateVerificationPaymentAction };
+// staff-only, audited: completes a payment whose callback never arrived, using the
+// receipt from the payer's own M-Pesa SMS. the service enforces the role, the
+// receipt format and the in-flight status, so this only validates the shape and
+// resolves the session
+const reconcilePaymentSchema = z.object({
+	paymentId: z.string().min(1),
+	mpesaReceiptNumber: z.string().min(1),
+});
+
+const reconcilePaymentAction = async (input: unknown): Promise<ActionResult> => {
+	try {
+		const parsed = reconcilePaymentSchema.safeParse(input);
+		if (!parsed.success) {
+			return {
+				success: false,
+				error: "Enter the M-Pesa receipt from the customer's SMS.",
+			};
+		}
+
+		const user = await getCurrentUser();
+		if (!user) return { success: false, error: "You must be signed in." };
+
+		const payload = await getPayload({ config });
+		const result = await reconcilePayment(payload, user, parsed.data);
+
+		if (!result.success) {
+			return { success: false, error: result.error, code: result.code };
+		}
+
+		revalidatePath("/dashboard/staff/payments");
+
+		return { success: true };
+	} catch (error) {
+		console.error("[actions/payment] reconcilePayment failed:", error);
+		return { success: false, error: "Could not confirm the payment." };
+	}
+};
+
+export { initiateVerificationPaymentAction, reconcilePaymentAction };

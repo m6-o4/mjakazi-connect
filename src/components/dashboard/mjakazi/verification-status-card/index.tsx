@@ -36,7 +36,7 @@ const VerificationStatusCard = ({ documents }: VerificationStatusCardProps) => {
 				<CardDescription>
 					{allUploaded
 						? "Your profile and documents are complete. Submit them for review to get verified."
-						: "Your profile is complete. Add the two documents below so our team can verify you."}
+						: "Your profile is complete. Upload the documents below so our team can verify you."}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">

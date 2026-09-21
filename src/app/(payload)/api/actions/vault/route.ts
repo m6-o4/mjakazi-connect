@@ -113,6 +113,9 @@ const POST = async (req: NextRequest) => {
 		return NextResponse.json({
 			success: true,
 			replaced: result.data.replaced,
+			// true when this upload dropped a verified worker back into review, so
+			// the ui can announce the state change instead of leaving it silent
+			reverted: result.data.reverted,
 			document: {
 				id: result.data.document.id,
 				documentType: result.data.document.documentType,

@@ -210,6 +210,10 @@ a slot (document type + side) is now the unit uploaded, replaced, removed and ch
 options, the upload UI, the staff viewer and the pre-submission gate all read. See the
 `progress-tracker.md` entry.
 
+**Follow-up (2026-09-21):** the Certificate of Good Conduct is captured as two slots as
+well — front and back — bringing the required set to four. A one-row change in
+`DOCUMENT_SLOTS`; every consumer derives from it. See the `progress-tracker.md` entry.
+
 ---
 
 # Phase 3 — Verification
@@ -274,6 +278,15 @@ same callback by hand — the second must be refused and audit-logged.
 **Builds**: `jobs/payment-timeout.ts`, registered on Payload's queue, moving `stk_sent` to
 `expired` after the window. **Done when**: an ignored prompt expires on its own.
 **Verify**: initiate, ignore the prompt, wait, confirm the state changes.
+
+**Superseded 2026-09-21 — the blind expiry was a money-losing rule.** Expiring on elapsed
+time writes off a customer who _did_ pay but whose callback was lost: the payment becomes
+terminal, a late callback is ignored as a duplicate, and nothing can recover it. The task
+now asks M-Pesa what happened to an unanswered push (`queryStkStatus`) and marks `failed`
+**only** on a definitive "did not complete"; a "paid, no callback" verdict leaves the
+payment at `stk_sent` for staff to complete from the payer's receipt, and an inconclusive
+answer changes nothing. The `expired` status remains for historical rows but nothing
+writes it any more.
 
 ### 4.4 — Verification payment: initiate + wire to review
 
