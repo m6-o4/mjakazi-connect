@@ -16,6 +16,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { notifySuccess } from "@/lib/notify";
+import type { ProfileInterestStatus } from "@/services/eoi.service";
 
 type SendableProfile = {
 	id: string;
@@ -25,13 +26,26 @@ type SendableProfile = {
 
 type EoiSendProps = {
 	profiles: SendableProfile[];
-	subscriptionActive: boolean;
+	minBatch: number;
+	maxBatch: number;
+	canSend: boolean;
+	blockCode: ProfileInterestStatus["blockCode"];
+	blockReason: string | null;
 };
 
-// the batch-send control on the saved page. a mwajiri selects 3–5 of their saved
-// wajakazi and sends each an expression of interest as one batch. sending is
-// gated on an active subscription and on the 3–5 batch bound.
-const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
+// the batch-send control on the saved page. a mwajiri selects between the
+// configured minimum and maximum of their saved wajakazi and sends each an
+// expression of interest as one batch. sending is gated on the policy from
+// platform-settings, on an active subscription, and on the open-pool gate — all
+// resolved server-side and handed in as `canSend`
+const EoiSend = ({
+	profiles,
+	minBatch,
+	maxBatch,
+	canSend,
+	blockCode,
+	blockReason,
+}: EoiSendProps) => {
 	const router = useRouter();
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [busy, setBusy] = useState(false);
@@ -43,7 +57,7 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 			const next = new Set(prev);
 			if (next.has(id)) {
 				next.delete(id);
-			} else if (next.size < 5) {
+			} else if (next.size < maxBatch) {
 				next.add(id);
 			}
 			return next;
@@ -57,8 +71,9 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 			const result = await sendEoiBatchAction({ mjakaziIds: [...selected] });
 			if (result.success) {
 				const count = selected.size;
+				const noun = count === 1 ? "mjakazi" : "wajakazi";
 				posthog.capture("interest_sent", { count });
-				notifySuccess(`Interest sent to ${count} wajakazi`, {
+				notifySuccess(`Interest sent to ${count} ${noun}`, {
 					id: "eoi-send",
 					description: "Each of them can now accept or decline.",
 				});
@@ -72,7 +87,9 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 		}
 	};
 
-	const canSend = subscriptionActive && selected.size >= 3 && selected.size <= 5;
+	const meetsSize = selected.size >= minBatch && selected.size <= maxBatch;
+	// one mjakazi, many wajakazi
+	const mjakaziNoun = selected.size === 1 ? "mjakazi" : "wajakazi";
 
 	return (
 		<Card>
@@ -82,7 +99,8 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 					Express interest
 				</CardTitle>
 				<CardDescription>
-					Select 3–5 wajakazi to send each of them an expression of interest.
+					Select {minBatch}–{maxBatch} wajakazi to send each of them an expression of
+					interest.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
@@ -98,7 +116,7 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 									type="checkbox"
 									checked={checked}
 									onChange={() => toggle(profile.id)}
-									disabled={!subscriptionActive}
+									disabled={!canSend}
 									className="bg-background border-input text-primary focus-visible:ring-ring size-4 shrink-0 cursor-pointer rounded-sm"
 								/>
 								<span className="flex flex-1 flex-col">
@@ -118,18 +136,18 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 					<p className="text-muted-foreground text-xs">
 						{selected.size === 0
 							? "No wajakazi selected."
-							: `${selected.size} selected${selected.size < 3 ? " — select at least 3" : ""}.`}
+							: `${selected.size} selected${selected.size < minBatch ? ` — select at least ${minBatch}` : ""}.`}
 					</p>
 
-					{subscriptionActive ? (
-						<Button type="button" onClick={send} disabled={!canSend || busy}>
+					{canSend ? (
+						<Button type="button" onClick={send} disabled={!meetsSize || busy}>
 							{busy
 								? "Sending…"
 								: selected.size > 0
-									? `Send interest to ${selected.size} wajakazi`
+									? `Send interest to ${selected.size} ${mjakaziNoun}`
 									: "Send interest"}
 						</Button>
-					) : (
+					) : blockCode === "subscription_required" ? (
 						<div className="flex flex-col gap-2">
 							<Link
 								href="/dashboard/mwajiri/subscription"
@@ -144,6 +162,10 @@ const EoiSend = ({ profiles, subscriptionActive }: EoiSendProps) => {
 								An active subscription is required to send expressions of interest.
 							</p>
 						</div>
+					) : (
+						<p className="text-muted-foreground text-xs">
+							{blockReason ?? "You cannot send interest right now."}
+						</p>
 					)}
 
 					{error ? <p className="text-destructive text-xs">{error}</p> : null}

@@ -483,19 +483,30 @@ admin when no callback arrived — recording the receipt from the payer's own SM
 write `confirmedAt`; only the second sets `reconciledBy`/`reconciledAt`, so the ledger
 distinguishes them. **No path confirms a payment without a receipt.**
 
-**`contact-unlocks`** — durable access grants.
+**`contact-unlocks`** — durable contact grants.
 
-`mwajiri`, `mjakazi`, `tierAtUnlock`, `unlockedAt`, `subscription`, `payment`. Unique on
-(`mwajiri`, `mjakazi`).
+`mwajiri`, `mjakazi`, `source` (`eoi | concierge | subscription_reveal`), `sourceEoi`,
+`tierAtUnlock`, `unlockedAt`, `subscription`. Unique on (`mwajiri`, `mjakazi`).
 
-Unlocks are permanent. A contact revealed during an active window remains visible after
-expiry. New reveals require an active subscription.
+Grants are permanent. A grant created by an accepted expression of interest remains
+visible after the subscription expires, and is the only path a mwajiri has to a mjakazi's
+contact: an active subscription buys the right to _send interest_, never the contact
+itself. `subscription_reveal` marks grants created before the interest gate existed;
+`concierge` marks a staff-delivered shortlist.
 
 ### Interactions
 
 **`expressions-of-interest`** — `mwajiri`, `mjakazi`, `batchId`, `state`
-(`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`. Sent in batches of 3
-to 5.
+(`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`, `nudgesSent`,
+`lastNudgedAt`, `pendingKey`. Sent in batches of 1 to 5. One outstanding interest per
+pair, enforced by the unique `pendingKey`.
+
+A mwajiri may only open a new batch once more than the configured share (default 50%) of
+the **open pool** — every EOI in a batch that still has an unanswered member, resolved
+siblings included — has resolved, and may not re-approach a mjakazi rejected or expired
+inside the re-send cooldown (default 14 days). Acceptance creates the contact grant and is
+permanent. The batch bounds, threshold, expiry window and cooldown all live in the
+`eoiPolicy` group on `platform-settings`; `eoi.service.ts` reads them, never constants.
 
 **`hires`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `subscription` (→
 subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
@@ -545,8 +556,10 @@ Everything in the Identity, Domain profiles, Documents, Commerce, Interactions a
 Operations sections above is **not yet built**. The marketing half is done; the SaaS half
 is greenfield.
 
-`platform-settings` holds the verification fee and the subscription tier list. Prices are
-never hardcoded in application code.
+`platform-settings` holds the verification fee, the subscription tier list, and the
+expression-of-interest policy (`eoiPolicy`: batch bounds, response threshold, expiry
+window, re-send cooldown). Prices, limits and durations are never hardcoded in application
+code.
 
 ### Relationships
 
@@ -612,8 +625,8 @@ Therefore:
 1. Contact fields are **never selected by default**. Directory and profile queries pass an
    explicit `select` that omits them.
 2. Contact fields are read by exactly one function, in `contact.service.ts`, which checks
-   for an active subscription and an existing or newly created unlock before returning
-   anything.
+   for an existing grant — created by an accepted expression of interest, a concierge
+   shortlist, or a legacy unlock — before returning anything.
 3. Every Local API read that can reach a profile passes `overrideAccess: false` and the
    authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
    `lib/audit.ts`, `contact.service.ts` (which reads contact fields after its own
@@ -729,10 +742,10 @@ scheduler presenting `CRON_SECRET` as a bearer token against `/api/payload-jobs/
 | Task                  | Frequency    | Effect                                                                                                       |
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
 | `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email                                         |
-| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                                                   |
+| `subscription-expiry` | hourly       | `active` → `expired` past expiry; blocks new interest; email                                                 |
 | `payment-timeout`     | every minute | asks M-Pesa about unanswered pushes; `failed` only on a definitive "not completed", otherwise left for staff |
 | `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest                            |
-| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair                               |
+| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` after the policy window; frees the pair and counts toward the gate  |
 
 Every task calls a domain service. None writes to the database directly. Every one is
 idempotent, writes an audit entry per transition, and must survive running twice against
@@ -822,8 +835,10 @@ ask.
 
 ### Access
 
-14. Contact fields are never returned without an active subscription or an existing
-    unlock. Absence from the payload, not masking in the UI.
+14. Contact fields are never returned without an existing contact grant — created by an
+    accepted expression of interest, a concierge shortlist, or a legacy unlock. An active
+    subscription buys the right to send interest, not the contact. Absence from the
+    payload, not masking in the UI.
 15. Every Local API read that can reach a profile passes `overrideAccess: false` and the
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
     `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields),

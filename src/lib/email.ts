@@ -374,11 +374,11 @@ const sendEoiBatchSentEmail = async ({
 }: SendEoiBatchSentEmailArgs): Promise<void> => {
 	const content = `
     ${h1("Interest Sent")}
-    ${p(`Hi ${escapeHtml(firstName)}, you sent an expression of interest to <strong>${count}</strong> wajakazi.`)}
+    ${p(`Hi ${escapeHtml(firstName)}, you sent an expression of interest to <strong>${count}</strong> ${count === 1 ? "mjakazi" : "wajakazi"}.`)}
     ${divider()}
     ${infoBox(`
       <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
-      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">You will be emailed as each wajakazi responds, and you can track their responses from your dashboard.</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">You will be emailed as each mjakazi responds, and you can track their responses from your dashboard.</p>
     `)}
     ${muted("Only the wajakazi you selected received this interest.")}
   `;
@@ -398,7 +398,7 @@ type SendEoiRespondedEmailArgs = {
 	response: "accepted" | "rejected";
 };
 
-// response received — notifies the mwajiri whether a wajakazi accepted or rejected
+// response received — notifies the mwajiri whether a mjakazi accepted or rejected
 const sendEoiRespondedEmail = async ({
 	payload,
 	to,
@@ -408,7 +408,7 @@ const sendEoiRespondedEmail = async ({
 }: SendEoiRespondedEmailArgs): Promise<void> => {
 	const accepted = response === "accepted";
 	const nextCopy = accepted
-		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Great news — unlock ${escapeHtml(mjakaziName)}'s contact details to reach them directly.</p>`
+		? `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">Great news — ${escapeHtml(mjakaziName)}'s contact details are now available on your dashboard. You can reach out to them directly.</p>`
 		: `<p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">No problem — browse more verified wajakazi and send interest to others who may be a better fit.</p>`;
 
 	const content = `
@@ -419,14 +419,14 @@ const sendEoiRespondedEmail = async ({
       <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What Happens Next</p>
       ${nextCopy}
     `)}
-    ${muted("Log in to your dashboard to see all your responses.")}
+    ${muted("Log in to your dashboard to see the contact details and all your responses.")}
   `;
 
 	await sendEmail(payload, {
 		to,
 		subject: accepted
-			? "A wajakazi accepted your interest"
-			: "A wajakazi declined your interest",
+			? "A mjakazi accepted your interest"
+			: "A mjakazi declined your interest",
 		html: baseTemplate(content),
 	});
 };
@@ -644,7 +644,7 @@ const sendHireEndedEmail = async ({
     ${divider()}
     ${infoBox(`
       <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
-      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The agreement is now closed, and the wajakazi is available for new opportunities.</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">The agreement is now closed, and the mjakazi is available for new opportunities.</p>
     `)}
     ${muted("If this is unexpected, log in to review your dashboard.")}
   `;

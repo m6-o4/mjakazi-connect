@@ -263,8 +263,8 @@ const DirectoryProfileDetail = ({
 									Want to contact {name}?
 								</h2>
 								<p className="text-muted-foreground text-sm">
-									Phone and email are shared with subscribed waajiri only. Create an
-									account to unlock contact details.
+									Contact details are shared only after a mjakazi accepts your expression
+									of interest. Create a mwajiri account to send one.
 								</p>
 								<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 									<Link

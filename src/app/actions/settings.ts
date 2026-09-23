@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import config from "@/payload-config";
 import {
+	updateEoiPolicy,
 	updateSubscriptionTiers,
 	updateVerificationFee,
 } from "@/services/settings.service";
@@ -26,6 +27,15 @@ const tierSchema = z.object({
 });
 
 const tiersSchema = z.array(tierSchema).min(1);
+
+// shape check only — range checks and the min <= max rule live in the service
+const eoiPolicySchema = z.object({
+	minBatch: z.number(),
+	maxBatch: z.number(),
+	responseThresholdPercent: z.number(),
+	expiryDays: z.number(),
+	resendCooldownDays: z.number(),
+});
 
 const updateVerificationFeeAction = async (input: unknown): Promise<ActionResult> => {
 	try {
@@ -75,4 +85,32 @@ const updateSubscriptionTiersAction = async (input: unknown): Promise<ActionResu
 	}
 };
 
-export { updateSubscriptionTiersAction, updateVerificationFeeAction };
+const updateEoiPolicyAction = async (input: unknown): Promise<ActionResult> => {
+	try {
+		const parsed = eoiPolicySchema.safeParse(input);
+		if (!parsed.success) {
+			return { success: false, error: "Please check the interest policy fields." };
+		}
+
+		const user = await getCurrentUser();
+		if (!user) return { success: false, error: "You must be signed in." };
+		if (user.role !== "admin") return { success: false, error: "Forbidden." };
+
+		const payload = await getPayload({ config });
+		const result = await updateEoiPolicy(payload, user, parsed.data);
+		if (!result.success)
+			return { success: false, error: result.error, code: result.code };
+
+		revalidatePath("/dashboard/admin/settings");
+		return { success: true };
+	} catch (error) {
+		console.error("[actions/settings] updateEoiPolicy failed:", error);
+		return { success: false, error: "Could not save the interest policy." };
+	}
+};
+
+export {
+	updateEoiPolicyAction,
+	updateSubscriptionTiersAction,
+	updateVerificationFeeAction,
+};

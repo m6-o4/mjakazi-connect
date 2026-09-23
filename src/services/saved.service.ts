@@ -123,7 +123,7 @@ const toggleSave = async (
 		console.error("[services/saved] save failed:", error);
 		const stillSaved = await isSaved(payload, user, mjakaziId);
 		if (stillSaved) return { success: true, data: { saved: true } };
-		return fail("Could not save this wajakazi.");
+		return fail("Could not save this mjakazi.");
 	}
 };
 

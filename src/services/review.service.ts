@@ -184,15 +184,15 @@ const submitReview = async (
 
 	if (!(await hasUnlock(payload, user, mjakaziId))) {
 		return fail(
-			"You can only review a wajakazi whose contact you have unlocked.",
+			"You can only review a mjakazi whose contact you have unlocked.",
 			"not_unlocked",
 		);
 	}
 	if (!(await hasReviewableHire(payload, user.id, mjakaziId))) {
-		return fail("You can only review a wajakazi you have hired.", "not_hired");
+		return fail("You can only review a mjakazi you have hired.", "not_hired");
 	}
 	if (await findExistingReview(payload, user.id, mjakaziId)) {
-		return fail("You have already reviewed this wajakazi.", "already_reviewed");
+		return fail("You have already reviewed this mjakazi.", "already_reviewed");
 	}
 
 	let review: Review;
@@ -213,7 +213,7 @@ const submitReview = async (
 		// the unique [mwajiri, mjakazi] index rejects a concurrent double-submit —
 		// surface it as "already reviewed" rather than a raw failure
 		console.error("[services/review] create failed:", error);
-		return fail("You have already reviewed this wajakazi.", "already_reviewed");
+		return fail("You have already reviewed this mjakazi.", "already_reviewed");
 	}
 
 	await writeAuditLog({
@@ -481,7 +481,7 @@ const getPublicReviews = async (
 	}
 };
 
-// which of the given mjakazi profiles this mwajiri has already reviewed — used by
+// which of the given wajakazi profiles this mwajiri has already reviewed — used by
 // the mwajiri overview to decide between "end contract", "leave a review" and
 // "reviewed"
 const listReviewedMjakaziIds = async (

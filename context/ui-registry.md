@@ -427,6 +427,19 @@ codebase.
   auto-slugified from name; success fires a `notifySuccess` toast
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
+### `EoiPolicyForm`
+
+- **Location**: `src/components/dashboard/admin/settings/eoi-policy-form.tsx`
+- **Purpose**: Edits the expression-of-interest policy (batch min/max, response threshold,
+  interest expiry, re-send cooldown) in one save via `updateEoiPolicyAction`
+- **Props**: `{ initialPolicy: EoiPolicy }`
+- **Visual pattern**: shadcn `Card`; five number `Input`s in a `sm:grid-cols-2` grid, each
+  with a `Label` and a muted `text-xs` helper line; values held as strings (number inputs
+  fight leading zeros); validated together (whole numbers, min ≤ max, threshold 1–100);
+  inline `text-destructive` error (success fires a `notifySuccess` toast); disabled when
+  unchanged
+- **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
+
 ### `ModerationTable`
 
 - **Location**: `src/components/dashboard/moderation/moderation-table.tsx`
@@ -647,15 +660,18 @@ codebase.
 ### `BrowseContactCard`
 
 - **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
-- **Purpose**: The contact area on a mwajiri browse detail, three states — live contact
-  (already unlocked), an "Unlock contact details" reveal button (active subscriber), or a
-  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores
-  the returned phone/email locally, and fires `contact_unlocked`.
-- **Props**: `{ mjakaziId: string; isActive: boolean; contact: Contact | null }`
+- **Purpose**: The contact area on a mwajiri browse detail. The contact is present only
+  once a mjakazi has accepted an expression of interest; otherwise the card shows masked
+  rows plus one control whose state is the profile's interest status — "Send interest"
+  (single-profile batch), "Interest sent" while pending, a "Subscribe to send interest"
+  link when the subscription is inactive, or the gate / cooldown reason. Fires
+  `interest_sent` (`count`) and refreshes on send.
+- **Props**:
+  `{ mjakaziId: string; contact: Contact | null; interest: ProfileInterestStatus }`
 - **Visual pattern**: shadcn `Card`; a live `ContactRow` (border, `Phone`/`Mail` icon,
   value or "Not provided") or a `MaskedRow` (`Lock` icon + `••••••••` placeholder) —
-  placeholders only, never real values; `Button` reveal (active) or accent
-  `buttonVariants` link to `/dashboard/mwajiri/subscription`; errors in
+  placeholders only, never real values; accent `buttonVariants` link for the subscribe
+  path; a muted `text-xs` note that granted details survive subscription expiry; errors in
   `text-destructive text-xs`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `contactSlot`)
@@ -679,11 +695,12 @@ codebase.
 ### `SaveToggle`
 
 - **Location**: `src/components/dashboard/mwajiri/browse/save-toggle.tsx`
-- **Purpose**: The save/unsave control on a mwajiri browse detail — calls
-  `toggleSaveAction`, fires `profile_saved` (`saved`), then refreshes
+- **Purpose**: The shortlist toggle on a mwajiri browse detail — calls `toggleSaveAction`,
+  fires `profile_saved` (`saved`), then refreshes
 - **Props**: `{ mjakaziId: string; initiallySaved: boolean }`
-- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved);
-  `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
+- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved); labels
+  `Shortlist` / `Shortlisted`; `variant="default"` when saved, `variant="outline"`
+  otherwise; disabled while busy
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `headerAction`)
 
@@ -691,16 +708,18 @@ codebase.
 
 - **Location**: `src/components/dashboard/mwajiri/saved/eoi-send.tsx`
 - **Purpose**: The batch expression-of-interest send control on the saved page — a mwajiri
-  selects 3–5 of their saved wajakazi and sends each an interest as one batch (gated on an
-  active subscription)
+  selects between the configured minimum and maximum of their saved wajakazi and sends
+  each an interest as one batch. Sending is gated on the `eoiPolicy` bounds, an active
+  subscription and the open-pool gate, all resolved server-side into `canSend`.
 - **Props**:
-  `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
+  `{ profiles: { id; displayName; location | null }[]; minBatch: number; maxBatch: number; canSend: boolean; blockCode: ProfileInterestStatus["blockCode"]; blockReason: string | null }`
 - **Visual pattern**: shadcn `Card` with a `Send` icon in `text-accent`; bordered checkbox
   rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
-  muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
-  disabled `Button` until 3–5 selected; accent `buttonVariants` "Subscribe to send
-  interest" link when not active; fires `interest_sent` (`count`) and a `notifySuccess`
-  toast, then `router.refresh()`
+  muted location); "N selected — select at least minBatch" counter in
+  `text-muted-foreground`; disabled `Button` until the selected count is within
+  minBatch–maxBatch; accent `buttonVariants` "Subscribe to send interest" link when the
+  block is the subscription, otherwise the gate/cooldown reason in muted text; fires
+  `interest_sent` (`count`) and a `notifySuccess` toast, then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`
 
 ### `EoiInbox`

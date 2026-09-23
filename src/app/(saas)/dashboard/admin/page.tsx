@@ -19,8 +19,6 @@ import { getRevenueSnapshot, getVerificationThroughput } from "@/services/admin.
 export const metadata: Metadata = { title: "Overview" };
 
 const QUICK_ACTIONS = [
-	{ href: "/dashboard/staff/verifications", label: "Review verifications" },
-	{ href: "/dashboard/staff/reviews", label: "Moderate reviews" },
 	{ href: "/dashboard/moderation", label: "Moderate accounts" },
 	{ href: "/dashboard/admin/staff", label: "Manage staff" },
 	{ href: "/dashboard/admin/settings", label: "Platform settings" },

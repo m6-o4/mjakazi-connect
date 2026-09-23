@@ -325,6 +325,7 @@ const deliverConciergeShortlist = async (
 					data: {
 						mwajiri: mwajiriId,
 						mjakazi: item.candidateId,
+						source: "concierge",
 						tierAtUnlock: "Concierge Shortlist",
 						unlockedAt: deliveredAt,
 						subscription: subscriptionId,

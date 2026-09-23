@@ -90,7 +90,7 @@ const toProfileData = (input: ProfileFormValues) => ({
 });
 
 // resolves the caller's own profile, respecting access control. only a mjakazi
-// has a wajakazi profile to resolve
+// has a mjakazi profile to resolve
 const getOwnProfile = async (
 	payload: Payload,
 	user: User,

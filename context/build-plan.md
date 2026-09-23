@@ -385,12 +385,18 @@ number.**
 **Built 2026-09-07.** `contact-unlocks` is sealed (`mwajiri → users`,
 `mjakazi → wajakazi-profiles`, `tierAtUnlock`, `unlockedAt`,
 `subscription → subscriptions`, no `payment`; compound unique on (mwajiri, mjakazi)).
-`services/contact.service.ts` (`hasUnlock`, `getContact`, `revealContact`) is the only
-reader of phone/email and is the named fourth `overrideAccess` exemption in invariant #15.
-The reveal is a Server Action (`revealContactAction` in `src/app/actions/contact.ts`) — a
-deviation from the literal `api/actions/contact/reveal` route name. `revealContact`
-re-checks `DIRECTORY_VISIBLE`; `getContact` does not (unlocks permanent). Manually
-verified end to end.
+
+**Superseded 2026-09-23.** The subscription-gated direct reveal is retired: an active
+subscription buys the right to send interest, not the contact. A grant is now created by
+an accepted expression of interest (see 8.1) and carries `source` + `sourceEoi`; a
+concierge-delivered shortlist grants with `source: "concierge"`. `revealContact`,
+`revealContactAction` and `app/actions/contact.ts` were deleted. Grants remain permanent
+across subscription expiry. `services/contact.service.ts` (`hasUnlock`, `getContact`,
+`revealContact`) is the only reader of phone/email and is the named fourth
+`overrideAccess` exemption in invariant #15. The reveal is a Server Action
+(`revealContactAction` in `src/app/actions/contact.ts`) — a deviation from the literal
+`api/actions/contact/reveal` route name. `revealContact` re-checks `DIRECTORY_VISIBLE`;
+`getContact` does not (unlocks permanent). Manually verified end to end.
 
 ---
 
@@ -426,6 +432,19 @@ context (the job runs in the background queue), which had been surfacing as a sp
 Mwajiri, `/dashboard/mjakazi/opportunities` to accept or reject, emails both ways. **Done
 when**: a batch outside 3–5 is refused and both parties are notified. **Verify**: send a
 batch of four. Accept one, reject one. Check both inboxes.
+
+**Changed 2026-09-23.** The batch is now 1–5, and every limit is policy-driven from the
+`eoiPolicy` group on `platform-settings` (batch min/max, response threshold, expiry,
+re-send cooldown) rather than constants. A new batch is refused until more than the
+threshold of the open pool has resolved; a rejected or expired pair is inside a cooldown;
+and a recipient holding an open interest, a grant or a live hire is refused. Acceptance
+creates the contact grant (see 6.4) and is permanent; expiry counts as resolved so a batch
+cannot stall a mwajiri past the window.
+
+**Validated live 2026-09-23.** Michael ran the interest-gated flow end to end on the
+Essentials and Standard plans: browse → send interest → mjakazi accepts → contact visible.
+The open-pool gate, the re-send cooldown and the admin-editable policy all held. Concierge
+still grants contacts directly (deferred rework) and is not covered by this pass.
 
 ### 8.2 — Availability and hire confirmation
 

@@ -93,7 +93,7 @@ const MwajiriDashboardPage = async () => {
 						</CardTitle>
 						<CardDescription>
 							{availableCount}{" "}
-							{availableCount === 1 ? "verified wajakazi is" : "verified wajakazi are"}{" "}
+							{availableCount === 1 ? "verified mjakazi is" : "verified wajakazi are"}{" "}
 							available now.
 						</CardDescription>
 					</CardHeader>
@@ -129,8 +129,6 @@ const MwajiriDashboardPage = async () => {
 				</Card>
 			</div>
 
-			<HireConfirmCard candidates={hireCandidates} hires={hiresWithReview} />
-
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
@@ -145,7 +143,7 @@ const MwajiriDashboardPage = async () => {
 					{sentEois.length === 0 ? (
 						<p className="text-muted-foreground text-sm">
 							You have not sent any interest yet. Save wajakazi, then send a batch from
-							your saved list.
+							your shortlist.
 						</p>
 					) : (
 						<ul className="divide-border divide-y">
@@ -155,21 +153,33 @@ const MwajiriDashboardPage = async () => {
 									className="flex items-center justify-between gap-3 py-2.5"
 								>
 									<span className="text-sm font-medium">{eoi.mjakaziName}</span>
-									{eoi.state === "accepted" ? (
-										<Badge>Accepted</Badge>
-									) : eoi.state === "rejected" ? (
-										<Badge variant="secondary">Declined</Badge>
-									) : eoi.state === "expired" ? (
-										<Badge variant="outline">Expired</Badge>
-									) : (
-										<Badge variant="outline">Pending</Badge>
-									)}
+									<span className="flex items-center gap-2">
+										{eoi.state === "accepted" ? (
+											<Badge>Accepted</Badge>
+										) : eoi.state === "rejected" ? (
+											<Badge variant="secondary">Declined</Badge>
+										) : eoi.state === "expired" ? (
+											<Badge variant="outline">Expired</Badge>
+										) : (
+											<Badge variant="outline">Pending</Badge>
+										)}
+										{eoi.state === "accepted" && eoi.mjakaziSlug ? (
+											<Link
+												href={`/dashboard/mwajiri/browse/${eoi.mjakaziSlug}`}
+												className={buttonVariants({ variant: "outline", size: "sm" })}
+											>
+												View profile
+											</Link>
+										) : null}
+									</span>
 								</li>
 							))}
 						</ul>
 					)}
 				</CardContent>
 			</Card>
+
+			<HireConfirmCard candidates={hireCandidates} hires={hiresWithReview} />
 		</div>
 	);
 };

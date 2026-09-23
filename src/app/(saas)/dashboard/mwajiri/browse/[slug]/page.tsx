@@ -14,9 +14,12 @@ import { DirectoryProfileViewTracker } from "@/components/web/directory/director
 import config from "@/payload-config";
 import { getContact, type Contact } from "@/services/contact.service";
 import { getDirectoryProfile } from "@/services/directory.service";
+import {
+	getProfileInterestStatus,
+	type ProfileInterestStatus,
+} from "@/services/eoi.service";
 import { getReviewFormState, type ReviewFormState } from "@/services/review.service";
 import { isSaved } from "@/services/saved.service";
-import { getOwnSubscription } from "@/services/subscription.service";
 
 type Args = {
 	params: Promise<{ slug: string }>;
@@ -37,7 +40,7 @@ const generateMetadata = async ({ params }: Args): Promise<Metadata> => {
 	return {
 		title: `${profile.displayName ?? "Wajakazi"} | Mjakazi Connect`,
 		description:
-			"A document-verified wajakazi on Mjakazi Connect. Contact details unlock with an active subscription.",
+			"A document-verified wajakazi on Mjakazi Connect. Contact details are shared once they accept your expression of interest.",
 	};
 };
 
@@ -49,26 +52,26 @@ const Page = async ({ params }: Args) => {
 	if (!profile) notFound();
 
 	// the browse detail reads through the same guarded path as the public detail —
-	// no contact fields are ever selected. an already-unlocked profile returns its
-	// contact via contact.service (the only reader), otherwise the card renders
-	// placeholders and the affordance below knows only the subscription state
-	let isActive = false;
+	// no contact fields are ever selected. a granted pair returns its contact via
+	// contact.service (the only reader); otherwise the card renders placeholders and
+	// an interest control driven by the pair's expression-of-interest status
 	let saved = false;
 	let isUnlocked = false;
 	let contact: Contact | null = null;
+	let interest: ProfileInterestStatus | null = null;
 	let reviewState: ReviewFormState | null = null;
 	if (user) {
 		const payload = await getPayload({ config });
-		const [subscription, wasSaved, unlockedContact, formState] = await Promise.all([
-			getOwnSubscription(payload, user),
+		const [wasSaved, grantedContact, interestStatus, formState] = await Promise.all([
 			isSaved(payload, user, profile.id),
 			getContact(payload, user, profile.id),
+			getProfileInterestStatus(payload, user, profile.id),
 			getReviewFormState(payload, user, profile.id),
 		]);
-		isActive = subscription?.subscriptionState === "active";
 		saved = wasSaved;
-		isUnlocked = unlockedContact !== null;
-		contact = unlockedContact;
+		isUnlocked = grantedContact !== null;
+		contact = grantedContact;
+		interest = interestStatus;
 		reviewState = formState;
 	}
 
@@ -82,8 +85,15 @@ const Page = async ({ params }: Args) => {
 				contactSlot={
 					<BrowseContactCard
 						mjakaziId={profile.id}
-						isActive={isActive}
 						contact={contact}
+						interest={
+							interest ?? {
+								state: "none",
+								canSend: false,
+								blockReason: "Sign in to express interest.",
+								blockCode: null,
+							}
+						}
 					/>
 				}
 			/>

@@ -36,13 +36,21 @@ const loadUserName = async (payload: Payload, userId: string): Promise<string | 
 	}
 };
 
-// resolves the display name + location for a set of wajakazi profile ids. an
-// explicit select — no contact or identity fields are ever read here
+// resolves the display name, location and slug for a set of wajakazi profile
+// ids. an explicit select — no contact or identity fields are ever read here
 const loadProfileDisplay = async (
 	payload: Payload,
 	ids: string[],
-): Promise<Map<string, { displayName: string | null; location: string | null }>> => {
-	const map = new Map<string, { displayName: string | null; location: string | null }>();
+): Promise<
+	Map<
+		string,
+		{ displayName: string | null; location: string | null; slug: string | null }
+	>
+> => {
+	const map = new Map<
+		string,
+		{ displayName: string | null; location: string | null; slug: string | null }
+	>();
 	if (ids.length === 0) return map;
 
 	const result = await payload.find({
@@ -50,7 +58,7 @@ const loadProfileDisplay = async (
 		where: { id: { in: ids } },
 		limit: ids.length,
 		depth: 0,
-		select: { displayName: true, location: true },
+		select: { displayName: true, location: true, slug: true },
 		overrideAccess: true,
 	});
 
@@ -58,6 +66,7 @@ const loadProfileDisplay = async (
 		map.set(String(profile.id), {
 			displayName: profile.displayName ?? null,
 			location: profile.location ?? null,
+			slug: profile.slug ?? null,
 		});
 	}
 

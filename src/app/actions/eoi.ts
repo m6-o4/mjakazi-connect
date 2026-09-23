@@ -10,8 +10,10 @@ import { respondToEoi, sendEoiBatch } from "@/services/eoi.service";
 
 type ActionResult = { success: boolean; error?: string; code?: string };
 
+// shape check only — the batch bounds come from the policy in platform-settings
+// and are enforced in the service, which is the single source of truth
 const sendEoiBatchSchema = z.object({
-	mjakaziIds: z.array(z.string().min(1)).min(3).max(5),
+	mjakaziIds: z.array(z.string().min(1)).min(1),
 });
 
 const respondToEoiSchema = z.object({
@@ -19,14 +21,14 @@ const respondToEoiSchema = z.object({
 	response: z.enum(["accepted", "rejected"]),
 });
 
-// sends a batch of 3–5 expressions of interest. the profile ids are the only
-// client input; identity, the active-subscription check and the directory-
-// visibility check all happen server-side in the service
+// sends a batch of expressions of interest. the profile ids are the only client
+// input; identity, the batch bounds, the active-subscription check, the gate, the
+// cooldown and the directory-visibility check all happen server-side in the service
 const sendEoiBatchAction = async (input: unknown): Promise<ActionResult> => {
 	try {
 		const parsed = sendEoiBatchSchema.safeParse(input);
 		if (!parsed.success) {
-			return { success: false, error: "Select between 3 and 5 wajakazi." };
+			return { success: false, error: "Select at least one mjakazi." };
 		}
 
 		const user = await getCurrentUser();
@@ -41,6 +43,7 @@ const sendEoiBatchAction = async (input: unknown): Promise<ActionResult> => {
 		}
 
 		revalidatePath("/dashboard/mwajiri/saved");
+		revalidatePath("/dashboard/mwajiri/browse");
 		revalidatePath("/dashboard/mwajiri");
 
 		return { success: true };

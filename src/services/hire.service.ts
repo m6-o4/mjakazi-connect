@@ -17,10 +17,7 @@ import {
 import { loadUserEmail } from "@/lib/user-email";
 import type { Hire, User } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
-import {
-	getOwnSubscription,
-	getSubscriptionByUser,
-} from "@/services/subscription.service";
+import { getSubscriptionByUser } from "@/services/subscription.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -337,7 +334,7 @@ const confirmHireCore = async (
 		actorRole === "mwajiri"
 			? actorName
 			: ((await loadUserName(payload, mwajiriId)) ?? "the employer");
-	const mjakaziName = profile.displayName ?? "the wajakazi";
+	const mjakaziName = profile.displayName ?? "the mjakazi";
 
 	const existing = await findHire(payload, mwajiriId, mjakaziId);
 
@@ -496,7 +493,7 @@ const reverseHireRecord = async (
 	const profile = await loadProfile(payload, mjakaziId);
 	const mjakaziOwnerId = profile ? toId(profile.user) : null;
 	const counterpartUserId = actor?.role === "mwajiri" ? mjakaziOwnerId : mwajiriId;
-	const actorName = actor ? userLabel(actor) : "the wajakazi";
+	const actorName = actor ? userLabel(actor) : "the mjakazi";
 
 	try {
 		const result = await payload.update({
@@ -788,10 +785,11 @@ const listHires = async (
 	return [];
 };
 
-// mwajiri side — marks a hire with a wajakazi, or agrees to one the wajakazi
-// already confirmed. gated on an active subscription and a prior relationship
-// (accepted interest or unlocked contact) with the wajakazi. `sourceEoiId` is
-// the accepted interest that led here, when there was one
+// mwajiri side — marks a hire with a mjakazi, or agrees to one the mjakazi
+// already confirmed. gated on a prior relationship (a contact grant from an
+// accepted interest, or an unlocked contact) with the mjakazi — an active
+// subscription is not required, because a grant outlives the subscription.
+// `sourceEoiId` is the accepted interest that led here, when there was one
 const confirmHire = async (
 	payload: Payload,
 	actor: User,
@@ -800,16 +798,8 @@ const confirmHire = async (
 ): Promise<Result<Hire>> => {
 	if (actor.role !== "mwajiri") return fail("Forbidden", "forbidden");
 
-	const subscription = await getOwnSubscription(payload, actor);
-	if (!subscription || subscription.subscriptionState !== "active") {
-		return fail(
-			"An active subscription is required to confirm a hire.",
-			"subscription_required",
-		);
-	}
-
 	if (!(await isHireCandidateForMwajiri(payload, actor.id, mjakaziId))) {
-		return fail("This wajakazi is not in your hire list.", "not_found");
+		return fail("This mjakazi is not in your hire list.", "not_found");
 	}
 
 	return confirmHireCore(payload, actor, actor.id, mjakaziId, sourceEoiId ?? null);

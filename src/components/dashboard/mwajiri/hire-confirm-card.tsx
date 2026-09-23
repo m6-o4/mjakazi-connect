@@ -41,8 +41,8 @@ type HireConfirmCardProps = {
 
 // the mwajiri hire-confirmation card. candidates (accepted interests + unlocked
 // wajakazi) can be marked as hired; active hires show their agreement state and
-// can be agreed to or reversed. the hire is recorded against the active
-// subscription and flips the wajakazi to hired immediately.
+// can be agreed to or reversed. the hire is recorded against the mwajiri's latest
+// subscription when there is one, and flips the wajakazi to hired immediately.
 const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 	const router = useRouter();
 	const [busy, setBusy] = useState<string | null>(null);
@@ -104,7 +104,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 		}
 	};
 
-	// ends a completed contract, then opens the review form for that wajakazi in
+	// ends a completed contract, then opens the review form for that mjakazi in
 	// place so the mwajiri can leave a review of the finished engagement
 	const endContract = async (hire: HireItem) => {
 		setBusy(`end-${hire.id}`);
@@ -134,7 +134,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 					Confirm a hire
 				</CardTitle>
 				<CardDescription>
-					Record when a wajakazi you have been in contact with is hired.
+					Record when a mjakazi you have been in contact with is hired.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-5">

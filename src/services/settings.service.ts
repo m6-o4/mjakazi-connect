@@ -19,6 +19,46 @@ type TierInput = {
 	isConcierge: boolean;
 };
 
+// the normalized eoi policy the rest of the app reads. every value is required
+// because getEoiPolicy fills unset fields from the defaults below — the raw
+// global type is entirely optional fields
+type EoiPolicy = {
+	minBatch: number;
+	maxBatch: number;
+	responseThresholdPercent: number;
+	expiryDays: number;
+	resendCooldownDays: number;
+};
+
+type RawEoiPolicy = NonNullable<PlatformSetting["eoiPolicy"]>;
+
+// the fallbacks used when the global, the group, or an individual field is unset.
+// they mirror the schema defaults, so behaviour is identical whether or not an
+// admin has ever opened the settings form
+const DEFAULT_EOI_POLICY: EoiPolicy = {
+	minBatch: 1,
+	maxBatch: 5,
+	responseThresholdPercent: 50,
+	expiryDays: 7,
+	resendCooldownDays: 14,
+};
+
+// reads one policy number, falling back to its default when the stored value is
+// missing, non-integer or out of range. the fallback is deliberate: a single bad
+// field must not poison the whole policy
+const policyNumber = (
+	value: unknown,
+	fallback: number,
+	min: number,
+	max?: number,
+): number => {
+	if (typeof value !== "number" || !Number.isInteger(value) || value < min) {
+		return fallback;
+	}
+	if (typeof max === "number" && value > max) return fallback;
+	return value;
+};
+
 const fail = (error: string, code?: string): Result<never> => ({
 	success: false,
 	error,
@@ -141,11 +181,95 @@ const getTierById = async (
 	return tiers.find((tier) => tier.tierId === tierId) ?? null;
 };
 
+// reads the expression-of-interest policy from platform-settings, filling any
+// unset or malformed field with its default so callers always get a usable,
+// internally consistent policy. a stored minBatch above maxBatch is discarded in
+// favour of the defaults rather than trusted
+const getEoiPolicy = async (payload: Payload): Promise<EoiPolicy> => {
+	let raw: RawEoiPolicy | undefined;
+	try {
+		const settings = await payload.findGlobal({ slug: "platform-settings" });
+		raw = settings.eoiPolicy ?? undefined;
+	} catch (error) {
+		console.error("[services/settings] getEoiPolicy failed:", error);
+		return DEFAULT_EOI_POLICY;
+	}
+
+	const policy: EoiPolicy = {
+		minBatch: policyNumber(raw?.minBatch, DEFAULT_EOI_POLICY.minBatch, 1),
+		maxBatch: policyNumber(raw?.maxBatch, DEFAULT_EOI_POLICY.maxBatch, 1),
+		responseThresholdPercent: policyNumber(
+			raw?.responseThresholdPercent,
+			DEFAULT_EOI_POLICY.responseThresholdPercent,
+			1,
+			100,
+		),
+		expiryDays: policyNumber(raw?.expiryDays, DEFAULT_EOI_POLICY.expiryDays, 1),
+		resendCooldownDays: policyNumber(
+			raw?.resendCooldownDays,
+			DEFAULT_EOI_POLICY.resendCooldownDays,
+			0,
+		),
+	};
+
+	if (policy.minBatch > policy.maxBatch) {
+		console.warn(
+			"[services/settings] eoi policy minBatch exceeds maxBatch; using defaults",
+		);
+		return DEFAULT_EOI_POLICY;
+	}
+
+	return policy;
+};
+
+// admin-only write of the whole policy. validated here so a malformed value can
+// never reach the global; minBatch > maxBatch is refused rather than stored
+const updateEoiPolicy = async (
+	payload: Payload,
+	actor: User,
+	policy: EoiPolicy,
+): Promise<Result> => {
+	if (actor.role !== "admin") return fail("Forbidden.", "forbidden");
+
+	const isWhole = (value: number, min: number, max?: number): boolean =>
+		Number.isInteger(value) && value >= min && (max === undefined || value <= max);
+
+	if (!isWhole(policy.minBatch, 1) || !isWhole(policy.maxBatch, 1)) {
+		return fail("Batch sizes must be whole numbers, at least 1.", "invalid_batch");
+	}
+	if (policy.minBatch > policy.maxBatch) {
+		return fail("The minimum batch cannot be larger than the maximum.", "invalid_batch");
+	}
+	if (!isWhole(policy.responseThresholdPercent, 1, 100)) {
+		return fail("The response threshold must be between 1 and 100.", "invalid_threshold");
+	}
+	if (!isWhole(policy.expiryDays, 1)) {
+		return fail("The interest expiry must be at least 1 day.", "invalid_expiry");
+	}
+	if (!isWhole(policy.resendCooldownDays, 0)) {
+		return fail("The re-send cooldown must be 0 days or more.", "invalid_cooldown");
+	}
+
+	try {
+		await payload.updateGlobal({
+			slug: "platform-settings",
+			data: { eoiPolicy: policy },
+			overrideAccess: true,
+		});
+		return { success: true, data: undefined };
+	} catch (error) {
+		console.error("[services/settings] updateEoiPolicy failed:", error);
+		return fail("Could not save the interest policy.");
+	}
+};
+
 export {
+	getEoiPolicy,
 	getSubscriptionTiers,
 	getTierById,
 	getVerificationFee,
+	updateEoiPolicy,
 	updateSubscriptionTiers,
 	updateVerificationFee,
 };
-export type { SubscriptionTier };
+export type { EoiPolicy, SubscriptionTier };

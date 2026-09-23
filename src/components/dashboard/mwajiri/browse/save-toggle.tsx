@@ -13,9 +13,9 @@ type SaveToggleProps = {
 	initiallySaved: boolean;
 };
 
-// the save / unsave control on a browse detail. calls the server action, updates
-// the local state, fires `profile_saved`, then refreshes so the server-rendered
-// saved list stays in sync
+// the shortlist toggle on a browse detail. calls the server action, updates the
+// local state, fires `profile_saved`, then refreshes so the server-rendered
+// shortlist stays in sync
 const SaveToggle = ({ mjakaziId, initiallySaved }: SaveToggleProps) => {
 	const router = useRouter();
 	const [saved, setSaved] = useState(initiallySaved);
@@ -46,7 +46,7 @@ const SaveToggle = ({ mjakaziId, initiallySaved }: SaveToggleProps) => {
 			className="gap-1.5"
 		>
 			<Bookmark className={`size-4 ${saved ? "fill-current" : ""}`} />
-			{saved ? "Saved" : "Save"}
+			{saved ? "Shortlisted" : "Shortlist"}
 		</Button>
 	);
 };

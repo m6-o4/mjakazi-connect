@@ -1,4 +1,4 @@
-// centralised option definitions for the wajakazi profile fields. used by both
+// centralised option definitions for the mjakazi profile fields. used by both
 // the payload schema and the frontend form, so the two can never drift.
 // to add an option: extend the relevant array and redeploy — the schema and the
 // form both read from here

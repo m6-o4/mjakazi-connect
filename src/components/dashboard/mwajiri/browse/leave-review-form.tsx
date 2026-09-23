@@ -88,7 +88,7 @@ const LeaveReviewForm = ({ mjakaziId }: LeaveReviewFormProps) => {
 					<Star className="text-accent size-5 shrink-0" />
 					Leave a review
 				</CardTitle>
-				<CardDescription>How was your experience with this wajakazi?</CardDescription>
+				<CardDescription>How was your experience with this mjakazi?</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				<div className="flex flex-col gap-2">

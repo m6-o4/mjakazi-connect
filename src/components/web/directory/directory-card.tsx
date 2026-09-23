@@ -12,7 +12,7 @@ type DirectoryCardProps = {
 	basePath?: string;
 };
 
-// a single wajakazi in the directory. links to the profile's own detail page and
+// a single mjakazi in the directory. links to the profile's own detail page and
 // deliberately renders no contact fields. `basePath` lets the authenticated
 // mwajiri browse reuse the card against its own route without touching the
 // public directory

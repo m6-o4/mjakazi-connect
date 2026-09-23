@@ -20,6 +20,82 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-23 — Interest gate validated live on the Essentials and Standard plans
+
+- **Outcome**: Michael tested the interest-gated flow end to end and confirmed it works on
+  the Essentials and Standard plans — a subscribed mwajiri browses, sends an expression of
+  interest, the mjakazi accepts, and the contact becomes visible to the mwajiri. The
+  open-pool gate, the re-send cooldown and the admin-editable `eoiPolicy` all behaved as
+  designed during the pass.
+- **Interface pass applied in the same round**: nav + page title "Saved" → "Shortlist",
+  the browse-detail toggle now "Shortlist" / "Shortlisted", the sent-interests card moved
+  above the hire-confirmation card on the mwajiri overview, accepted EOIs got a "View
+  profile" link, and the singular/plural sweep (one mjakazi, many wajakazi) plus
+  cooldown-length copy landed.
+- **State**: the whole interest-gate change set is still **uncommitted** and was last
+  built green (`pnpm build`, 50 routes) after the toggle rename. Concierge still delivers
+  contacts directly and is deferred for a later rework.
+
+### 2026-09-23 — Interest-flow interface pass: Shortlist, view-profile, plurals, cooldown copy
+
+- **Why**: after Michael's live test of the interest gate, five interface changes were
+  requested.
+- **Rename**: the mwajiri nav item and page title "Saved" → "Shortlist"
+  (`lib/dashboard-nav.ts`, `mwajiri/saved/page.tsx`), and the browse-detail toggle now
+  reads "Shortlist" / "Shortlisted" (`save-toggle.tsx`).
+- **Order**: the mwajiri overview now renders the sent-interests card before the
+  hire-confirmation card (`mwajiri/page.tsx`).
+- **View profile**: an accepted EOI in that card now carries a "View profile" link into
+  the browse detail, where the contact is visible. `listSentEois` and `loadProfileDisplay`
+  now return the profile `slug` to build the link.
+- **Pluralisation**: one mjakazi, many wajakazi. Fixed singular uses of "wajakazi" and
+  plural uses of "mjakazi" across UI copy, emails, service messages and comments —
+  including the `wajakazi-profiles` admin labels now reading "Wajakazi Profiles". Counts
+  that can be one ("Interest sent to 1 mjakazi") pluralise at the call site.
+- **Cooldown copy**: every cooldown message now states the window from the policy, e.g.
+  "You can send again after the 14-day cooldown." (`eoi.service.ts`).
+- **Verified**: `pnpm format`, `pnpm lint` (0 errors) and `pnpm build` (50 routes).
+
+### 2026-09-23 — Interest-gated contact reveal: a subscription no longer hands over contacts
+
+- **Why**: a subscription alone let a rogue mwajiri harvest mjakazi contact details.
+  Michael asked for hiring to run through an expression of interest: contact is shared
+  only after the mjakazi accepts, and the grant outlives the subscription.
+- **Built**:
+  - `platform-settings` gained an `eoiPolicy` group — `minBatch` (1), `maxBatch` (5),
+    `responseThresholdPercent` (50), `expiryDays` (7), `resendCooldownDays` (14) — read by
+    `getEoiPolicy` and edited from a new `EoiPolicyForm` on the admin settings page. No
+    EOI limit is hardcoded any more.
+  - `contact-unlocks` gained `source` (`eoi | concierge | subscription_reveal`) and
+    `sourceEoi`. An accepted interest now creates the grant, so contact persists past
+    expiry; the subscription-gated manual reveal was retired (`revealContact`,
+    `revealContactAction` and `app/actions/contact.ts` deleted) and the concierge
+    shortlist writes `source: "concierge"`.
+  - `eoi.service.ts`: `sendEoiBatch` now enforces the policy bounds, the open-pool gate
+    (resolved > threshold of every batch that still has an unanswered member), the re-send
+    cooldown, and blocks recipients who already have an open interest, a grant or a live
+    hire. `respondToEoi` pre-creates the grant and rolls it back if its compare-and-swap
+    loses. `getEoiSendEligibility` / `getProfileInterestStatus` /
+    `listUnavailableForInterest` expose the gate to the UI. `expireUnansweredEois` uses
+    the policy window.
+  - UI: `BrowseContactCard` is now an interest control (send / pending / subscribe / gate
+    reason); `EoiSend` takes policy bounds and a server-computed `canSend`; the saved page
+    filters out pairs that cannot receive another batch; copy on the public detail,
+    subscription card and acceptance email was rewritten.
+  - Audit: added `contact_granted` (plus its label map entry). Hire confirmation no longer
+    requires an active subscription (`hire.service.ts`), matching contact persistence.
+- **Decisions**: accepted EOI is the only path to contact; the gate pools all open
+  batches; rejection _or_ expiry starts a 14-day cooldown; acceptance is permanent;
+  existing subscription-era grants are grandfathered (dev mode — no migration shipped).
+- **Left open (needs Michael's ruling)**: the concierge shortlist still grants contacts
+  directly, bypassing the EOI gate — the option to keep a Concierge reveal was the one
+  declined in the blueprint, but the concierge product is a staff-delivered shortlist, so
+  this was left untouched rather than silently rebuilt. Also, `contact_unlocked` no longer
+  fires anywhere (the reveal that emitted it is gone) and was removed from the PostHog
+  table; the grant is observable through `interest_responded` (`response: accepted`).
+- **Verified**: `pnpm generate:types`, `pnpm lint` (0 errors) and `pnpm build` (50 routes)
+  all pass.
+
 ### 2026-09-23 — Mwajiri registration and subscription validated live across all three tiers
 
 - **Why**: Michael ran a live round of the mwajiri journey — register, then subscribe — to

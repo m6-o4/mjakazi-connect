@@ -40,7 +40,7 @@ const submitReviewAction = async (input: unknown): Promise<ActionResult> => {
 		if (!parsed.success) {
 			return {
 				success: false,
-				error: "Rate the wajakazi from 1 to 5 stars and write a short comment.",
+				error: "Rate the mjakazi from 1 to 5 stars and write a short comment.",
 			};
 		}
 

@@ -109,6 +109,100 @@ const PlatformSettings: GlobalConfig = {
 				},
 			],
 		},
+		{
+			// the expression-of-interest policy. admin-tunable so the anti-spam
+			// limits move without a deploy — eoi.service reads them at runtime and
+			// falls back to the defaults below when the global is unset.
+			name: "eoiPolicy",
+			type: "group",
+			label: "Expression of Interest Policy",
+			fields: [
+				{
+					name: "minBatch",
+					type: "number",
+					label: "Minimum Batch Size",
+					required: true,
+					min: 1,
+					defaultValue: 1,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The minimum batch must be a whole number, at least 1.",
+					admin: {
+						description:
+							"Fewest wajakazi a mwajiri may select in one expression-of-interest batch.",
+					},
+				},
+				{
+					name: "maxBatch",
+					type: "number",
+					label: "Maximum Batch Size",
+					required: true,
+					min: 1,
+					defaultValue: 5,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The maximum batch must be a whole number, at least 1.",
+					admin: {
+						description:
+							"Most wajakazi a mwajiri may select in one expression-of-interest batch.",
+					},
+				},
+				{
+					name: "responseThresholdPercent",
+					type: "number",
+					label: "Response Threshold (%)",
+					required: true,
+					min: 1,
+					max: 100,
+					defaultValue: 50,
+					validate: (value: unknown) =>
+						typeof value === "number" &&
+						Number.isInteger(value) &&
+						value >= 1 &&
+						value <= 100
+							? true
+							: "The threshold must be a whole percentage between 1 and 100.",
+					admin: {
+						description:
+							"A new batch is allowed only once more than this share of the open batches has been resolved (accepted, rejected or expired).",
+					},
+				},
+				{
+					name: "expiryDays",
+					type: "number",
+					label: "Interest Expiry (Days)",
+					required: true,
+					min: 1,
+					defaultValue: 7,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The expiry must be a whole number of days, at least 1.",
+					admin: {
+						description:
+							"An unanswered expression of interest expires after this many days and counts as resolved.",
+					},
+				},
+				{
+					name: "resendCooldownDays",
+					type: "number",
+					label: "Re-send Cooldown (Days)",
+					required: true,
+					min: 0,
+					defaultValue: 14,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 0
+							? true
+							: "The cooldown must be a whole number of days, 0 or more.",
+					admin: {
+						description:
+							"How long before a mwajiri may approach the same mjakazi again after a rejection or expiry.",
+					},
+				},
+			],
+		},
 	],
 };
 

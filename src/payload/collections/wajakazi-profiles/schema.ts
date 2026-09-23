@@ -29,7 +29,7 @@ import {
 // interest. created by identity.service.ts, never by the user directly.
 const WajakaziProfiles: CollectionConfig = {
 	slug: "wajakazi-profiles",
-	labels: { singular: "Mjakazi Profile", plural: "Mjakazi Profiles" },
+	labels: { singular: "Mjakazi Profile", plural: "Wajakazi Profiles" },
 	admin: {
 		useAsTitle: "displayName",
 		defaultColumns: ["user", "verificationState", "availabilityStatus", "updatedAt"],

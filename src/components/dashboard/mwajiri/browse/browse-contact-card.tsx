@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useState } from "react";
 
-import { revealContactAction } from "@/app/actions/contact";
+import { sendEoiBatchAction } from "@/app/actions/eoi";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { notifySuccess } from "@/lib/notify";
+import type { ProfileInterestStatus } from "@/services/eoi.service";
 
 type Contact = {
 	phone: string | null;
@@ -17,8 +19,8 @@ type Contact = {
 
 type BrowseContactCardProps = {
 	mjakaziId: string;
-	isActive: boolean;
 	contact: Contact | null;
+	interest: ProfileInterestStatus;
 };
 
 // a live contact row. `value` is null only for an unset phone — email is always
@@ -41,8 +43,8 @@ const ContactRow = ({
 	</div>
 );
 
-// a masked contact row — renders a placeholder, never a real value. shown before
-// the reveal, when the phone/email have not been selected on the page at all
+// a masked contact row — renders a placeholder, never a real value. shown until a
+// mjakazi accepts the mwajiri's interest
 const MaskedRow = ({ icon: Icon, label }: { icon: LucideIcon; label: string }) => (
 	<div className="border-border flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
 		<span className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -56,79 +58,92 @@ const MaskedRow = ({ icon: Icon, label }: { icon: LucideIcon; label: string }) =
 	</div>
 );
 
-// the contact area on a browse detail. three states: already unlocked (live
-// contact, passed from the server), active but not yet unlocked (reveal button),
-// or not active (subscribe CTA). the reveal stores the returned contact locally,
-// so no server re-render is needed to show it
-const BrowseContactCard = ({ mjakaziId, isActive, contact }: BrowseContactCardProps) => {
+// the contact area on a browse detail. the contact is only ever present once a
+// mjakazi has accepted an expression of interest, so the interplay is: live
+// contact if granted, otherwise a send-interest control whose state reflects an
+// open interest, a subscription wall, the batch gate or the re-send cooldown
+const BrowseContactCard = ({ mjakaziId, contact, interest }: BrowseContactCardProps) => {
 	const router = useRouter();
-	const [revealed, setRevealed] = useState<Contact | null>(contact);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const reveal = async () => {
+	const send = async () => {
 		setBusy(true);
 		setError(null);
 		try {
-			const result = await revealContactAction({ mjakaziId });
+			const result = await sendEoiBatchAction({ mjakaziIds: [mjakaziId] });
 			if (result.success) {
-				setRevealed({ phone: result.phone ?? null, email: result.email ?? "" });
-				posthog.capture("contact_unlocked", {
-					tierAtUnlock: result.tierAtUnlock ?? null,
+				posthog.capture("interest_sent", { count: 1 });
+				notifySuccess("Interest sent", {
+					id: "eoi-send",
+					description: "They can now accept or decline.",
 				});
 				router.refresh();
 			} else {
-				setError(result.error ?? "Could not unlock contact details.");
+				setError(result.error ?? "Could not send your interest.");
 			}
 		} finally {
 			setBusy(false);
 		}
 	};
 
+	const actionArea = contact ? (
+		<p className="text-muted-foreground text-xs">
+			These details stay available to you even after your subscription ends.
+		</p>
+	) : interest.state === "sent" ? (
+		<p className="text-muted-foreground text-xs">
+			Interest sent. You will be able to see the contact details once they accept.
+		</p>
+	) : interest.state === "accepted" ? (
+		<p className="text-muted-foreground text-xs">Your interest was accepted.</p>
+	) : interest.canSend ? (
+		<div className="flex flex-col gap-2">
+			<Button type="button" onClick={send} disabled={busy}>
+				{busy ? "Sending…" : "Send interest"}
+			</Button>
+			{error ? <p className="text-destructive text-xs">{error}</p> : null}
+		</div>
+	) : interest.blockCode === "subscription_required" ? (
+		<div className="flex flex-col gap-2">
+			<Link
+				href="/dashboard/mwajiri/subscription"
+				className={buttonVariants({
+					className: "bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
+				})}
+			>
+				Subscribe to send interest
+			</Link>
+			<p className="text-muted-foreground text-xs">
+				Contact details are shared only after a mjakazi accepts your interest.
+			</p>
+		</div>
+	) : (
+		<p className="text-muted-foreground text-xs">
+			{interest.blockReason ?? "You cannot send interest to this mjakazi right now."}
+		</p>
+	);
+
 	return (
 		<Card className="mt-2">
 			<CardContent className="flex flex-col gap-4 py-6">
 				<h2 className="text-heading text-lg font-semibold">Contact details</h2>
 
-				{revealed ? (
-					<div className="flex flex-col gap-2">
-						<ContactRow icon={Phone} label="Phone number" value={revealed.phone} />
-						<ContactRow icon={Mail} label="Email address" value={revealed.email} />
-					</div>
-				) : (
-					<div className="flex flex-col gap-2">
-						<MaskedRow icon={Phone} label="Phone number" />
-						<MaskedRow icon={Mail} label="Email address" />
-					</div>
-				)}
+				<div className="flex flex-col gap-2">
+					{contact ? (
+						<>
+							<ContactRow icon={Phone} label="Phone number" value={contact.phone} />
+							<ContactRow icon={Mail} label="Email address" value={contact.email} />
+						</>
+					) : (
+						<>
+							<MaskedRow icon={Phone} label="Phone number" />
+							<MaskedRow icon={Mail} label="Email address" />
+						</>
+					)}
+				</div>
 
-				{revealed ? (
-					<p className="text-muted-foreground text-xs">
-						Contact details are unlocked and remain available to you.
-					</p>
-				) : isActive ? (
-					<div className="flex flex-col gap-2">
-						<Button type="button" onClick={reveal} disabled={busy}>
-							{busy ? "Unlocking…" : "Unlock contact details"}
-						</Button>
-						{error ? <p className="text-destructive text-xs">{error}</p> : null}
-					</div>
-				) : (
-					<div className="flex flex-col gap-2">
-						<Link
-							href="/dashboard/mwajiri/subscription"
-							className={buttonVariants({
-								className:
-									"bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
-							})}
-						>
-							Subscribe to unlock
-						</Link>
-						<p className="text-muted-foreground text-xs">
-							Phone and email are shared with subscribed waajiri only.
-						</p>
-					</div>
-				)}
+				{actionArea}
 			</CardContent>
 		</Card>
 	);

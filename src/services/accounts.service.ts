@@ -60,7 +60,7 @@ const relationLastName = (rel: UserRelation): string =>
 const relationAccountState = (rel: UserRelation): string =>
 	rel && typeof rel === "object" ? rel.accountState : "active";
 
-// lists all mjakazi accounts (name + email + verification state). admin + staff
+// lists all wajakazi accounts (name + email + verification state). admin + staff
 const listWajakaziAccounts = async (
 	payload: Payload,
 	actor: User,

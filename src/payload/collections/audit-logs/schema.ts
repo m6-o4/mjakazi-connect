@@ -72,6 +72,7 @@ const AuditLogs: CollectionConfig = {
 				{ label: "Subscription Reinstated", value: "subscription_reinstated" },
 				// contact vault
 				{ label: "Contact Unlocked", value: "contact_unlocked" },
+				{ label: "Contact Granted", value: "contact_granted" },
 				// expression of interest lifecycle
 				{ label: "Expression of Interest Sent", value: "eoi_sent" },
 				{ label: "Expression of Interest Responded", value: "eoi_responded" },

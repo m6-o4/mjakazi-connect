@@ -40,7 +40,8 @@ const MwajiriSubscriptionPage = async () => {
 			<div>
 				<h1 className="text-heading text-2xl font-semibold">Subscription</h1>
 				<p className="text-muted-foreground mt-1 text-sm">
-					Choose a plan to unlock the contact details of verified wajakazi.
+					Choose a plan to browse verified wajakazi and send them an expression of
+					interest.
 				</p>
 			</div>
 

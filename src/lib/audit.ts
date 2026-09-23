@@ -34,6 +34,7 @@ type AuditAction =
 	| "subscription_blacklisted"
 	| "subscription_reinstated"
 	| "contact_unlocked"
+	| "contact_granted"
 	| "eoi_sent"
 	| "eoi_responded"
 	| "eoi_nudged"
