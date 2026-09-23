@@ -328,6 +328,12 @@ status polling, wiring `payment.confirmed` to activation. **Done when**: paying 
 access within seconds of the handset confirmation. **Verify**: buy Essentials in sandbox.
 Confirm state, tier and expiry.
 
+**Validated live 2026-09-23.** Three mwajiri accounts registered and subscribed end to
+end, one per tier (Essentials, Standard, Concierge); every purchase activated with the
+correct tier and expiry. The tiers were configured in `platform-settings` for the round,
+so the empty-config dead end was not hit. Expiry (`5.3`) and the `active → active`
+stack/renewal path remain unexercised — all three were first purchases.
+
 ### 5.3 — Subscription expiry task
 
 **Builds**: `jobs/subscription-expiry.ts`, hourly. **Done when**: an expired subscription

@@ -20,6 +20,26 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-23 — Mwajiri registration and subscription validated live across all three tiers
+
+- **Why**: Michael ran a live round of the mwajiri journey — register, then subscribe — to
+  find out what breaks before a wider test. Three mwajiri accounts were taken through it,
+  one per tier (Essentials, Standard, Concierge).
+- **Outcome**: all three registrations and all three subscriptions completed without a
+  fault. That exercises, end to end: sign-up with role intent → `/post-auth` promotion →
+  `ensureProfile` creating `waajiri-profiles` and the `none` subscription; the live tier
+  list read from `platform-settings`; **server-side** tier and price resolution (the
+  client sends only `tierId` + `phone`); STK push → callback → `subscription_activated`;
+  and the purchase card's success cue once the newest payment settles at `confirmed`.
+- **What this does not cover**: the tiers were configured in `platform-settings` for the
+  round, so the `getSubscriptionTiers → []` "No plans available" dead end was not hit, and
+  `5.3` expiry plus the `active → active` stack/renewal path remain unexercised (all three
+  were first purchases). The Concierge purchase's `createConciergeCaseOnPayment` side
+  effect was not separately confirmed.
+- **Still open, unrelated to the result**: `waajiri-profiles.location` is never written
+  anywhere in `src` and stays null on all three accounts (cosmetic, accounts/admin views
+  only).
+
 ### 2026-09-23 — Kenyan phone inputs prefill in the local form
 
 - **Why**: after a successful M-Pesa test round, Michael asked for a sweep of every phone
