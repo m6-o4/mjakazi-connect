@@ -5,6 +5,7 @@ import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { ProfileForm } from "@/components/dashboard/mjakazi/profile-form";
+import { formatKenyanPhone } from "@/lib/phone";
 import type { ProfileFormValues } from "@/lib/profile-schema";
 import config from "@/payload-config";
 import type { ProfilePhoto } from "@/payload-types";
@@ -45,7 +46,9 @@ const MjakaziProfilePage = async () => {
 		nationality: profile.nationality ?? "",
 		maritalStatus: profile.maritalStatus ?? "",
 		religion: profile.religion ?? "",
-		phone: profile.phone ?? "",
+		// stored canonically (254…); the form shows the local 0… form the user
+		// would actually type
+		phone: formatKenyanPhone(profile.phone ?? ""),
 		jobsSkills: profile.jobsSkills ?? [],
 		about: profile.about ?? "",
 		yearsExperience: profile.yearsExperience ?? undefined,

@@ -4,6 +4,10 @@
 
 const KENYAN_PHONE_PATTERN = /^254[17]\d{8}$/;
 
+// the same number as a kenyan writes it locally. storage is canonical
+// (254XXXXXXXXX); this is only ever for showing a number or seeding an input
+const LOCAL_KENYAN_PHONE_PATTERN = /^0[17]\d{8}$/;
+
 // normalizes common input shapes to the canonical 254XXXXXXXXX form, or returns
 // null when the input cannot be a valid kenyan mobile number
 const normalizeKenyanPhone = (input: string): string | null => {
@@ -27,4 +31,15 @@ const normalizeKenyanPhone = (input: string): string | null => {
 const isValidKenyanPhone = (input: string): boolean =>
 	normalizeKenyanPhone(input) !== null;
 
-export { isValidKenyanPhone, normalizeKenyanPhone };
+// renders a stored number the way it is written locally (0XXXXXXXXX) so a
+// prefilled input matches what the user would type. a value that is not a
+// recognisable kenyan number is returned untouched rather than reshaped into
+// something that only looks valid
+const formatKenyanPhone = (input: string): string => {
+	const digits = input.replace(/[\s()-]/g, "").replace(/^\+/, "");
+	if (KENYAN_PHONE_PATTERN.test(digits)) return `0${digits.slice(3)}`;
+	if (LOCAL_KENYAN_PHONE_PATTERN.test(digits)) return digits;
+	return input;
+};
+
+export { formatKenyanPhone, isValidKenyanPhone, normalizeKenyanPhone };

@@ -112,7 +112,11 @@ codebase.
   Fires `profile_completed` PostHog event on the first false→true completeness transition.
   The Professional card renders `EmploymentHistoryField` between the
   years-of-experience/education grid and the languages chips — employment history is
-  optional, so it carries no asterisk and does not appear in the completeness checklist
+  optional, so it carries no asterisk and does not appear in the completeness checklist.
+  The mobile phone `Input` (`type="tel"`, placeholder `0712 345 678`) is seeded by the
+  page through `formatKenyanPhone`, so a stored canonical number reads in the local `0…`
+  form the user actually types; the shared schema still accepts any form and normalises on
+  save
 - **Used in**: `(saas)/dashboard/mjakazi/profile/page.tsx`
 
 ### `FormSelect`
@@ -279,8 +283,9 @@ codebase.
 
 - **Location**: `src/components/dashboard/mjakazi/verification/pay-verification.tsx`
 - **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
-  the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
-  `router.refresh()` until the callback flips the profile into review
+  the profile, shown in the local `0…` form by the page via `formatKenyanPhone`) sends the
+  STK push via `initiateVerificationPaymentAction`, then polls `router.refresh()` until
+  the callback flips the profile into review
 - **Props**: `{ fee: number | null; phone: string; onPaymentInitiated?: () => void }`
 - **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
   `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
@@ -297,7 +302,8 @@ codebase.
 
 - **Location**: `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx`
 - **Purpose**: The mwajiri subscription purchase flow — live tier cards, M-Pesa phone
-  input, STK-push payment, and confirmation polling
+  input (prefilled from the profile in the local `0…` form by the page via
+  `formatKenyanPhone`), STK-push payment, and confirmation polling
 - **Props**:
   `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
   (`TierOption` = `{ tierId, name, price, durationDays, description, isConcierge }`)

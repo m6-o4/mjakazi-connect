@@ -5,6 +5,7 @@ import { getPayload } from "payload";
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { SubmitVerification } from "@/components/dashboard/mjakazi/verification/submit-verification";
 import { VerificationPaymentFlow } from "@/components/dashboard/mjakazi/verification/verification-payment-flow";
+import { formatKenyanPhone } from "@/lib/phone";
 import { getMissingDocumentSlots } from "@/lib/vault";
 import config from "@/payload-config";
 import { getOwnProfile } from "@/services/profile.service";
@@ -58,7 +59,7 @@ const MjakaziVerificationPage = async () => {
 				<VerificationPaymentFlow
 					state={profile.verificationState}
 					fee={verificationFee}
-					phone={profile.phone ?? ""}
+					phone={formatKenyanPhone(profile.phone ?? "")}
 					verificationExpiry={profile.verificationExpiry}
 					rejectionReason={profile.rejectionReason}
 					freeResubmissionsRemaining={getFreeResubmissionsRemaining(

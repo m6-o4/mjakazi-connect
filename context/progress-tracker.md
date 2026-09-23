@@ -20,6 +20,27 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-23 — Kenyan phone inputs prefill in the local form
+
+- **Why**: after a successful M-Pesa test round, Michael asked for a sweep of every phone
+  input so it defaults to the way a Kenyan writes the number — `0722123456`, not the
+  canonical `254722123456` that storage uses.
+- **Built**: `src/lib/phone.ts` gained `formatKenyanPhone`, the display-side twin of
+  `normalizeKenyanPhone`. It renders a canonical `254…` value as the local `0…` form,
+  passes a local value through, and returns anything unrecognised untouched rather than
+  reshaping it into something that only looks valid. `normalizeKenyanPhone` is unchanged
+  and still canonicalises on submit, so storage and the money path are unaffected.
+- **Files touched**: `src/lib/phone.ts`; the three server pages that seed a phone input —
+  `src/app/(saas)/dashboard/mjakazi/profile/page.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`. Formatting happens at the same
+  server presentation boundary that already converts ISO dates to date-input values.
+- **Notes**: only the three editable inputs changed. Phone numbers that are _displayed_
+  rather than entered (staff verification detail, the mwajiri contact reveal, the staff
+  stuck-payment list) still render the canonical form; a staff view may deliberately want
+  the international form to match M-Pesa records, so this is a separate decision.
+- **Verified**: `pnpm build` passes (50 routes); the changed files lint clean.
+
 ### 2026-09-21 — Payment recovery: hand reconciliation, M-Pesa status query, no blind expiry
 
 - **Why**: Michael asked why the pending items had not been built. Four were outstanding

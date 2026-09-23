@@ -4,6 +4,7 @@ import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import { PurchaseSubscription } from "@/components/dashboard/mwajiri/subscription/purchase-subscription";
+import { formatKenyanPhone } from "@/lib/phone";
 import config from "@/payload-config";
 import { getLatestPaymentForUser } from "@/services/payment.service";
 import { getOwnWaajiriProfile } from "@/services/profile.service";
@@ -47,7 +48,7 @@ const MwajiriSubscriptionPage = async () => {
 				tiers={tierOptions}
 				state={subscription?.subscriptionState ?? "none"}
 				expiry={subscription?.tierExpiry ?? null}
-				phone={profile?.phone ?? null}
+				phone={profile?.phone ? formatKenyanPhone(profile.phone) : null}
 				latestPaymentId={latestPayment?.id ?? null}
 				latestPaymentStatus={latestPayment?.status ?? null}
 			/>
