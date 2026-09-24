@@ -1,5 +1,6 @@
 import type { Payload } from "payload";
 
+import { MAX_SUBSCRIPTION_TIERS, MIN_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { PlatformSetting, User } from "@/payload-types";
 
 type Result<T = void> =
@@ -9,9 +10,18 @@ type Result<T = void> =
 // generated global type rather than redeclared
 type SubscriptionTier = NonNullable<PlatformSetting["subscriptionTiers"]>[number];
 
+// a stored tier whose rank is always a concrete number: a row saved before `rank`
+// existed falls back to its position in the stored array. every read goes through
+// withRanks, so classification and the pages cannot disagree on the ordering
+type RankedSubscriptionTier = Omit<SubscriptionTier, "rank"> & { rank: number };
+
+const withRanks = (tiers: SubscriptionTier[]): RankedSubscriptionTier[] =>
+	tiers.map((tier, index) => ({ ...tier, rank: tier.rank ?? index }));
+
 type TierInput = {
 	tierId: string;
 	name: string;
+	rank: number;
 	price: number;
 	durationDays: number;
 	description?: string | null;
@@ -116,8 +126,15 @@ const updateSubscriptionTiers = async (
 ): Promise<Result> => {
 	if (actor.role !== "admin") return fail("Forbidden.", "forbidden");
 
-	if (!Array.isArray(tiers) || tiers.length === 0) {
+	if (!Array.isArray(tiers) || tiers.length < MIN_SUBSCRIPTION_TIERS) {
 		return fail("Add at least one tier.", "no_tiers");
+	}
+
+	if (tiers.length > MAX_SUBSCRIPTION_TIERS) {
+		return fail(
+			`You can have between ${MIN_SUBSCRIPTION_TIERS} and ${MAX_SUBSCRIPTION_TIERS} plans.`,
+			"too_many_tiers",
+		);
 	}
 
 	const ids = tiers.map((tier) => tier.tierId?.trim() ?? "");
@@ -126,6 +143,17 @@ const updateSubscriptionTiers = async (
 	}
 	if (new Set(ids).size !== ids.length) {
 		return fail("Each tier must have a unique tier ID.", "duplicate_tier_id");
+	}
+
+	// rank is the ordering key upgrade detection reads, so it must be a whole
+	// number and unambiguous — two tiers sharing a rank would make a plan change
+	// between them classify as a renewal
+	const ranks = tiers.map((tier) => tier.rank);
+	if (ranks.some((rank) => !Number.isInteger(rank) || rank < 0)) {
+		return fail("Each tier needs a rank of 0 or higher.", "invalid_rank");
+	}
+	if (new Set(ranks).size !== ranks.length) {
+		return fail("Each tier must have a unique rank.", "duplicate_rank");
 	}
 
 	for (const tier of tiers) {
@@ -159,16 +187,29 @@ const updateSubscriptionTiers = async (
 	}
 };
 
-// reads the active subscription tiers from platform-settings. inactive tiers are
-// filtered out so a mwajiri never sees (or buys) a sunset tier
-const getSubscriptionTiers = async (payload: Payload): Promise<SubscriptionTier[]> => {
+// reads every subscription tier from platform-settings, rank-resolved. used by
+// the admin settings page, which must see inactive (sunset) tiers too, and by
+// getSubscriptionTiers below
+const getAllSubscriptionTiers = async (
+	payload: Payload,
+): Promise<RankedSubscriptionTier[]> => {
 	try {
 		const settings = await payload.findGlobal({ slug: "platform-settings" });
-		return (settings.subscriptionTiers ?? []).filter((tier) => tier.isActive !== false);
+		return withRanks(settings.subscriptionTiers ?? []);
 	} catch (error) {
-		console.error("[services/settings] getSubscriptionTiers failed:", error);
+		console.error("[services/settings] getAllSubscriptionTiers failed:", error);
 		return [];
 	}
+};
+
+// reads the active subscription tiers from platform-settings. inactive tiers are
+// filtered out so a mwajiri never sees (or buys) a sunset tier. ranks are resolved
+// over the full stored array first, so filtering does not renumber the remainder
+const getSubscriptionTiers = async (
+	payload: Payload,
+): Promise<RankedSubscriptionTier[]> => {
+	const tiers = await getAllSubscriptionTiers(payload);
+	return tiers.filter((tier) => tier.isActive !== false);
 };
 
 // resolves a single active tier by its stable id. returns null when the tier is
@@ -176,7 +217,7 @@ const getSubscriptionTiers = async (payload: Payload): Promise<SubscriptionTier[
 const getTierById = async (
 	payload: Payload,
 	tierId: string,
-): Promise<SubscriptionTier | null> => {
+): Promise<RankedSubscriptionTier | null> => {
 	const tiers = await getSubscriptionTiers(payload);
 	return tiers.find((tier) => tier.tierId === tierId) ?? null;
 };
@@ -264,6 +305,7 @@ const updateEoiPolicy = async (
 };
 
 export {
+	getAllSubscriptionTiers,
 	getEoiPolicy,
 	getSubscriptionTiers,
 	getTierById,
@@ -272,4 +314,4 @@ export {
 	updateSubscriptionTiers,
 	updateVerificationFee,
 };
-export type { EoiPolicy, SubscriptionTier };
+export type { EoiPolicy, RankedSubscriptionTier, SubscriptionTier };

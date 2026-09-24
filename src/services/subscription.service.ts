@@ -11,7 +11,11 @@ import { toId, userLabel } from "@/lib/payload-helpers";
 import { loadUserEmail } from "@/lib/user-email";
 import type { Payment, Subscription, User } from "@/payload-types";
 import { createConciergeCaseOnPayment } from "@/services/concierge.service";
-import { getTierById, type SubscriptionTier } from "@/services/settings.service";
+import {
+	getTierById,
+	type RankedSubscriptionTier,
+	type SubscriptionTier,
+} from "@/services/settings.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -312,6 +316,53 @@ const resolvePreviousCycleDays = async (
 	return prevTier && prevTier.durationDays > 0 ? prevTier.durationDays : null;
 };
 
+// how a purchase relates to the subscription's current tier. `switch` is the
+// fallback when the current tier can no longer be resolved from
+// platform-settings — the tierId alone then proves only that the plan changed,
+// not its direction, and the money path is unaffected either way
+type PlanChange = "upgrade" | "downgrade" | "renewal" | "switch";
+
+// classifies a purchase against the subscription's current tier using rank, the
+// admin-managed ordering key. this is a classification read, not money
+// arithmetic: nothing in the carry-over consults it, so reading live settings
+// here does not touch the terms snapshotted on the previous payment
+const classifyPlanChange = async (
+	payload: Payload,
+	subscription: Subscription,
+	tier: RankedSubscriptionTier,
+): Promise<PlanChange> => {
+	const currentTierId = subscription.tierId ?? null;
+	if (!currentTierId || currentTierId === tier.tierId) return "renewal";
+
+	const currentTier = await getTierById(payload, currentTierId);
+	if (!currentTier) return "switch";
+	if (tier.rank > currentTier.rank) return "upgrade";
+	if (tier.rank < currentTier.rank) return "downgrade";
+	return "renewal";
+};
+
+// a mwajiri on an active plan may only renew or upgrade; a downgrade is refused
+// before any stk push. returns a failure Result when blocked, null when allowed.
+// only the active branch is gated — an expired account has no live plan to
+// downgrade from, so any tier is allowed there
+const assertPlanChangeAllowed = async (
+	payload: Payload,
+	subscription: Subscription,
+	tier: RankedSubscriptionTier,
+): Promise<Result<never> | null> => {
+	if (subscription.subscriptionState !== "active") return null;
+
+	const change = await classifyPlanChange(payload, subscription, tier);
+	if (change === "downgrade") {
+		return fail(
+			"You can only renew your current plan or move to a higher one while your subscription is active.",
+			"downgrade_blocked",
+		);
+	}
+
+	return null;
+};
+
 // active → active (stacking/upgrade). the new window runs from now and carries
 // over what is left of the current one: the unexpired share of the previous
 // cycle is expressed in days at the new tier's rate, so a same-tier renewal
@@ -323,6 +374,7 @@ const stackSubscription = async (
 	subscription: Subscription,
 	tier: SubscriptionTier,
 	payment: Payment,
+	planChange: PlanChange,
 ): Promise<Result<Subscription>> => {
 	const previousState = subscription.subscriptionState;
 	const now = new Date();
@@ -420,6 +472,7 @@ const stackSubscription = async (
 				extraDaysFromProration,
 				totalNewDays,
 				stacked: true,
+				planChange,
 				paymentId: payment.id,
 			},
 		});
@@ -500,9 +553,15 @@ const activateSubscriptionOnPayment = async (
 	const now = new Date();
 
 	let result: Result<Subscription>;
+	// a payment that moves an active subscription onto a concierge tier starts a
+	// fresh concierge case even when an earlier one is still open; a same-tier
+	// concierge renewal keeps the existing case
+	let forceNewConciergeCase = false;
 
 	if (subscription.subscriptionState === "active") {
-		result = await stackSubscription(payload, subscription, tier, payment);
+		const planChange = await classifyPlanChange(payload, subscription, tier);
+		forceNewConciergeCase = tier.isConcierge === true && planChange !== "renewal";
+		result = await stackSubscription(payload, subscription, tier, payment, planChange);
 	} else if (
 		subscription.subscriptionState === "pending_payment" ||
 		subscription.subscriptionState === "none" ||
@@ -540,7 +599,9 @@ const activateSubscriptionOnPayment = async (
 	if (result.success) {
 		await notifySubscriptionPurchase(payload, result.data, payment, tier.name);
 		if (tier.isConcierge) {
-			await createConciergeCaseOnPayment(payload, userId, result.data.id);
+			await createConciergeCaseOnPayment(payload, userId, result.data.id, {
+				forceNew: forceNewConciergeCase,
+			});
 		}
 	}
 
@@ -705,6 +766,7 @@ const reinstateSubscription = async (
 
 export {
 	activateSubscriptionOnPayment,
+	assertPlanChangeAllowed,
 	beginPurchase,
 	blacklistSubscription,
 	ensureSubscription,

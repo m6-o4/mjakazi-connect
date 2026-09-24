@@ -470,6 +470,26 @@ purchase), `tierName` (text — snapshot), `tierStartedAt`, `tierExpiry`, `suspe
 
 Stores no amounts.
 
+**Tier rank is the ordering key; an upgrade is a rank increase.** Each
+`platform-settings.subscriptionTiers` entry carries a `rank`. A purchase whose rank is
+above the subscription's current tier is an upgrade, below a downgrade, equal a renewal
+(`subscription.service.classifyPlanChange`), and the classification is recorded in the
+`subscription_activated` audit metadata as `planChange`. Rank is not required on the
+stored row — a tier saved before the field existed has none — so `settings.service`
+resolves every read through `withRanks`, falling back to the tier's position in the stored
+array; reading over the full array before filtering inactive tiers keeps the ordering
+stable. Uniqueness is enforced by the array field's `validate`, the one write path both
+the settings form and the Payload admin panel share. The list is bounded to 1–4 entries
+(`MIN_SUBSCRIPTION_TIERS` / `MAX_SUBSCRIPTION_TIERS` in `lib/subscription-tiers.ts`): the
+array `minRows`/`maxRows` make the Payload admin panel refuse a fifth row,
+`updateSubscriptionTiers` refuses more than four (`too_many_tiers`), and the admin form
+disables "Add tier" at the cap. Rank never changes the carry-over arithmetic, which stays
+terms-based per invariant #11. While a subscription is `active`, a purchase may only renew
+or move up: a lower-ranked tier is refused server-side (`assertPlanChangeAllowed`, code
+`downgrade_blocked`) before any STK push, and the purchase UI disables those tiers. A
+subscription that is not active (`none`, `expired`, `pending_payment`, `suspended`,
+`blacklisted`) is not gated — there is no live plan to downgrade from.
+
 **`payments`** — immutable once confirmed.
 
 `user`, `paymentType` (`verification | subscription`), `status`
@@ -505,6 +525,11 @@ contact was shared; that notification is the compensating control, not an accept
 Delivery re-checks every candidate is verified, available and not suspended at the moment
 the grants are written, and rolls the grants back if the case write fails. This is
 recorded so a future reader does not mistake the missing consent step for a bug.
+
+An **upgrade onto a concierge tier creates a fresh case** even when a case is still open —
+each paid upgrade window carries its own replacement guarantee. A same-tier concierge
+renewal reuses the open case instead. `concierge-cases` carries no per-mwajiri unique
+index, so more than one open case per mwajiri is valid.
 
 ### Interactions
 

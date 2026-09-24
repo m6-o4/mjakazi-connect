@@ -194,32 +194,44 @@ const notifyShortlistedCandidates = async (
 	}
 };
 
-// created automatically when a concierge tier payment confirms
+// created automatically when a concierge tier payment confirms. a renewal reuses
+// the mwajiri's open case; an upgrade onto a concierge tier passes forceNew, so
+// each paid upgrade window gets its own case (and its own replacement guarantee)
+// rather than silently extending an older one. concierge-cases carries no
+// per-mwajiri unique index, so more than one open case is valid
 const createConciergeCaseOnPayment = async (
 	payload: Payload,
 	mwajiriId: string,
 	subscriptionId: string,
+	options: { forceNew?: boolean } = {},
 ): Promise<Result<ConciergeCase>> => {
 	try {
-		// check if an open (non-closed) concierge case already exists for this mwajiri
-		const existing = await payload.find({
-			collection: "concierge-cases",
-			where: {
-				and: [
-					{ mwajiri: { equals: mwajiriId } },
-					{
-						state: {
-							in: ["intake", "in_review", "shortlist_delivered", "replacement_requested"],
+		if (options.forceNew !== true) {
+			// check if an open (non-closed) concierge case already exists for this mwajiri
+			const existing = await payload.find({
+				collection: "concierge-cases",
+				where: {
+					and: [
+						{ mwajiri: { equals: mwajiriId } },
+						{
+							state: {
+								in: [
+									"intake",
+									"in_review",
+									"shortlist_delivered",
+									"replacement_requested",
+								],
+							},
 						},
-					},
-				],
-			},
-			limit: 1,
-			overrideAccess: true,
-		});
+					],
+				},
+				limit: 1,
+				overrideAccess: true,
+			});
 
-		if (existing.docs.length > 0) {
-			return { success: true, data: existing.docs[0] };
+			if (existing.docs.length > 0) {
+				return { success: true, data: existing.docs[0] };
+			}
 		}
 
 		const conciergeCase = await payload.create({

@@ -2453,6 +2453,10 @@ export interface PlatformSetting {
          */
         tierId: string;
         name: string;
+        /**
+         * Higher is more premium. A plan change to a higher rank is an upgrade, to a lower rank a downgrade.
+         */
+        rank?: number | null;
         price: number;
         durationDays: number;
         description?: string | null;
@@ -2646,6 +2650,7 @@ export interface PlatformSettingsSelect<T extends boolean = true> {
     | {
         tierId?: T;
         name?: T;
+        rank?: T;
         price?: T;
         durationDays?: T;
         description?: T;

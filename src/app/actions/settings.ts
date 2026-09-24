@@ -14,11 +14,13 @@ import {
 
 type ActionResult = { success: boolean; error?: string; code?: string };
 
-// shape check only — value validation (finite, >= 1, unique tierId) lives in the
-// service, which is the single source of truth for what a valid tier/fee is
+// shape check only — value validation (finite, >= 1, unique tierId and rank)
+// lives in the service, which is the single source of truth for what a valid
+// tier/fee is
 const tierSchema = z.object({
 	tierId: z.string(),
 	name: z.string(),
+	rank: z.number(),
 	price: z.number(),
 	durationDays: z.number(),
 	description: z.string().nullish(),

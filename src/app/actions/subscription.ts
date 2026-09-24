@@ -9,7 +9,7 @@ import config from "@/payload-config";
 import { initiatePayment } from "@/services/payment.service";
 import { updateWaajiriPhone } from "@/services/profile.service";
 import { getTierById } from "@/services/settings.service";
-import { beginPurchase } from "@/services/subscription.service";
+import { assertPlanChangeAllowed, beginPurchase } from "@/services/subscription.service";
 
 type ActionResult = { success: boolean; error?: string; code?: string };
 
@@ -55,6 +55,18 @@ const initiateSubscriptionPaymentAction = async (
 		const purchase = await beginPurchase(payload, user);
 		if (!purchase.success) {
 			return { success: false, error: purchase.error, code: purchase.code };
+		}
+
+		// an active mwajiri may only renew or upgrade. this runs after beginPurchase —
+		// a no-op for an active subscription, and the step that moves an expired one to
+		// pending_payment — so the active path is still gated while the expired path is
+		// not, and no stk push is sent for a refused downgrade
+		const blocked = await assertPlanChangeAllowed(payload, purchase.data, tier);
+		// `blocked` is only ever null or the failure branch, but the declared
+		// `Result<never> | null` also admits the success variant, so narrow on the
+		// discriminant to reach `error`/`code`
+		if (blocked && !blocked.success) {
+			return { success: false, error: blocked.error, code: blocked.code };
 		}
 
 		const result = await initiatePayment(payload, user, {

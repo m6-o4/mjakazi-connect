@@ -16,10 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifySuccess } from "@/lib/notify";
+import { MAX_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 
 type Tier = {
 	tierId: string;
 	name: string;
+	rank: number;
 	price: number;
 	durationDays: number;
 	description: string;
@@ -43,6 +45,7 @@ const slugify = (value: string): string =>
 const emptyTier = (): Tier => ({
 	tierId: "",
 	name: "",
+	rank: 0,
 	price: 0,
 	durationDays: 30,
 	description: "",
@@ -78,7 +81,21 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 		setError(null);
 	};
 
-	const addTier = () => setTiers((previous) => [...previous, emptyTier()]);
+	// a new tier is ranked above every existing one by default, so the common
+	// "add a more premium plan" case does not collide with the current top rank
+	const addTier = () => {
+		// the cap keeps the owner from presenting more plans than a mwajiri can
+		// reasonably compare; this early return guards a programmatic call, while
+		// the button below carries the same bound as a disabled state
+		if (tiers.length >= MAX_SUBSCRIPTION_TIERS) return;
+		setTiers((previous) => [
+			...previous,
+			{
+				...emptyTier(),
+				rank: previous.reduce((highest, tier) => Math.max(highest, tier.rank), -1) + 1,
+			},
+		]);
+	};
 
 	const removeTier = (index: number) =>
 		setTiers((previous) => previous.filter((_, i) => i !== index));
@@ -91,6 +108,7 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 			tiers.map((tier) => ({
 				tierId: tier.tierId.trim(),
 				name: tier.name.trim(),
+				rank: tier.rank,
 				price: tier.price,
 				durationDays: tier.durationDays,
 				description: tier.description.trim() || null,
@@ -167,6 +185,25 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 									/>
 									<p className="text-muted-foreground text-xs">
 										Machine-readable. Do not change after go-live.
+									</p>
+								</div>
+
+								<div className="flex flex-col gap-1.5">
+									<Label htmlFor={`tier-rank-${index}`}>Rank</Label>
+									<Input
+										id={`tier-rank-${index}`}
+										type="number"
+										min={0}
+										step={1}
+										value={tier.rank}
+										onChange={(event) =>
+											updateTier(index, "rank", Number(event.target.value))
+										}
+										className="max-w-36"
+									/>
+									<p className="text-muted-foreground text-xs">
+										Higher is more premium. Must be unique. A move to a higher rank is an
+										upgrade.
 									</p>
 								</div>
 
@@ -254,10 +291,21 @@ const SubscriptionTiersForm = ({ initialTiers }: SubscriptionTiersFormProps) => 
 					))}
 				</div>
 
-				<Button variant="outline" size="sm" onClick={addTier} className="w-full gap-2">
-					<PlusCircle className="size-4" />
-					Add tier
-				</Button>
+				<div className="flex flex-col gap-1.5">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={addTier}
+						disabled={tiers.length >= MAX_SUBSCRIPTION_TIERS}
+						className="w-full gap-2"
+					>
+						<PlusCircle className="size-4" />
+						Add tier
+					</Button>
+					<p className="text-muted-foreground text-xs">
+						Maximum of {MAX_SUBSCRIPTION_TIERS} plans.
+					</p>
+				</div>
 
 				{error && <p className="text-destructive text-sm">{error}</p>}
 

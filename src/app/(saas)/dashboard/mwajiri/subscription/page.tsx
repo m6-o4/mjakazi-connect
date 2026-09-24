@@ -26,14 +26,20 @@ const MwajiriSubscriptionPage = async () => {
 		getLatestPaymentForUser(payload, user.id, "subscription"),
 	]);
 
-	const tierOptions = tiers.map((tier) => ({
-		tierId: tier.tierId,
-		name: tier.name,
-		price: tier.price,
-		durationDays: tier.durationDays,
-		description: tier.description ?? null,
-		isConcierge: tier.isConcierge === true,
-	}));
+	// the service resolves each tier's rank (stored value, or position for a row
+	// saved before `rank` existed), so the list orders and upgrade detection has a
+	// concrete rank without a per-page fallback
+	const tierOptions = tiers
+		.map((tier) => ({
+			tierId: tier.tierId,
+			name: tier.name,
+			rank: tier.rank,
+			price: tier.price,
+			durationDays: tier.durationDays,
+			description: tier.description ?? null,
+			isConcierge: tier.isConcierge === true,
+		}))
+		.sort((a, b) => a.rank - b.rank);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -49,6 +55,7 @@ const MwajiriSubscriptionPage = async () => {
 				tiers={tierOptions}
 				state={subscription?.subscriptionState ?? "none"}
 				expiry={subscription?.tierExpiry ?? null}
+				currentTierId={subscription?.tierId ?? null}
 				phone={profile?.phone ? formatKenyanPhone(profile.phone) : null}
 				latestPaymentId={latestPayment?.id ?? null}
 				latestPaymentStatus={latestPayment?.status ?? null}

@@ -305,21 +305,32 @@ codebase.
   input (prefilled from the profile in the local `0…` form by the page via
   `formatKenyanPhone`), STK-push payment, and confirmation polling
 - **Props**:
-  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
-  (`TierOption` = `{ tierId, name, price, durationDays, description, isConcierge }`)
+  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; currentTierId: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
+  (`TierOption` = `{ tierId, name, rank, price, durationDays, description, isConcierge }`)
 - **Visual pattern**: tier cards are clickable `<button>`s (`bg-card`, selected =
-  `ring-2 ring-primary`, unselected = `ring-1 ring-border`); `Badge variant="outline"`
-  "Concierge" with a `Crown` icon; active banner `Card` with `CheckCircle2` in
-  `text-primary`; `PaymentSuccessNotice` shown once the newest payment (matched by id, so
-  renewals/upgrades are detected too) settles at `confirmed`, with a matching
-  `notifySuccess` "Payment received" toast (`id: "subscription-payment-received"`) on that
-  transition — inline notice persists, the toast is the immediate cue; phone `Label` +
-  `Input`; `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2`
-  spinner + muted copy while awaiting; after the 150 s `SPINNER_WINDOW_MS` it switches to
-  `unconfirmed` copy — "do not pay again" plus a `Button variant="outline"` "Check again"
-  — and **keeps polling**, since a late callback still settles. fires `plan_selected`
-  (`tierId`) and `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog
-  events
+  `ring-2 ring-primary`, unselected = `ring-1 ring-border`), ordered by `rank`; while the
+  plan is active a lower-ranked tier is disabled (`disabled`/`aria-disabled`,
+  `ring-1 ring-border opacity-60 cursor-not-allowed`, no hover ring), its name muted, with
+  a `Badge variant="outline"` "Below your plan" in `text-muted-foreground` beside the
+  Current/Concierge badges, and `selectTier` ignores it; the effective selection falls
+  back off a now-blocked pick to the current tier (then the lowest-ranked allowed tier) so
+  the pay button is never armed for a downgrade; the active plan carries a
+  `Badge variant="secondary"` "Current", with the `Badge variant="outline"` "Concierge" +
+  `Crown` beside it; selection defaults to the current tier when active, otherwise the
+  lowest-ranked; the M-Pesa card heading and CTA read Upgrade / Change plan / Extend from
+  the selected rank against the current one, and while active the description states
+  remaining time is converted and nothing is refunded; active banner `Card` with
+  `CheckCircle2` in `text-primary`; `PaymentSuccessNotice` shown once the newest payment
+  (matched by id, so renewals/upgrades are detected too) settles at `confirmed`, its copy
+  naming upgrade/change/extend for the plan bought, with a matching `notifySuccess`
+  "Payment received" toast (`id: "subscription-payment-received"`) on that transition —
+  inline notice persists, the toast is the immediate cue; phone `Label` + `Input`;
+  `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}" / "Upgrade — KSh {price}"
+  / "Switch plan — KSh {price}"; `Loader2` spinner + muted copy while awaiting; after the
+  150 s `SPINNER_WINDOW_MS` it switches to `unconfirmed` copy — "do not pay again" plus a
+  `Button variant="outline"` "Check again" — and **keeps polling**, since a late callback
+  still settles. fires `plan_selected` (`tierId`) and `payment_initiated`
+  (`paymentType: "subscription"`, `tierId`) PostHog events
 - **Used in**: `(saas)/dashboard/mwajiri/subscription/page.tsx`
 
 ### `VerificationQueue`
@@ -418,13 +429,17 @@ codebase.
 ### `SubscriptionTiersForm`
 
 - **Location**: `src/components/dashboard/admin/settings/subscription-tiers-form.tsx`
-- **Purpose**: Edits the mwajiri subscription tiers (add/remove rows, PUT-replace the
+- **Purpose**: Edits the mwajiri subscription tiers (1–4 rows, add/remove, PUT-replace the
   whole array) via `updateSubscriptionTiersAction`
-- **Props**: `{ initialTiers: Tier[] }` (one empty row shown when none exist)
+- **Props**: `{ initialTiers: Tier[] }` (one empty row shown when none exist; `Tier`
+  includes `rank`)
 - **Visual pattern**: shadcn `Card`; per-tier bordered sub-card with
-  name/id/price/duration `Input`s, description `Textarea`, Active + Concierge checkboxes;
-  ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"; tierId
-  auto-slugified from name; success fires a `notifySuccess` toast
+  name/id/rank/price/duration `Input`s, description `Textarea`, Active + Concierge
+  checkboxes; the rank input (min 0) carries a muted `text-xs` helper — higher is more
+  premium, unique, a move up is an upgrade; a new row is ranked above the highest
+  existing; ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"
+  (disabled at `MAX_SUBSCRIPTION_TIERS`, with a muted `text-xs` "Maximum of 4 plans."
+  helper below it); tierId auto-slugified from name; success fires a `notifySuccess` toast
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
 ### `EoiPolicyForm`

@@ -1,5 +1,6 @@
 import type { GlobalConfig } from "payload";
 
+import { MAX_SUBSCRIPTION_TIERS, MIN_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { isAdmin } from "@/payload/access/access-control";
 
 // the single admin-managed source of platform pricing. the verification fee and
@@ -40,10 +41,29 @@ const PlatformSettings: GlobalConfig = {
 			name: "subscriptionTiers",
 			type: "array",
 			label: "Mwajiri Subscription Tiers",
-			minRows: 1,
+			minRows: MIN_SUBSCRIPTION_TIERS,
+			maxRows: MAX_SUBSCRIPTION_TIERS,
 			labels: {
 				singular: "Tier",
 				plural: "Tiers",
+			},
+			// uniqueness is enforced at the field level because this is the single
+			// write path both the settings form and the payload admin panel share,
+			// and the service-level check cannot see panel writes. a row without a
+			// stored rank is ranked by position, matching the read-time fallback
+			validate: (value: unknown) => {
+				if (!Array.isArray(value)) return true;
+				const ranks = value.map((tier, index) => {
+					const rank = (tier as { rank?: unknown } | null)?.rank;
+					return typeof rank === "number" ? rank : index;
+				});
+				if (ranks.some((rank) => !Number.isInteger(rank) || rank < 0)) {
+					return "Each tier needs a rank of 0 or higher.";
+				}
+				if (new Set(ranks).size !== ranks.length) {
+					return "Each tier needs a unique rank.";
+				}
+				return true;
 			},
 			fields: [
 				{
@@ -61,6 +81,28 @@ const PlatformSettings: GlobalConfig = {
 					type: "text",
 					label: "Display Name",
 					required: true,
+				},
+				{
+					// ordering key, higher = more premium. a purchase whose rank is
+					// above the subscription's current tier is an upgrade; below is a
+					// downgrade; equal is a renewal. never inferred from price, which
+					// an admin may change independently of how tiers are positioned.
+					// not required: rows saved before the field existed have no rank
+					// and are ranked by position until re-saved
+					name: "rank",
+					type: "number",
+					label: "Rank",
+					min: 0,
+					validate: (value: unknown) =>
+						value === undefined ||
+						value === null ||
+						(typeof value === "number" && Number.isInteger(value) && value >= 0)
+							? true
+							: "Rank must be a whole number, 0 or higher.",
+					admin: {
+						description:
+							"Higher is more premium. A plan change to a higher rank is an upgrade, to a lower rank a downgrade.",
+					},
 				},
 				{
 					name: "price",

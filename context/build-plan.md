@@ -334,6 +334,11 @@ correct tier and expiry. The tiers were configured in `platform-settings` for th
 so the empty-config dead end was not hit. Expiry (`5.3`) and the `active → active`
 stack/renewal path remain unexercised — all three were first purchases.
 
+**Upgrades added 2026-09-24.** Tiers carry a unique `rank`; a mid-cycle purchase of a
+higher-ranked tier is an upgrade, a lower rank a downgrade, equal a renewal. The stacking
+conversion is unchanged. An upgrade onto a Concierge tier creates a fresh concierge case,
+while a same-tier Concierge renewal reuses the open one. See `progress-tracker.md`.
+
 ### 5.3 — Subscription expiry task
 
 **Builds**: `jobs/subscription-expiry.ts`, hourly. **Done when**: an expired subscription

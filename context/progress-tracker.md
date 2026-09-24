@@ -20,6 +20,74 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-24 — Subscription upgrades: tier rank, upgrade UI, fresh concierge case
+
+- **Why**: a mid-cycle plan change already worked through the stacking path, but the app
+  had no notion of plan direction — every active purchase was labelled "extend" — and the
+  concierge side effect on an upgrade had never been settled. This pass gives upgrades a
+  name, a UI, and a defined concierge behaviour.
+- **Decisions (Michael)**: the money semantics are unchanged — the unexpired window is
+  converted at the new tier's daily rate, a fresh window starts from now, nothing is
+  refunded (invariant #11); an upgrade is defined by an explicit **rank field**, not
+  price; an upgrade onto a Concierge tier **always creates a fresh concierge case**, even
+  if one is open.
+- **Built**:
+  - `platform-settings.subscriptionTiers` gained `rank` (number, min 0). Rank is the
+    ordering key; `settings.service` resolves every read through `withRanks` (a stored
+    rank, or the tier's position for a row saved before the field existed, computed over
+    the full array before inactive tiers are filtered) so pages and classification never
+    disagree. Uniqueness is enforced by the array field's `validate` — the one write path
+    the settings form and the Payload admin panel share — and again in the service for
+    clean action errors.
+  - `subscription.service.classifyPlanChange` classifies a purchase as upgrade / downgrade
+    / renewal by rank, falling back to `switch` when the current tier can no longer be
+    resolved. `stackSubscription` records `planChange` in the `subscription_activated`
+    audit metadata. The carry-over arithmetic is untouched — this is classification, not
+    money.
+  - `concierge.service.createConciergeCaseOnPayment` takes `{ forceNew }`; an upgrade onto
+    a concierge tier creates a fresh case, a same-tier concierge renewal reuses the open
+    one. More than one open case per mwajiri is valid (no unique index).
+  - Admin tiers form: a Rank input (new rows ranked above the highest existing); the admin
+    settings page maps each tier's rank, falling back to its position for a tier saved
+    before the field existed.
+  - Tier list bounded to 1–4: `lib/subscription-tiers.ts` is the single source
+    (`MIN_SUBSCRIPTION_TIERS` / `MAX_SUBSCRIPTION_TIERS`, no server-only imports) — the
+    platform-settings array now sets `minRows`/`maxRows` from it, so the Payload admin
+    panel refuses a fifth row; `updateSubscriptionTiers` refuses more than four with code
+    `too_many_tiers`; and the admin form disables "Add tier" at the cap with a muted
+    "Maximum of 4 plans." helper.
+  - Purchase UI: tiers ordered by rank, the current plan badged "Current", the selection
+    defaulting to the current tier; the M-Pesa heading and CTA and the success copy read
+    Upgrade / Change plan / Extend; a line states that remaining time is converted and
+    nothing is refunded in cash.
+  - One-way plan change: while a subscription is `active`, a lower-ranked tier is refused
+    before any STK push (`subscription.service.assertPlanChangeAllowed`, called from the
+    purchase action after `beginPurchase`, so an expired account — moved to
+    `pending_payment` by that step — is not gated). The purchase UI disables those tiers
+    with a muted "Below your plan" badge, and a stale selection falls back off a blocked
+    tier so the pay button is never armed for a downgrade.
+- **Files touched**: `lib/subscription-tiers.ts`,
+  `payload/blocks/globals/platform-settings/schema.ts`,
+  `services/{subscription,settings,concierge}.service.ts`,
+  `app/actions/{settings,subscription}.ts`,
+  `app/(saas)/dashboard/admin/settings/page.tsx`,
+  `components/dashboard/admin/settings/subscription-tiers-form.tsx`,
+  `app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
+  `components/dashboard/mwajiri/subscription/purchase-subscription.tsx`,
+  `payload-types.ts`, docs.
+- **Notes**: schema change, so `pnpm generate:types` was run (import map unchanged). No
+  migration or backfill — the project is in development, and a tier with no stored rank
+  falls back to its array position. `pnpm build` green; changed files lint clean
+  (repo-wide `pnpm lint` still reports the 9 pre-existing errors under
+  `.kilo/worktrees/fortune-trigonometry/design/codebase`). Michael's sandbox walkthrough
+  remains the acceptance test — the agent cannot drive a handset: Essentials → Concierge
+  (upgrade, expiry extends by the converted remainder, a fresh case even with one open);
+  Standard → Essentials (downgrade, no fresh case); Essentials → Essentials (renewal,
+  reuse). Under the one-way rule a downgrade while `active` is now refused
+  (`downgrade_blocked`) before any STK push and the tier reads as blocked in the UI — that
+  leg of the walkthrough exercises the refusal instead, and the lower tier is purchasable
+  only once the plan is no longer active.
+
 ### 2026-09-24 — Hire card rework: one action per state, no re-record of a completed pair
 
 - **Why**: the "Confirm hire" card offered "Mark as hired" for a mjakazi whose hire was

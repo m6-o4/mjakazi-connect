@@ -7,7 +7,7 @@ import { PlatformSettingsForm } from "@/components/dashboard/admin/settings/plat
 import { SubscriptionTiersForm } from "@/components/dashboard/admin/settings/subscription-tiers-form";
 import { DASHBOARD_BY_ROLE } from "@/lib/roles";
 import config from "@/payload-config";
-import { getEoiPolicy } from "@/services/settings.service";
+import { getAllSubscriptionTiers, getEoiPolicy } from "@/services/settings.service";
 
 export const metadata = { title: "Settings" };
 
@@ -17,13 +17,19 @@ const AdminSettingsPage = async () => {
 	if (user.role !== "admin") redirect(DASHBOARD_BY_ROLE[user.role]);
 
 	const payload = await getPayload({ config });
-	const settings = await payload.findGlobal({ slug: "platform-settings" });
-	const eoiPolicy = await getEoiPolicy(payload);
+	const [settings, eoiPolicy, tiers] = await Promise.all([
+		payload.findGlobal({ slug: "platform-settings" }),
+		getEoiPolicy(payload),
+		getAllSubscriptionTiers(payload),
+	]);
 
-	// pass existing tiers so the form pre-populates rather than starting blank
-	const currentTiers = (settings.subscriptionTiers ?? []).map((tier) => ({
+	// pass existing tiers so the form pre-populates rather than starting blank.
+	// ranks are already resolved by the service (stored value, or position for a
+	// row saved before `rank` existed), so this page and the purchase page agree
+	const currentTiers = tiers.map((tier) => ({
 		tierId: tier.tierId ?? "",
 		name: tier.name ?? "",
+		rank: tier.rank,
 		price: tier.price ?? 0,
 		durationDays: tier.durationDays ?? 30,
 		description: tier.description ?? "",
