@@ -6,12 +6,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
 import config from "@/payload-config";
-import {
-	approveReview,
-	rejectReview,
-	setReviewVisibility,
-	submitReview,
-} from "@/services/review.service";
+import { approveReview, rejectReview, submitReview } from "@/services/review.service";
 
 type ActionResult = { success: boolean; error?: string; code?: string };
 
@@ -22,11 +17,6 @@ const submitReviewSchema = z.object({
 	mjakaziId: z.string().min(1),
 	rating: z.number().int().min(1).max(5),
 	comment: z.string().trim().min(1).max(1000),
-});
-
-const visibilitySchema = z.object({
-	reviewId: z.string().min(1),
-	hidden: z.boolean(),
 });
 
 const rejectionReasonSchema = z.string().trim().min(1, "A rejection reason is required.");
@@ -40,7 +30,7 @@ const submitReviewAction = async (input: unknown): Promise<ActionResult> => {
 		if (!parsed.success) {
 			return {
 				success: false,
-				error: "Rate the wajakazi from 1 to 5 stars and write a short comment.",
+				error: "Rate the mjakazi from 1 to 5 stars and write a short comment.",
 			};
 		}
 
@@ -63,35 +53,6 @@ const submitReviewAction = async (input: unknown): Promise<ActionResult> => {
 	} catch (error) {
 		console.error("[actions/reviews] submitReview failed:", error);
 		return { success: false, error: "Could not submit your review." };
-	}
-};
-
-// a mjakazi shows or hides one of their published reviews
-const setReviewVisibilityAction = async (input: unknown): Promise<ActionResult> => {
-	try {
-		const parsed = visibilitySchema.safeParse(input);
-		if (!parsed.success) return { success: false, error: "Invalid request." };
-
-		const user = await getCurrentUser();
-		if (!user) return { success: false, error: "You must be signed in." };
-		if (user.role !== "mjakazi") return { success: false, error: "Forbidden." };
-
-		const payload = await getPayload({ config });
-		const result = await setReviewVisibility(
-			payload,
-			user,
-			parsed.data.reviewId,
-			parsed.data.hidden,
-		);
-
-		if (!result.success)
-			return { success: false, error: result.error, code: result.code };
-
-		revalidatePath("/dashboard/mjakazi");
-		return { success: true };
-	} catch (error) {
-		console.error("[actions/reviews] setReviewVisibility failed:", error);
-		return { success: false, error: "Could not update the review." };
 	}
 };
 
@@ -145,9 +106,4 @@ const rejectReviewAction = async (
 	}
 };
 
-export {
-	approveReviewAction,
-	rejectReviewAction,
-	setReviewVisibilityAction,
-	submitReviewAction,
-};
+export { approveReviewAction, rejectReviewAction, submitReviewAction };

@@ -1,19 +1,24 @@
 # [2.13.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.12.0...v2.13.0) (2026-09-15)
 
-
 ### Bug Fixes
 
-* **subscriptions:** correct stacking carry-over and snapshot the cycle ([f398a7d](https://github.com/m6-o4/mjakazi-connect/commit/f398a7d3dce7a71a88c48b9bb4bf453cbaaab3b7))
-
+- **subscriptions:** correct stacking carry-over and snapshot the cycle
+  ([f398a7d](https://github.com/m6-o4/mjakazi-connect/commit/f398a7d3dce7a71a88c48b9bb4bf453cbaaab3b7))
 
 ### Features
 
-* **accounts:** add admin/staff account sections and split moderation ([115dc2e](https://github.com/m6-o4/mjakazi-connect/commit/115dc2efc0e8dc4355063596446c69b6f2ffa1ff))
-* **concierge:** add concierge cases end to end and unify M-Pesa payments ([75f016e](https://github.com/m6-o4/mjakazi-connect/commit/75f016e6c315ec2f9ffb5640f5610be8fdd18542))
-* **dashboard:** add success toasts and next-step guidance ([34abaa3](https://github.com/m6-o4/mjakazi-connect/commit/34abaa3a0e92499970943877c8d99279faabfe58))
-* **dashboard:** standardize action confirmations with toasts ([d9ce05a](https://github.com/m6-o4/mjakazi-connect/commit/d9ce05a9b7a565a30d9f1f307317af8a1cfa6db2))
-* **profile:** add mjakazi employment history end to end ([cee3596](https://github.com/m6-o4/mjakazi-connect/commit/cee3596e2cea943db632965a1150d36bd8798520))
-* **vault:** capture national id front and back as separate slots ([051f565](https://github.com/m6-o4/mjakazi-connect/commit/051f565ddbfb2c94c682c01565bae4822c459d2c))
+- **accounts:** add admin/staff account sections and split moderation
+  ([115dc2e](https://github.com/m6-o4/mjakazi-connect/commit/115dc2efc0e8dc4355063596446c69b6f2ffa1ff))
+- **concierge:** add concierge cases end to end and unify M-Pesa payments
+  ([75f016e](https://github.com/m6-o4/mjakazi-connect/commit/75f016e6c315ec2f9ffb5640f5610be8fdd18542))
+- **dashboard:** add success toasts and next-step guidance
+  ([34abaa3](https://github.com/m6-o4/mjakazi-connect/commit/34abaa3a0e92499970943877c8d99279faabfe58))
+- **dashboard:** standardize action confirmations with toasts
+  ([d9ce05a](https://github.com/m6-o4/mjakazi-connect/commit/d9ce05a9b7a565a30d9f1f307317af8a1cfa6db2))
+- **profile:** add mjakazi employment history end to end
+  ([cee3596](https://github.com/m6-o4/mjakazi-connect/commit/cee3596e2cea943db632965a1150d36bd8798520))
+- **vault:** capture national id front and back as separate slots
+  ([051f565](https://github.com/m6-o4/mjakazi-connect/commit/051f565ddbfb2c94c682c01565bae4822c459d2c))
 
 # [2.12.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.11.0...v2.12.0) (2026-09-09)
 

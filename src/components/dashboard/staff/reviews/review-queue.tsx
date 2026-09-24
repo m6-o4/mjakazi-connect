@@ -100,7 +100,7 @@ const ReviewQueue = ({ items }: ReviewQueueProps) => {
 									{item.reviewerName ?? "A mwajiri"}
 								</span>
 								<span className="text-muted-foreground text-xs">
-									reviewing {item.mjakaziDisplayName ?? "a wajakazi"}
+									reviewing {item.mjakaziDisplayName ?? "a mjakazi"}
 								</span>
 							</div>
 							<div className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">

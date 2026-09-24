@@ -42,7 +42,7 @@ const uploadVaultDocument = async (
 	payload: Payload,
 	user: User,
 	input: { documentType: string; side: string; file: UploadFile },
-): Promise<Result<{ document: VaultDocument; replaced: boolean }>> => {
+): Promise<Result<{ document: VaultDocument; replaced: boolean; reverted: boolean }>> => {
 	if (user.role !== "mjakazi") {
 		return { success: false, error: "Forbidden", code: "forbidden" };
 	}
@@ -145,18 +145,26 @@ const uploadVaultDocument = async (
 			},
 		});
 
-		// a verified worker's documents are the reviewed evidence — overwriting one
-		// sends the profile back for a free re-review. adding a slot the required
-		// set grew to include is not an overwrite, so it does not cost them the
-		// badge: nothing reviewed has changed
-		if (wasVerified && previousId) {
-			const reverted = await revertToReview(payload, profile.id);
-			if (!reverted.success) {
-				console.warn("[services/vault] reverification trigger failed:", reverted.error);
+		// a verified worker's documents are the reviewed evidence, so any upload —
+		// a replacement or a slot they did not have before — sends the profile back
+		// for a free re-review. adding a newly-required slot is still a change to
+		// the evidence the badge stands on, so it does not keep the badge. the
+		// outcome is returned so the caller can announce the state change, which
+		// would otherwise only surface on the worker's next navigation
+		let reverted = false;
+		if (wasVerified) {
+			const result = await revertToReview(payload, profile.id);
+			if (result.success) {
+				reverted = true;
+			} else {
+				console.warn("[services/vault] reverification trigger failed:", result.error);
 			}
 		}
 
-		return { success: true, data: { document, replaced: Boolean(previousId) } };
+		return {
+			success: true,
+			data: { document, replaced: Boolean(previousId), reverted },
+		};
 	} catch (error) {
 		console.error("[services/vault] uploadVaultDocument failed:", error);
 		return { success: false, error: "Could not upload the document." };

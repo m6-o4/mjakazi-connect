@@ -43,7 +43,10 @@ const DOCUMENT_SLOTS: readonly DocumentSlotRequirement[] = [
 		value: "certificate_of_good_conduct",
 		label: "Certificate of Good Conduct",
 		description: "Shown to our team to confirm your clean record.",
-		slots: [{ side: "front", required: true }],
+		slots: [
+			{ side: "front", required: true },
+			{ side: "back", required: true },
+		],
 	},
 ];
 
@@ -77,8 +80,9 @@ const documentSlotWhere = (side: DocumentSide): Where =>
 		: { side: { equals: side } };
 
 // whether a (documentType, side) pair is a slot this system recognises. the two
-// enums are flat, so without this check the write path would accept a pair — a
-// certificate back, say — that no ui enumerates and the gate ignores
+// enums are flat, so without this check the write path would accept a pair that
+// no ui enumerates and the gate ignores — a back side on a document that
+// declares only a front, say
 const isDocumentSlot = (documentType: string, side: string): boolean =>
 	DOCUMENT_SLOTS.some(
 		(document) =>

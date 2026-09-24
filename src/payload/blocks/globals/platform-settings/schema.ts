@@ -1,5 +1,6 @@
 import type { GlobalConfig } from "payload";
 
+import { MAX_SUBSCRIPTION_TIERS, MIN_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { isAdmin } from "@/payload/access/access-control";
 
 // the single admin-managed source of platform pricing. the verification fee and
@@ -40,10 +41,29 @@ const PlatformSettings: GlobalConfig = {
 			name: "subscriptionTiers",
 			type: "array",
 			label: "Mwajiri Subscription Tiers",
-			minRows: 1,
+			minRows: MIN_SUBSCRIPTION_TIERS,
+			maxRows: MAX_SUBSCRIPTION_TIERS,
 			labels: {
 				singular: "Tier",
 				plural: "Tiers",
+			},
+			// uniqueness is enforced at the field level because this is the single
+			// write path both the settings form and the payload admin panel share,
+			// and the service-level check cannot see panel writes. a row without a
+			// stored rank is ranked by position, matching the read-time fallback
+			validate: (value: unknown) => {
+				if (!Array.isArray(value)) return true;
+				const ranks = value.map((tier, index) => {
+					const rank = (tier as { rank?: unknown } | null)?.rank;
+					return typeof rank === "number" ? rank : index;
+				});
+				if (ranks.some((rank) => !Number.isInteger(rank) || rank < 0)) {
+					return "Each tier needs a rank of 0 or higher.";
+				}
+				if (new Set(ranks).size !== ranks.length) {
+					return "Each tier needs a unique rank.";
+				}
+				return true;
 			},
 			fields: [
 				{
@@ -61,6 +81,28 @@ const PlatformSettings: GlobalConfig = {
 					type: "text",
 					label: "Display Name",
 					required: true,
+				},
+				{
+					// ordering key, higher = more premium. a purchase whose rank is
+					// above the subscription's current tier is an upgrade; below is a
+					// downgrade; equal is a renewal. never inferred from price, which
+					// an admin may change independently of how tiers are positioned.
+					// not required: rows saved before the field existed have no rank
+					// and are ranked by position until re-saved
+					name: "rank",
+					type: "number",
+					label: "Rank",
+					min: 0,
+					validate: (value: unknown) =>
+						value === undefined ||
+						value === null ||
+						(typeof value === "number" && Number.isInteger(value) && value >= 0)
+							? true
+							: "Rank must be a whole number, 0 or higher.",
+					admin: {
+						description:
+							"Higher is more premium. A plan change to a higher rank is an upgrade, to a lower rank a downgrade.",
+					},
 				},
 				{
 					name: "price",
@@ -106,6 +148,100 @@ const PlatformSettings: GlobalConfig = {
 					type: "checkbox",
 					label: "Concierge Tier",
 					defaultValue: false,
+				},
+			],
+		},
+		{
+			// the expression-of-interest policy. admin-tunable so the anti-spam
+			// limits move without a deploy — eoi.service reads them at runtime and
+			// falls back to the defaults below when the global is unset.
+			name: "eoiPolicy",
+			type: "group",
+			label: "Expression of Interest Policy",
+			fields: [
+				{
+					name: "minBatch",
+					type: "number",
+					label: "Minimum Batch Size",
+					required: true,
+					min: 1,
+					defaultValue: 1,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The minimum batch must be a whole number, at least 1.",
+					admin: {
+						description:
+							"Fewest wajakazi a mwajiri may select in one expression-of-interest batch.",
+					},
+				},
+				{
+					name: "maxBatch",
+					type: "number",
+					label: "Maximum Batch Size",
+					required: true,
+					min: 1,
+					defaultValue: 5,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The maximum batch must be a whole number, at least 1.",
+					admin: {
+						description:
+							"Most wajakazi a mwajiri may select in one expression-of-interest batch.",
+					},
+				},
+				{
+					name: "responseThresholdPercent",
+					type: "number",
+					label: "Response Threshold (%)",
+					required: true,
+					min: 1,
+					max: 100,
+					defaultValue: 50,
+					validate: (value: unknown) =>
+						typeof value === "number" &&
+						Number.isInteger(value) &&
+						value >= 1 &&
+						value <= 100
+							? true
+							: "The threshold must be a whole percentage between 1 and 100.",
+					admin: {
+						description:
+							"A new batch is allowed only once more than this share of the open batches has been resolved (accepted, rejected or expired).",
+					},
+				},
+				{
+					name: "expiryDays",
+					type: "number",
+					label: "Interest Expiry (Days)",
+					required: true,
+					min: 1,
+					defaultValue: 7,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The expiry must be a whole number of days, at least 1.",
+					admin: {
+						description:
+							"An unanswered expression of interest expires after this many days and counts as resolved.",
+					},
+				},
+				{
+					name: "resendCooldownDays",
+					type: "number",
+					label: "Re-send Cooldown (Days)",
+					required: true,
+					min: 0,
+					defaultValue: 14,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 0
+							? true
+							: "The cooldown must be a whole number of days, 0 or more.",
+					admin: {
+						description:
+							"How long before a mwajiri may approach the same mjakazi again after a rejection or expiry.",
+					},
 				},
 			],
 		},

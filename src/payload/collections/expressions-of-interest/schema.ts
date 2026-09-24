@@ -3,7 +3,7 @@ import type { CollectionConfig } from "payload";
 import { isAdminOrStaff, isRestricted } from "@/payload/access/access-control";
 
 // one expression of interest per (mwajiri, mjakazi) per send. a mwajiri sends a
-// batch of 3–5 at once, each sharing a `batchId`; the mjakazi accepts or rejects
+// batch of 1–5 at once, each sharing a `batchId`; the mjakazi accepts or rejects
 // each one. the collection is sealed — create/update/delete are refused at
 // payload's surface and happen only through the eoi service, which authorizes
 // every write. reads are service-owned too (the service is the only reader for
@@ -50,9 +50,10 @@ const ExpressionsOfInterest: CollectionConfig = {
 		},
 		{
 			// `<mwajiri>:<mjakazi>` while an interest is outstanding, uniquified on
-			// rejection. the unique index is the hard backstop for "one outstanding
-			// interest per pair" — a concurrent duplicate send fails here instead of
-			// creating a second record. never surfaced in any UI.
+			// rejection or expiry so the pair no longer has an open interest. the
+			// unique index is the hard backstop for "one outstanding interest per
+			// pair" — a concurrent duplicate send fails here instead of creating a
+			// second record. never surfaced in any UI.
 			name: "pendingKey",
 			type: "text",
 			label: "Pending Key",

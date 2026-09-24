@@ -44,7 +44,7 @@ const loadTargetUser = async (payload: Payload, userId: string): Promise<User | 
 	}
 };
 
-// resolves the wajakazi profile id for a user. profiles are 1:1 with users, so
+// resolves the mjakazi profile id for a user. profiles are 1:1 with users, so
 // this returns at most one record
 const loadProfileByUserId = async (
 	payload: Payload,
@@ -92,7 +92,7 @@ const applyAccountState = async (
 	}
 };
 
-// sets (or clears) the suspended flag on the wajakazi profile, which is what the
+// sets (or clears) the suspended flag on the mjakazi profile, which is what the
 // directory guard reads to hide a suspended worker. best-effort — the account
 // lock is already committed, and a failure here is logged rather than rolled back
 const setProfileSuspended = async (
@@ -115,9 +115,9 @@ const setProfileSuspended = async (
 	}
 };
 
-// suspends a wajakazi or mwajiri account. staff or admin, mandatory reason. locks
-// the account, hides a wajakazi from the directory, and suspends a mwajiri's
-// subscription so they can no longer reveal contacts
+// suspends a mjakazi or mwajiri account. staff or admin, mandatory reason. locks
+// the account, hides a mjakazi from the directory, and suspends a mwajiri's
+// subscription so they can no longer send expressions of interest
 const suspendAccount = async (
 	payload: Payload,
 	actor: User,
@@ -130,7 +130,7 @@ const suspendAccount = async (
 	const target = await loadTargetUser(payload, userId);
 	if (!target) return fail("Account not found.", "not_found");
 	if (!isSaasAccount(target))
-		return fail("Not a wajakazi or mwajiri account.", "invalid_target");
+		return fail("Not a mjakazi or mwajiri account.", "invalid_target");
 	if (target.accountState === "suspended") {
 		return fail("Account is already suspended.", "wrong_state");
 	}
@@ -177,8 +177,8 @@ const suspendAccount = async (
 	return result;
 };
 
-// reinstates a suspended wajakazi or mwajiri account. admin only, mandatory
-// reason. restores directory visibility for a wajakazi and the subscription for a
+// reinstates a suspended mjakazi or mwajiri account. admin only, mandatory
+// reason. restores directory visibility for a mjakazi and the subscription for a
 // mwajiri
 const reinstateAccount = async (
 	payload: Payload,
@@ -193,7 +193,7 @@ const reinstateAccount = async (
 	const target = await loadTargetUser(payload, userId);
 	if (!target) return fail("Account not found.", "not_found");
 	if (!isSaasAccount(target))
-		return fail("Not a wajakazi or mwajiri account.", "invalid_target");
+		return fail("Not a mjakazi or mwajiri account.", "invalid_target");
 	if (target.accountState !== "suspended") {
 		return fail("Account is not suspended.", "wrong_state");
 	}

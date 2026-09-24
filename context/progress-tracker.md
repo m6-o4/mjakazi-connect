@@ -20,6 +20,591 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-24 — Subscription upgrades: tier rank, upgrade UI, fresh concierge case
+
+- **Why**: a mid-cycle plan change already worked through the stacking path, but the app
+  had no notion of plan direction — every active purchase was labelled "extend" — and the
+  concierge side effect on an upgrade had never been settled. This pass gives upgrades a
+  name, a UI, and a defined concierge behaviour.
+- **Decisions (Michael)**: the money semantics are unchanged — the unexpired window is
+  converted at the new tier's daily rate, a fresh window starts from now, nothing is
+  refunded (invariant #11); an upgrade is defined by an explicit **rank field**, not
+  price; an upgrade onto a Concierge tier **always creates a fresh concierge case**, even
+  if one is open.
+- **Built**:
+  - `platform-settings.subscriptionTiers` gained `rank` (number, min 0). Rank is the
+    ordering key; `settings.service` resolves every read through `withRanks` (a stored
+    rank, or the tier's position for a row saved before the field existed, computed over
+    the full array before inactive tiers are filtered) so pages and classification never
+    disagree. Uniqueness is enforced by the array field's `validate` — the one write path
+    the settings form and the Payload admin panel share — and again in the service for
+    clean action errors.
+  - `subscription.service.classifyPlanChange` classifies a purchase as upgrade / downgrade
+    / renewal by rank, falling back to `switch` when the current tier can no longer be
+    resolved. `stackSubscription` records `planChange` in the `subscription_activated`
+    audit metadata. The carry-over arithmetic is untouched — this is classification, not
+    money.
+  - `concierge.service.createConciergeCaseOnPayment` takes `{ forceNew }`; an upgrade onto
+    a concierge tier creates a fresh case, a same-tier concierge renewal reuses the open
+    one. More than one open case per mwajiri is valid (no unique index).
+  - Admin tiers form: a Rank input (new rows ranked above the highest existing); the admin
+    settings page maps each tier's rank, falling back to its position for a tier saved
+    before the field existed.
+  - Tier list bounded to 1–4: `lib/subscription-tiers.ts` is the single source
+    (`MIN_SUBSCRIPTION_TIERS` / `MAX_SUBSCRIPTION_TIERS`, no server-only imports) — the
+    platform-settings array now sets `minRows`/`maxRows` from it, so the Payload admin
+    panel refuses a fifth row; `updateSubscriptionTiers` refuses more than four with code
+    `too_many_tiers`; and the admin form disables "Add tier" at the cap with a muted
+    "Maximum of 4 plans." helper.
+  - Purchase UI: tiers ordered by rank, the current plan badged "Current", the selection
+    defaulting to the current tier; the M-Pesa heading and CTA and the success copy read
+    Upgrade / Change plan / Extend; a line states that remaining time is converted and
+    nothing is refunded in cash.
+  - One-way plan change: while a subscription is `active`, a lower-ranked tier is refused
+    before any STK push (`subscription.service.assertPlanChangeAllowed`, called from the
+    purchase action after `beginPurchase`, so an expired account — moved to
+    `pending_payment` by that step — is not gated). The purchase UI disables those tiers
+    with a muted "Below your plan" badge, and a stale selection falls back off a blocked
+    tier so the pay button is never armed for a downgrade.
+- **Files touched**: `lib/subscription-tiers.ts`,
+  `payload/blocks/globals/platform-settings/schema.ts`,
+  `services/{subscription,settings,concierge}.service.ts`,
+  `app/actions/{settings,subscription}.ts`,
+  `app/(saas)/dashboard/admin/settings/page.tsx`,
+  `components/dashboard/admin/settings/subscription-tiers-form.tsx`,
+  `app/(saas)/dashboard/mwajiri/subscription/page.tsx`,
+  `components/dashboard/mwajiri/subscription/purchase-subscription.tsx`,
+  `payload-types.ts`, docs.
+- **Notes**: schema change, so `pnpm generate:types` was run (import map unchanged). No
+  migration or backfill — the project is in development, and a tier with no stored rank
+  falls back to its array position. `pnpm build` green; changed files lint clean
+  (repo-wide `pnpm lint` still reports the 9 pre-existing errors under
+  `.kilo/worktrees/fortune-trigonometry/design/codebase`). Michael's sandbox walkthrough
+  remains the acceptance test — the agent cannot drive a handset: Essentials → Concierge
+  (upgrade, expiry extends by the converted remainder, a fresh case even with one open);
+  Standard → Essentials (downgrade, no fresh case); Essentials → Essentials (renewal,
+  reuse). Under the one-way rule a downgrade while `active` is now refused
+  (`downgrade_blocked`) before any STK push and the tier reads as blocked in the UI — that
+  leg of the walkthrough exercises the refusal instead, and the lower tier is purchasable
+  only once the plan is no longer active.
+
+### 2026-09-24 — Hire card rework: one action per state, no re-record of a completed pair
+
+- **Why**: the "Confirm hire" card offered "Mark as hired" for a mjakazi whose hire was
+  already completed and reviewed. Root cause: the candidate lists excluded only active
+  hires (`pending_agreement | agreed`), so an `ended` hire re-entered the candidate list.
+  Clicking it fed `confirmHireCore` an `ended` hire, which fell through to the create
+  branch, hit the unique `(mwajiri, mjakazi)` index, and re-invoked itself from the catch
+  — an unbounded retry loop that also set availability to `hired`.
+- **Built**:
+  - Service: both candidate lists now exclude `pending_agreement | agreed | ended` — only
+    a `reversed` hire frees the pair to re-record. `confirmHireCore` treats `ended` as
+    terminal (`already_completed`), so the loop can never start even from a stale page.
+  - UI (`HireConfirmCard`): three sections — "Ready to hire", "Active hires", "Past
+    hires". One affordance per state; completed hires read as history (muted, Completed +
+    Reviewed) with no action once reviewed. Recording a hire is confirmed inline before it
+    fires, since it flips availability and opens a pending hire.
+- **Files touched**: `services/hire.service.ts`,
+  `components/dashboard/mwajiri/hire-confirm-card.tsx`, `context/ui-registry.md`.
+- **Notes**: re-recording the same (mwajiri, mjakazi) after a completed hire is now
+  blocked at the service; a reversed hire still re-opens. `pnpm build` green; changed
+  files lint clean. Working tree uncommitted.
+
+### 2026-09-24 — Reviews: private comments, public star rating, rating filter
+
+- **Why**: the review comment should stop being public. The feedback process itself is
+  unchanged; what changes is that the written comment is private, only the star average is
+  displayed (near the top of the profile), and the average can be used to filter.
+- **Decisions**: the comment is readable by the worker, the author, and staff/admin, never
+  public; every published review counts toward the average — the worker hide/show control
+  is removed, so a low rating cannot be kept out; the star shows from the first published
+  review (no minimum).
+- **Built**:
+  - `wajakazi-profiles` gained `ratingAverage` (unrounded, 2dp) and `ratingCount`, both
+    service-managed and field-locked. Types regenerated.
+  - `review.service.recomputeProfileRating` recomputes the star signal from published
+    reviews; called from `approveReview`, the only transition that changes that set.
+  - The public comment list is gone (`ProfileReviews` + `getPublicReviews` removed). The
+    star now renders near the top of `DirectoryProfileDetail`, on `DirectoryCard`, and on
+    the staff `StaffCandidateProfile`.
+  - Directory rating filter: `directoryQuerySchema.minRating` →
+    `ratingAverage >= minRating` (unrated profiles are excluded, not treated as zero). A
+    "4+ / 3+ / 2+ stars" select was added to `DirectoryFilterBar` and wired through
+    pagination. It applies to both the public directory and the mwajiri browse, which
+    share the component.
+  - Removed the worker hide/show control: `setReviewVisibility`, its action, the panel
+    toggle, and the `hiddenByWorker` field.
+  - No backfill script: the project is still in development and no reviews need migrating.
+    A one-off backfill would only be needed at a production cutover that already had
+    published reviews.
+- **Files touched**: `payload/collections/{wajakazi-profiles,reviews}/schema.ts`,
+  `services/{review,directory}.service.ts`, `app/actions/reviews.ts`,
+  `components/rating-stars.tsx`, `components/web/directory/*`,
+  `components/dashboard/mjakazi/reviews/reviews-panel.tsx`,
+  `components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`,
+  `app/(web)/directory/page.tsx`, `app/(web)/directory/[slug]/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/browse/page.tsx`, docs.
+- **Notes**: `reviews.hiddenByWorker` is gone from the schema; old Mongo values are
+  ignored. No sort-by-rating was added — filtering was the requirement. `pnpm build`
+  green; changed files lint clean. The working tree is uncommitted.
+
+### 2026-09-24 — Concierge v1: staff candidate view, notifications, delivery hardening
+
+- **Why**: concierge was left delivering contacts directly and deferred. Michael chose to
+  keep the direct grant (a deliberate staff-run exception to the interest gate) but to
+  inform the shortlisted mjakazi, and to make the flow production-usable rather than
+  rework it onto the EOI path.
+- **Built**:
+  - **Staff candidate detail** — a read-only `/dashboard/staff/wajakazi/[id]` page and
+    `StaffCandidateProfile` component (full profile, identity, contact, verification,
+    employment history), linked from every candidate row in the shortlist builder, with an
+    "Open full record in admin" link for anything not surfaced.
+  - **Staff notification** — `sendConciergeBriefSubmittedEmail` emails staff and admin
+    when a brief is submitted, so a case does not sit unseen in the queue.
+  - **Mjakazi notification** — `sendConciergeShortlistSharedEmail` emails each shortlisted
+    mjakazi that their contact was shared through concierge. This is the compensating
+    control for the direct grant, since the worker never opted in.
+  - **Delivery hardening** — `deliverConciergeShortlist` now requires state
+    `in_review`/`replacement_requested`, re-checks every candidate is verified +
+    available + not suspended at delivery time, and rolls back the grants it created if
+    the case write fails.
+  - **Guards** — a closed case cannot be claimed; a replacement can only be requested from
+    `closed`.
+  - **Replacement gating** — the card's button is gated on `hasRecentConfirmedHire` (a
+    30-day, both-sides-agreed hire) instead of a hardcoded `true`.
+- **Files touched**: `services/concierge.service.ts`, `lib/email.ts`,
+  `components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`,
+  `components/dashboard/staff/concierge/concierge-case-detail.tsx`,
+  `app/(saas)/dashboard/staff/wajakazi/[id]/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/concierge/page.tsx`, `context/architecture.md`,
+  `context/ui-registry.md`.
+- **Review fixes** (after a `/review uncommitted` pass): `requestConciergeReplacement` now
+  also requires `outcome === "hired"`, matching the card; the `contact_unlocked` audit
+  entries are written only after the case write commits, so a rolled-back delivery leaves
+  no audit claiming a shared contact; delivery eligibility reads the shared
+  `DIRECTORY_VISIBLE` gate instead of restating it; the brief notification sends
+  sequentially rather than fanning out one concurrent request per staff member; and
+  `StaffCandidateProfile` renders the shared `VERIFICATION_BADGE` map instead of a local
+  copy.
+- **Notes**: concierge still bypasses the EOI gate by design — staff choose the mjakazi
+  and the grant is written on delivery. Explicitly not built: an in-app "who has my
+  contact" view, and an opt-out. `concierge.service.ts` no longer reads profiles with
+  `overrideAccess: true` (candidate loads now use the actor's request). `pnpm build`
+  green; changed files lint clean (the repo-wide `pnpm lint` still reports 9 pre-existing
+  errors under `.kilo/worktrees/fortune-trigonometry/design/codebase`, unrelated to this
+  work). The whole working tree remains uncommitted, per the session loop.
+
+### 2026-09-23 — Interest gate validated live on the Essentials and Standard plans
+
+- **Outcome**: Michael tested the interest-gated flow end to end and confirmed it works on
+  the Essentials and Standard plans — a subscribed mwajiri browses, sends an expression of
+  interest, the mjakazi accepts, and the contact becomes visible to the mwajiri. The
+  open-pool gate, the re-send cooldown and the admin-editable `eoiPolicy` all behaved as
+  designed during the pass.
+- **Interface pass applied in the same round**: nav + page title "Saved" → "Shortlist",
+  the browse-detail toggle now "Shortlist" / "Shortlisted", the sent-interests card moved
+  above the hire-confirmation card on the mwajiri overview, accepted EOIs got a "View
+  profile" link, and the singular/plural sweep (one mjakazi, many wajakazi) plus
+  cooldown-length copy landed.
+- **State**: the whole interest-gate change set is still **uncommitted** and was last
+  built green (`pnpm build`, 50 routes) after the toggle rename. Concierge still delivers
+  contacts directly and is deferred for a later rework.
+
+### 2026-09-23 — Interest-flow interface pass: Shortlist, view-profile, plurals, cooldown copy
+
+- **Why**: after Michael's live test of the interest gate, five interface changes were
+  requested.
+- **Rename**: the mwajiri nav item and page title "Saved" → "Shortlist"
+  (`lib/dashboard-nav.ts`, `mwajiri/saved/page.tsx`), and the browse-detail toggle now
+  reads "Shortlist" / "Shortlisted" (`save-toggle.tsx`).
+- **Order**: the mwajiri overview now renders the sent-interests card before the
+  hire-confirmation card (`mwajiri/page.tsx`).
+- **View profile**: an accepted EOI in that card now carries a "View profile" link into
+  the browse detail, where the contact is visible. `listSentEois` and `loadProfileDisplay`
+  now return the profile `slug` to build the link.
+- **Pluralisation**: one mjakazi, many wajakazi. Fixed singular uses of "wajakazi" and
+  plural uses of "mjakazi" across UI copy, emails, service messages and comments —
+  including the `wajakazi-profiles` admin labels now reading "Wajakazi Profiles". Counts
+  that can be one ("Interest sent to 1 mjakazi") pluralise at the call site.
+- **Cooldown copy**: every cooldown message now states the window from the policy, e.g.
+  "You can send again after the 14-day cooldown." (`eoi.service.ts`).
+- **Verified**: `pnpm format`, `pnpm lint` (0 errors) and `pnpm build` (50 routes).
+
+### 2026-09-23 — Interest-gated contact reveal: a subscription no longer hands over contacts
+
+- **Why**: a subscription alone let a rogue mwajiri harvest mjakazi contact details.
+  Michael asked for hiring to run through an expression of interest: contact is shared
+  only after the mjakazi accepts, and the grant outlives the subscription.
+- **Built**:
+  - `platform-settings` gained an `eoiPolicy` group — `minBatch` (1), `maxBatch` (5),
+    `responseThresholdPercent` (50), `expiryDays` (7), `resendCooldownDays` (14) — read by
+    `getEoiPolicy` and edited from a new `EoiPolicyForm` on the admin settings page. No
+    EOI limit is hardcoded any more.
+  - `contact-unlocks` gained `source` (`eoi | concierge | subscription_reveal`) and
+    `sourceEoi`. An accepted interest now creates the grant, so contact persists past
+    expiry; the subscription-gated manual reveal was retired (`revealContact`,
+    `revealContactAction` and `app/actions/contact.ts` deleted) and the concierge
+    shortlist writes `source: "concierge"`.
+  - `eoi.service.ts`: `sendEoiBatch` now enforces the policy bounds, the open-pool gate
+    (resolved > threshold of every batch that still has an unanswered member), the re-send
+    cooldown, and blocks recipients who already have an open interest, a grant or a live
+    hire. `respondToEoi` pre-creates the grant and rolls it back if its compare-and-swap
+    loses. `getEoiSendEligibility` / `getProfileInterestStatus` /
+    `listUnavailableForInterest` expose the gate to the UI. `expireUnansweredEois` uses
+    the policy window.
+  - UI: `BrowseContactCard` is now an interest control (send / pending / subscribe / gate
+    reason); `EoiSend` takes policy bounds and a server-computed `canSend`; the saved page
+    filters out pairs that cannot receive another batch; copy on the public detail,
+    subscription card and acceptance email was rewritten.
+  - Audit: added `contact_granted` (plus its label map entry). Hire confirmation no longer
+    requires an active subscription (`hire.service.ts`), matching contact persistence.
+- **Decisions**: accepted EOI is the only path to contact; the gate pools all open
+  batches; rejection _or_ expiry starts a 14-day cooldown; acceptance is permanent;
+  existing subscription-era grants are grandfathered (dev mode — no migration shipped).
+- **Left open (needs Michael's ruling)**: the concierge shortlist still grants contacts
+  directly, bypassing the EOI gate — the option to keep a Concierge reveal was the one
+  declined in the blueprint, but the concierge product is a staff-delivered shortlist, so
+  this was left untouched rather than silently rebuilt. Also, `contact_unlocked` no longer
+  fires anywhere (the reveal that emitted it is gone) and was removed from the PostHog
+  table; the grant is observable through `interest_responded` (`response: accepted`).
+- **Verified**: `pnpm generate:types`, `pnpm lint` (0 errors) and `pnpm build` (50 routes)
+  all pass.
+
+### 2026-09-23 — Mwajiri registration and subscription validated live across all three tiers
+
+- **Why**: Michael ran a live round of the mwajiri journey — register, then subscribe — to
+  find out what breaks before a wider test. Three mwajiri accounts were taken through it,
+  one per tier (Essentials, Standard, Concierge).
+- **Outcome**: all three registrations and all three subscriptions completed without a
+  fault. That exercises, end to end: sign-up with role intent → `/post-auth` promotion →
+  `ensureProfile` creating `waajiri-profiles` and the `none` subscription; the live tier
+  list read from `platform-settings`; **server-side** tier and price resolution (the
+  client sends only `tierId` + `phone`); STK push → callback → `subscription_activated`;
+  and the purchase card's success cue once the newest payment settles at `confirmed`.
+- **What this does not cover**: the tiers were configured in `platform-settings` for the
+  round, so the `getSubscriptionTiers → []` "No plans available" dead end was not hit, and
+  `5.3` expiry plus the `active → active` stack/renewal path remain unexercised (all three
+  were first purchases). The Concierge purchase's `createConciergeCaseOnPayment` side
+  effect was not separately confirmed.
+- **Still open, unrelated to the result**: `waajiri-profiles.location` is never written
+  anywhere in `src` and stays null on all three accounts (cosmetic, accounts/admin views
+  only).
+
+### 2026-09-23 — Kenyan phone inputs prefill in the local form
+
+- **Why**: after a successful M-Pesa test round, Michael asked for a sweep of every phone
+  input so it defaults to the way a Kenyan writes the number — `0722123456`, not the
+  canonical `254722123456` that storage uses.
+- **Built**: `src/lib/phone.ts` gained `formatKenyanPhone`, the display-side twin of
+  `normalizeKenyanPhone`. It renders a canonical `254…` value as the local `0…` form,
+  passes a local value through, and returns anything unrecognised untouched rather than
+  reshaping it into something that only looks valid. `normalizeKenyanPhone` is unchanged
+  and still canonicalises on submit, so storage and the money path are unaffected.
+- **Files touched**: `src/lib/phone.ts`; the three server pages that seed a phone input —
+  `src/app/(saas)/dashboard/mjakazi/profile/page.tsx`,
+  `src/app/(saas)/dashboard/mjakazi/verification/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/subscription/page.tsx`. Formatting happens at the same
+  server presentation boundary that already converts ISO dates to date-input values.
+- **Notes**: only the three editable inputs changed. Phone numbers that are _displayed_
+  rather than entered (staff verification detail, the mwajiri contact reveal, the staff
+  stuck-payment list) still render the canonical form; a staff view may deliberately want
+  the international form to match M-Pesa records, so this is a separate decision.
+- **Verified**: `pnpm build` passes (50 routes); the changed files lint clean.
+
+### 2026-09-21 — Payment recovery: hand reconciliation, M-Pesa status query, no blind expiry
+
+- **Why**: Michael asked why the pending items had not been built. Four were outstanding
+  from the callback investigation: a way to settle a stranded payment, a timeout rule that
+  cannot write off a paid customer, and two off-spec defects the Safaricom docs exposed.
+  He explicitly **left the callback route alone** — its always-200 behaviour stays until a
+  round of testing with one more mjakazi and three more waajiri says otherwise.
+- **Built — hand reconciliation (staff and admin).** A stranded payment is now recoverable
+  without posting a callback by hand.
+  - `src/payload/collections/payments/schema.ts` — `mpesaReceiptNumber` (indexed),
+    `reconciledBy` (relationship → users), `reconciledAt`. **The receipt is now a
+    first-class field for the first time**; until this change it existed only inside
+    `callbackPayload` and the audit metadata.
+  - `src/services/payment.service.ts` —
+    `reconcilePayment(payload, actor, { paymentId, mpesaReceiptNumber })`: staff/admin
+    only, receipt mandatory (`/^[A-Z0-9]{8,12}$/`, trimmed and upper-cased), only from
+    `stk_sent`, compare-and-swap so a concurrent callback wins, then the same
+    `activateConfirmedPayment` a callback runs. Also `listStuckPayments` and the extracted
+    `activateConfirmedPayment`, now shared by the callback path and this one so a
+    hand-confirmed payment behaves identically to a callback-confirmed one.
+  - `settleCallback` now writes the receipt onto the record from the callback metadata, so
+    both confirmation paths populate the same field.
+  - `src/app/actions/payment.ts` — `reconcilePaymentAction`;
+    `src/app/(saas)/dashboard/staff/ payments/page.tsx` +
+    `src/components/dashboard/staff/payments/stuck-payment-list.tsx`; "Payments" nav item
+    for admin and staff; `payment_reconciled` audit action.
+- **Built — the timeout rule no longer writes anyone off.** `expireTimedOutPayments` is
+  gone, replaced by `reconcileTimedOutPayments`, driven by `queryStkStatus` (new, in
+  `src/lib/mpesa.ts`) against `/mpesa/stkpushquery/v1/query`. At the two-minute mark it
+  asks M-Pesa what happened, and then:
+  - **M-Pesa says paid** → the payment stays `stk_sent` with a
+    `payment_confirmation_missing` audit entry and appears on the staff list. It is
+    **not** confirmed, because a receipt is required and the query can never supply one —
+    the receipt is only ever in the callback or the payer's SMS.
+  - **M-Pesa says not completed** → `failed`, carrying M-Pesa's own result code. This is
+    the only case where writing it off is safe, because no money moved.
+  - **No answer / still processing** → nothing changes. Each payment is asked about
+    **once**, tracked by a new `mpesaStatusCheckedAt`, so the queue cadence never decides
+    how much Daraja is called.
+- **Built — the two spec defects.** `TransactionDesc` was 24+ characters against a
+  documented 13-character cap (`"Mjakazi verification fee"`, and
+  `` `Subscription — <tier>` ``); it is now `"Verification"` / `"Subscription"`. And a
+  rejected push answers `{ requestId, errorCode, errorMessage }`, which `initiateStkPush`
+  ignored — `errorMessage` is now preferred over the generic fallback, so a rejection
+  records its real reason.
+- **Built — the audit viewer no longer blanks.** `audit-log-table.tsx` keeps exhaustive
+  label and variant maps; the three new actions were added to both. Without that the
+  filter would hide them and the rows would render the raw code.
+- **The wedged job was the cause — and un-sticking it proved why the new rule matters.**
+  `payload-jobs` held one `payment-timeout` row stamped `2026-09-04` with
+  `processing: true`; the other four tasks each had recent rows, so a stuck row **was**
+  blocking that task's scheduling. Marking it complete produced a tick within the minute.
+  **But that tick ran the old code** (the dev server had not reloaded the task module) and
+  expired both historical stuck sandbox payments at `22:09:00` by the two-minute rule.
+  Both are sandbox rows from 2026-09-15/16 with no real money moved, so nothing was lost —
+  but it is a live demonstration of the exact failure the new rule removes, and it is now
+  on the record as such.
+- **Verification**: `pnpm generate:types` (the new select option is a type change),
+  `pnpm build` passes with **50** routes (the new staff page), `src` lints clean (0
+  errors, 1 pre-existing concierge warning). The sweep was then exercised directly against
+  the local database through a throwaway `tsx` script on a synthetic `stk_sent` payment:
+  first run reported `{"checked":1,"paid":0,"failed":0,"unresolved":1}` for a bogus
+  checkout id, left the status at `stk_sent`, stamped `mpesaStatusCheckedAt`, and the row
+  was deleted afterwards. Script removed.
+- **Still open**: the callback route's always-200 (Michael's call, pending the next test
+  round); the Cloudflare edge log check for the two lost callbacks; and a customer-facing
+  cue for a payment the sweep has confirmed as paid — today the payer still sees the
+  "unconfirmed, do not pay again" copy while staff complete it from the receipt.
+- **Files touched**: `payload/collections/payments/schema.ts`,
+  `payload/collections/audit-logs/schema.ts`, `lib/audit.ts`, `lib/mpesa.ts`,
+  `lib/dashboard-nav.ts`, `services/payment.service.ts`, `jobs/payment-timeout.ts`,
+  `app/actions/payment.ts`, `app/(saas)/dashboard/staff/payments/page.tsx` (new),
+  `components/dashboard/staff/payments/stuck-payment-list.tsx` (new),
+  `components/dashboard/audit-logs/audit-log-table.tsx`, `payload-types.ts` (regenerated),
+  `context/{architecture,library-docs,build-plan,ui-registry}.md`.
+
+### 2026-09-21 — M-Pesa callback investigation: the missing arrival record
+
+- **What was reported**: for the third time (2026-09-15, 2026-09-16, 2026-09-21) a payment
+  completed on M-Pesa, the customer received the confirmation SMS, and the app never
+  registered it. Michael's direction: find what we are missing, not try options.
+- **What the Safaricom docs settled.** Michael supplied the M-Pesa Express pages (push
+  request and response, both callback samples, the error sample) and the full Express
+  Query page. Our push request matches the documented shape field for field; our callback
+  parser handles both documented callback variants, including a success with no `Balance`
+  item and a failure with no `CallbackMetadata` at all; and Express Query returns exactly
+  six fields and **no receipt** — confirmed from the source, which settles the earlier
+  debate. The query can tell us a customer paid; it can never supply the
+  `MpesaReceiptNumber`, which lives only in the callback or the customer's SMS. The
+  `CallBackURL` needs no registration or allowlisting, which rules out the
+  unwhitelisted-URL theory.
+- **Two off-spec findings in our own code** (recorded in `library-docs.md`, not fixed):
+  `TransactionDesc` is capped at 13 characters and we send 24
+  (`"Mjakazi verification fee"`, longer for subscriptions) — Daraja still accepts the
+  push, so it is not the cause, but it must be shortened before production credentials;
+  and a rejected push answers `{ requestId, errorCode, errorMessage }`, none of which we
+  read, so a rejection loses its real reason.
+- **What was actually missing — the arrival record (built).** Every path answers 200 so
+  Daraja never re-sends, and the only record of an arrival was a `console.error`. A
+  callback that reached us and could not be parsed or matched left no trace and was
+  indistinguishable in our data from one Daraja never sent — the reason this has been
+  undiagnosable three times. Added:
+  - `src/lib/audit.ts` — `payment_callback_received` action.
+  - `src/payload/collections/audit-logs/schema.ts` — its select option. **Required**:
+    `action` is a Payload select, so without the option the write is rejected and the
+    instrumentation would silently do nothing.
+  - `src/services/payment.service.ts` — `recordCallbackArrival`, writing the arrival (both
+    request ids, result code and description, a `parsed` flag, and the raw body when it
+    could not be parsed, capped at 2000 chars because the endpoint is public and
+    unauthenticated) **before** any decision about the payload.
+  - `src/app/(payload)/api/webhooks/payments/callback/route.ts` — reads the body with
+    `req.text()` and parses by hand rather than `req.json()`, so an unreadable body can be
+    recorded verbatim.
+- **Behaviour deliberately unchanged**: still 200 on every path, so retry semantics are
+  untouched. Answering non-200 when _our_ processing fails is still an open decision.
+- **Still open**: an audited staff reconciliation action; the wedged `payment-timeout` job
+  and its 2-minute expiry rule; and the Cloudflare edge check — the leading suspect,
+  because on 2026-09-16 one payment was lost at 20:38 while another confirmed twelve
+  seconds after the push at 21:01, same URL, same handset.
+- **Verification**: Michael to check Cloudflare → Security → Events for
+  `/api/webhooks/payments/callback` around 2026-09-16 20:38 and 2026-09-21 18:20. From now
+  on a lost confirmation is self-diagnosing — a `payment_callback_received` entry proves
+  Daraja posted, and its absence proves it did not. The instrumentation was proved end to
+  end by posting a valid but unmatched callback to the route: HTTP 200 `Accepted`, and a
+  `payment_callback_received` entry carrying the parsed ids and `parsed: true`, with no
+  payment touched. **That test entry is identifiable by its
+  `checkoutRequestId: ws_CO_INSTRUMENTATION_CHECK_20260921` — it is not a real callback.**
+  `pnpm build` passes (the new select option changed `payload-types.ts`, so
+  `pnpm generate:types` was required before the type check would pass — a `select` option
+  addition is a type change).
+
+### 2026-09-21 — Verification payment: callback never delivered again, settled by hand
+
+- **What happened**: Michael paid the KSh 2 verification fee and M-Pesa acknowledged it on
+  the handset, but the app showed no acceptance — the `unconfirmed` copy ("M-Pesa has not
+  confirmed this payment yet… do not pay again"). Same symptom as 2026-09-16, different
+  payment. **This is the second occurrence of the same delivery failure, so the diagnosis
+  below is now the established one, not a fresh hypothesis.**
+- **Evidence**: payment `7N5SQ4FU2Z5M` (`checkoutRequestId`
+  `ws_CO_210920262120320720999771`, KSh 2, 254720999771) sat at `stk_sent` from
+  `2026-09-21T18:20:30Z` with **no `callbackPayload` and no `confirmedAt`**, and the audit
+  trail stopped at `payment_initiated`. A callback that matched would have written
+  `payment_confirmed`; one that mismatched would have written `payment_failed`; neither
+  existed, so nothing reached the handler. The endpoint was healthy at the same time
+  (`https://app-dev.s3.co.ke/api/webhooks/payments/callback` → 405 to GET, 200 to POST),
+  `cloudflared` was running, port 3000 was listening, and an unauthenticated POST got a
+  200, so middleware is not blocking it either. The `stk_sent` row proves the push itself
+  succeeded — Daraja accepted it. **Delivery, not application logic**, for the second
+  time.
+- **Resolved by hand**: posted the correctly-matched Daraja callback for that
+  `checkoutRequestId` to the live route, using the real `MpesaReceiptNumber` `UIL0W6W3XX`
+  from Michael's confirmation SMS. Result: payment `confirmed` (`confirmedAt`
+  `18:32:24.865Z`), `callbackPayload` stored whole, audit `payment_initiated` →
+  `payment_confirmed` (receipt + resultCode 0), and the profile moved `pending_payment` →
+  `pending_review`. The confirmation is a genuine reconciliation of a real payment, not a
+  fabricated one — but note the ledger records the confirmation at `18:32:24Z` while the
+  payment happened at ~`18:20Z`, because the write was manual.
+- **Why hand-settling was necessary — two open defects:**
+  1. **No reconciliation path exists.** The in-app simulator was deliberately removed
+     (architecture invariant 13), `_scratch_fire_callback.ts` no longer exists at the repo
+     root, and no staff action can settle a `stk_sent` payment. So a paid-but-unconfirmed
+     payment is stranded permanently — the worker is told "do not pay again" with nothing
+     that can move it. **This needs a decision: an audited staff action to confirm a
+     `stk_sent` payment against a receipt number is the standard operational fallback and
+     is not a bypass.**
+  2. **The `payment-timeout` job is wedged.** `payload-jobs` holds exactly one
+     `payment-timeout` row, stamped `2026-09-04`, with `processing: true` — stuck, not
+     ticking. So nothing expires and nothing surfaces "the customer paid and we never
+     heard about it". As written it would be worse than idle: it would mark a
+     genuinely-paid payment `expired` after `STK_TIMEOUT_MINUTES = 2` and a late Daraja
+     callback would then be ignored by `isTerminal` as a duplicate — money taken,
+     verification never granted. Still open from the 2026-09-16 entry.
+- **Notes**: The second failure is the strongest available signal that the Daraja sandbox
+  does not reliably fire this callback (also recorded 2026-09-08: the Daraja 3.0 sandbox
+  often does not fire after PIN entry), so **future sandbox payments should be expected to
+  need settling by hand until defect 1 is addressed**. No application code was changed in
+  this session for this incident — the source edits in the accompanying entry are the
+  certificate work.
+- **Verification**: Michael to confirm his browser (which was still polling) shows the
+  "Under review" card and the "Payment received" toast, and that
+  `/dashboard/staff/verifications` lists the profile.
+
+### 2026-09-21 — Document vault: Certificate of Good Conduct front and back
+
+- **What was built**: The Certificate of Good Conduct is now captured as two slots — front
+  and back — matching the National ID. The required set is four slots (ID front, ID back,
+  certificate front, certificate back), all four required before submitting for
+  verification. A one-row change in `DOCUMENT_SLOTS` (`src/lib/vault.ts`); every consumer
+  — the collection's `documentType`/`side` options, the mjakazi upload UI, the staff
+  `DocumentViewer`, the dashboard checklist and the pre-submission gate — derives from
+  that list, so no per-screen change was needed.
+- **Files touched**:
+  - `src/lib/vault.ts` — `certificate_of_good_conduct` gains a required `back` slot; the
+    `isDocumentSlot` comment no longer uses a certificate back as its invalid example.
+  - `src/services/verification.service.ts` — the missing-documents message now says "both
+    sides of your National ID and your Certificate of Good Conduct".
+  - `src/services/vault.service.ts` — a verified worker is now reverted by **any** upload,
+    not only a replacement: `if (wasVerified && previousId)` became `if (wasVerified)`.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — the verified banner says "Any
+    change to your documents will require re-verification".
+  - `context/architecture.md`, `context/build-plan.md`, `context/ui-registry.md` — the
+    required set is described as four slots.
+- **Follow-up (Michael's feedback, same day): the state-change cues were audited and three
+  gaps closed.** Michael asked whether the field addition had disturbed the "the UI
+  announces the state change and says what to do next" behaviour, for an audience that
+  needs visual cues. The audit found the cues themselves intact — every one still derives
+  from the shared required-slot list, so the four-slot set flows through them — but the
+  document-change → re-review path had never announced itself live, and the new slot made
+  that path easier to hit. Fixed:
+  - `src/services/vault.service.ts` — `uploadVaultDocument` returns `reverted`, and
+    `src/app/(payload)/api/actions/vault/route.ts` passes it to the client.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` — on `reverted` it fires a
+    `notifyInfo` "Document changed" toast (`id: "document-reverted"`) and
+    `router.refresh()`, and the "Documents complete" toast stands down so the re-review
+    news is not competing with a success message that contradicts it.
+  - `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — a `pending_review` banner
+    ("Your documents are with our team for review… cannot be changed until then") so the
+    page acknowledges the state whether the worker arrived there by paying or by changing
+    a document.
+  - `src/components/dashboard/mjakazi/verification-status-card/index.tsx` — the draft cue
+    said "Add the two documents below" while listing four rows; now "Upload the documents
+    below".
+  - `context/library-docs.md` — new rule: an action that changes the profile's state
+    announces it and refreshes, and a state-change toast replaces any success message the
+    same action would produce.
+  - `src/components/dashboard/mjakazi/document-vault/index.tsx` and
+    `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` — a `locked` prop (true while
+    `pending_review`) disables the upload, replace and remove controls and the file
+    inputs, so the server-side lock is a visible cue instead of a click that fails; `View`
+    stays enabled.
+- **Notes**: No schema change (`side` already exists), so no `pnpm generate:types`. No new
+  audit action and no new PostHog event — `documents_uploaded` keeps its meaning over the
+  now-four slots. A pre-change record has a certificate at `front` (or no side, read as
+  front), so the certificate back slot reads as missing. **Decision change (Michael, same
+  day): a document change always re-validates the profile.** Adding a newly-required slot
+  is evidence the review has not seen, so it reverts a verified worker to `pending_review`
+  like any other upload — reversing the previous session's additive-slot exception
+  (`wasVerified && previousId`), which had kept the badge. No attempt is incremented and
+  no fee is charged; the revert is the free re-review. A worker already in
+  `pending_review` cannot add the new slot — the vault locks — and `approveVerification`
+  will refuse their approval until staff reject so they can resubmit. Existing
+  single-sided certificate uploads are not backfilled.
+- **Verification**: Michael to confirm the upload of all four slots on
+  `/dashboard/mjakazi/documents`, the checklist on `/dashboard/mjakazi`, the disabled
+  submit until all four are present, and both certificate sides rendering for staff on the
+  review page.
+
+### 2026-09-16 — Verification payment: the callback never arrived, pay-flow cue corrected
+
+- **What happened**: A mjakazi paid the KSh 2 verification fee in the Daraja sandbox and
+  the app showed no acceptance. The payment record (`2026-09-16T20:38:57Z`, phone
+  `254720…71`) is still `stk_sent` with no `callbackPayload` and no `confirmedAt`, and the
+  audit trail stops at `payment_initiated` — no `payment_callback_received`, no
+  `payment_confirmed`, no `payment_activation_failed`. **The callback never reached the
+  app**, so the profile is still `pending_payment` and there was genuinely nothing for the
+  UI to show. The endpoint itself is healthy:
+  `https://app-dev.s3.co.ke/api/webhooks/payments/callback` answers 405 to a GET, which is
+  a live POST-only route, and the last callbacks that landed were on 2026-09-15. The
+  environment is sandbox, so no money moved. The cause is delivery, not the app — either
+  the tunnel was not serving during that window or Daraja did not post. **Left unresolved:
+  it needs the tunnel and Daraja side checked, not code.**
+- **Fixed — the pay-flow cue gave up on the clock, then told the payer to pay again.** The
+  confirm window was 150 s, and on expiry the child reported `awaiting: false` while
+  `VerificationPaymentFlow` gated **both** cues on it — including `justPaid`, which drives
+  the inline `PaymentSuccessNotice` that its own comment calls the persistent record. A
+  confirmation landing after 2.5 minutes therefore produced no notice at all, and the copy
+  said "may have expired — try again" while the payment could still be live; a reload put
+  the Pay button back, inviting a second charge. Now `PayVerification` reports
+  `onPaymentInitiated` once and never retracts it, the wrapper owns a `paymentInitiated`
+  flag and gates the cue on that, the copy states the page is still checking and says **do
+  not pay again**, an outline `Check again` button refreshes on demand, and **polling
+  continues past the window** because the server still accepts a late callback. The same
+  copy and continued polling were applied to `PurchaseSubscription`, whose cue was already
+  server-anchored on the newest payment id and so never had the gating defect.
+- **Open — the `payment-timeout` job is not reaping.** It is scheduled `* * * * *`, yet
+  `payload-jobs` holds exactly one `payment-timeout` row (2026-09-04) while the other four
+  tasks each have a single row stamped `2026-09-16T20:39:00` — a catch-up enqueue at
+  instance init, not a ticking cron — and a payment from `2026-09-15T09:40:53` is still
+  `stk_sent` a day later. So a paid-but-unconfirmed payment is never flagged and nothing
+  surfaces "the customer paid and we never heard about it". Likely the in-process cron
+  being reset by dev-server reloads; driving the queue externally through
+  `/api/payload-jobs/run` with `CRON_SECRET` is the documented path and the endpoint
+  already accepts it. One side effect helped here: because the record was never expired, a
+  late callback would still have activated it.
+- **Files touched**: `pay-verification.tsx` (prop is now `onPaymentInitiated`, polling no
+  longer stops, `unconfirmed` copy + `Check again`), `verification-payment-flow.tsx`
+  (`paymentInitiated` gate), `purchase-subscription.tsx` (same copy, same continued
+  polling), `context/ui-registry.md` (the three entries), `context/progress-tracker.md`
+  (this entry).
+- **Notes**: No schema change and no money-path logic touched — this is client feedback
+  only. Still to confirm on the real flow: a payment confirmed _after_ the 150 s window
+  must now show both the inline notice and the toast.
+
 ### 2026-09-15 — Mwajiri subscription: stacking policy aligned to the code, validation findings
 
 - **What was built**: The stacking carry-over was corrected and the context set aligned to

@@ -1,10 +1,7 @@
 import type { Payload } from "payload";
 
-import { writeAuditLog } from "@/lib/audit";
-import { toId, userLabel } from "@/lib/payload-helpers";
+import { toId } from "@/lib/payload-helpers";
 import type { User, WajakaziProfile } from "@/payload-types";
-import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
-import { getOwnSubscription } from "@/services/subscription.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -22,7 +19,7 @@ const fail = (
 	code?: string,
 ): { success: false; error: string; code?: string } => ({ success: false, error, code });
 
-// trusted read of a wajakazi profile. this service is the one place contact
+// trusted read of a mjakazi profile. this service is the one place contact
 // fields are read, so it reads through overrideAccess after authorizing in the
 // caller — the exemptions to invariant #15 are named in architecture.md
 const loadProfile = async (
@@ -108,86 +105,69 @@ const getContact = async (
 	return { phone: profile.phone ?? null, email };
 };
 
-// the reveal: records a permanent unlock, writes the audit entry, and returns the
-// contact. the one operation the product exists to enable, and the only code that
-// may select phone + email. gated on role + an active subscription, and re-checks
-// that the target is still live in the directory (mirroring toggleSave). the
-// compound unique index makes a concurrent double-reveal collapse into an
-// idempotent "already unlocked" return rather than a duplicate grant
-const revealContact = async (
+// the grant for a pair, if one exists. trusted read — the caller has already
+// authorized, and only ever asks about one pair
+const findGrant = async (
 	payload: Payload,
-	user: User,
+	mwajiriId: string,
 	mjakaziId: string,
-): Promise<Result<Contact & { tierAtUnlock: string | null }>> => {
-	if (user.role !== "mwajiri") return fail("Forbidden", "forbidden");
-
-	const subscription = await getOwnSubscription(payload, user);
-	if (!subscription || subscription.subscriptionState !== "active") {
-		return fail(
-			"An active subscription is required to unlock contact details.",
-			"subscription_inactive",
-		);
+): Promise<{ id: string } | null> => {
+	try {
+		const result = await payload.find({
+			collection: "contact-unlocks",
+			where: {
+				and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { equals: mjakaziId } }],
+			},
+			limit: 1,
+			depth: 0,
+			overrideAccess: true,
+		});
+		return result.docs[0] ?? null;
+	} catch {
+		return null;
 	}
+};
 
-	const visible = await payload.find({
-		collection: "wajakazi-profiles",
-		where: { and: [DIRECTORY_VISIBLE, { id: { equals: mjakaziId } }] },
-		limit: 1,
-		depth: 0,
-		select: { slug: true },
-		overrideAccess: false,
-		req: { user },
-	});
-	if (visible.docs.length === 0) {
-		return fail("This profile is no longer available.", "not_found");
-	}
-
-	const profile = await loadProfile(payload, mjakaziId);
-	if (!profile) return fail("Profile not found.", "not_found");
-
-	const email = await loadOwnerEmail(payload, profile);
-	if (!email) return fail("This wajakazi has no email on file.", "missing_email");
-
-	const contact: Contact = { phone: profile.phone ?? null, email };
-	const tierAtUnlock = subscription.tierName ?? null;
+// records the durable contact grant produced by an accepted expression of
+// interest. the grant is permanent and holds the contact after the subscription
+// expires, so this is the one path that now creates a grant.
+//
+// idempotent by design: an existing grant (including one created by the retired
+// direct-reveal path) short-circuits, and a concurrent create that loses the
+// compound unique index is treated as already granted. the caller needs the new
+// row's id only so it can roll the grant back if the acceptance it belongs to
+// loses its compare-and-swap race
+const grantContactFromEoi = async (
+	payload: Payload,
+	mwajiriId: string,
+	mjakaziId: string,
+	eoiId: string,
+): Promise<Result<{ grantId: string | null }>> => {
+	const existing = await findGrant(payload, mwajiriId, mjakaziId);
+	if (existing) return { success: true, data: { grantId: null } };
 
 	try {
-		await payload.create({
+		const created = await payload.create({
 			collection: "contact-unlocks",
 			data: {
-				mwajiri: user.id,
+				mwajiri: mwajiriId,
 				mjakazi: mjakaziId,
-				tierAtUnlock,
+				source: "eoi",
+				sourceEoi: eoiId,
 				unlockedAt: new Date().toISOString(),
-				subscription: subscription.id,
 			},
 			overrideAccess: true,
 		});
+		return { success: true, data: { grantId: created.id } };
 	} catch (error) {
-		// the compound unique index rejects a concurrent double-reveal — treat it
-		// as already unlocked and return the contact rather than surfacing a
-		// spurious error or writing a second audit entry
-		console.error("[services/contact] reveal create failed:", error);
-		const existing = await getContact(payload, user, mjakaziId);
-		if (existing) return { success: true, data: { ...existing, tierAtUnlock } };
-		return fail("Could not unlock this contact.");
+		console.error("[services/contact] grant create failed:", error);
+		// the failure may be a concurrent create that won the unique index — re-read
+		// before deciding whether the grant exists
+		const raced = await findGrant(payload, mwajiriId, mjakaziId);
+		if (raced) return { success: true, data: { grantId: null } };
+		return fail("Could not grant this contact.");
 	}
-
-	await writeAuditLog({
-		action: "contact_unlocked",
-		actorId: user.id,
-		actorLabel: userLabel(user),
-		targetId: toId(profile.user),
-		metadata: {
-			mjakaziId,
-			tierAtUnlock,
-			subscriptionId: subscription.id,
-		},
-		source: "user",
-	});
-
-	return { success: true, data: { ...contact, tierAtUnlock } };
 };
 
-export { getContact, hasUnlock, revealContact };
+export { getContact, grantContactFromEoi, hasUnlock };
 export type { Contact };

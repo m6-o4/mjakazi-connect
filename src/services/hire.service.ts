@@ -17,10 +17,7 @@ import {
 import { loadUserEmail } from "@/lib/user-email";
 import type { Hire, User } from "@/payload-types";
 import { getOwnProfile } from "@/services/profile.service";
-import {
-	getOwnSubscription,
-	getSubscriptionByUser,
-} from "@/services/subscription.service";
+import { getSubscriptionByUser } from "@/services/subscription.service";
 
 type Result<T = void> =
 	{ success: true; data: T } | { success: false; error: string; code?: string };
@@ -337,12 +334,20 @@ const confirmHireCore = async (
 		actorRole === "mwajiri"
 			? actorName
 			: ((await loadUserName(payload, mwajiriId)) ?? "the employer");
-	const mjakaziName = profile.displayName ?? "the wajakazi";
+	const mjakaziName = profile.displayName ?? "the mjakazi";
 
 	const existing = await findHire(payload, mwajiriId, mjakaziId);
 
 	if (existing?.state === "agreed") {
 		return { success: true, data: existing };
+	}
+
+	// a completed hire is terminal for this pair. without this guard an `ended`
+	// hire falls through to the create branch below, the unique index rejects it,
+	// and the catch re-runs this function — a retry loop that also flips
+	// availability. the UI no longer offers it, but the guard is the real stop
+	if (existing?.state === "ended") {
+		return fail("This hire was already completed.", "already_completed");
 	}
 
 	if (existing?.state === "pending_agreement") {
@@ -496,7 +501,7 @@ const reverseHireRecord = async (
 	const profile = await loadProfile(payload, mjakaziId);
 	const mjakaziOwnerId = profile ? toId(profile.user) : null;
 	const counterpartUserId = actor?.role === "mwajiri" ? mjakaziOwnerId : mwajiriId;
-	const actorName = actor ? userLabel(actor) : "the wajakazi";
+	const actorName = actor ? userLabel(actor) : "the mjakazi";
 
 	try {
 		const result = await payload.update({
@@ -549,7 +554,9 @@ const reverseHireRecord = async (
 };
 
 // mwajiri side — the candidates they can mark as hired: wajakazi whose interest
-// they accepted, or whose contact they unlocked, minus any active hire
+// they accepted, or whose contact they unlocked, minus anyone whose hire is still
+// open or already completed. only a reversed hire ("did not hold") frees the pair
+// to record a new one
 const listHireCandidatesForMwajiri = async (
 	payload: Payload,
 	user: User,
@@ -593,12 +600,12 @@ const listHireCandidatesForMwajiri = async (
 
 	if (profileIds.size === 0) return [];
 
-	const activeHires = await payload.find({
+	const blockingHires = await payload.find({
 		collection: "hires",
 		where: {
 			and: [
 				{ mwajiri: { equals: user.id } },
-				{ state: { in: ["pending_agreement", "agreed"] } },
+				{ state: { in: ["pending_agreement", "agreed", "ended"] } },
 			],
 		},
 		limit: 100,
@@ -606,13 +613,13 @@ const listHireCandidatesForMwajiri = async (
 		select: { mjakazi: true },
 		overrideAccess: true,
 	});
-	const activeProfileIds = new Set(
-		activeHires.docs
+	const blockedProfileIds = new Set(
+		blockingHires.docs
 			.map((doc) => toId(doc.mjakazi))
 			.filter((id): id is string => id !== null),
 	);
 
-	const ids = [...profileIds].filter((id) => !activeProfileIds.has(id));
+	const ids = [...profileIds].filter((id) => !blockedProfileIds.has(id));
 	const display = await loadProfileDisplay(payload, ids);
 
 	return ids.map((id) => ({
@@ -624,7 +631,8 @@ const listHireCandidatesForMwajiri = async (
 };
 
 // mjakazi side — the waajiri they may attribute a hire to: those who unlocked
-// their contact or sent an expression of interest, minus any active hire
+// their contact or sent an expression of interest, minus any whose hire is still
+// open or already completed (only a reversed hire frees the pair to re-record)
 const listHireCandidatesForMjakazi = async (
 	payload: Payload,
 	user: User,
@@ -666,12 +674,12 @@ const listHireCandidatesForMjakazi = async (
 
 	if (userIds.size === 0) return [];
 
-	const activeHires = await payload.find({
+	const blockingHires = await payload.find({
 		collection: "hires",
 		where: {
 			and: [
 				{ mjakazi: { equals: resolvedId } },
-				{ state: { in: ["pending_agreement", "agreed"] } },
+				{ state: { in: ["pending_agreement", "agreed", "ended"] } },
 			],
 		},
 		limit: 100,
@@ -679,13 +687,13 @@ const listHireCandidatesForMjakazi = async (
 		select: { mwajiri: true },
 		overrideAccess: true,
 	});
-	const activeUserIds = new Set(
-		activeHires.docs
+	const blockedUserIds = new Set(
+		blockingHires.docs
 			.map((doc) => toId(doc.mwajiri))
 			.filter((id): id is string => id !== null),
 	);
 
-	const ids = [...userIds].filter((id) => !activeUserIds.has(id));
+	const ids = [...userIds].filter((id) => !blockedUserIds.has(id));
 	const senders = await loadSenderInfo(payload, ids);
 
 	return ids.map((id) => ({
@@ -788,10 +796,11 @@ const listHires = async (
 	return [];
 };
 
-// mwajiri side — marks a hire with a wajakazi, or agrees to one the wajakazi
-// already confirmed. gated on an active subscription and a prior relationship
-// (accepted interest or unlocked contact) with the wajakazi. `sourceEoiId` is
-// the accepted interest that led here, when there was one
+// mwajiri side — marks a hire with a mjakazi, or agrees to one the mjakazi
+// already confirmed. gated on a prior relationship (a contact grant from an
+// accepted interest, or an unlocked contact) with the mjakazi — an active
+// subscription is not required, because a grant outlives the subscription.
+// `sourceEoiId` is the accepted interest that led here, when there was one
 const confirmHire = async (
 	payload: Payload,
 	actor: User,
@@ -800,16 +809,8 @@ const confirmHire = async (
 ): Promise<Result<Hire>> => {
 	if (actor.role !== "mwajiri") return fail("Forbidden", "forbidden");
 
-	const subscription = await getOwnSubscription(payload, actor);
-	if (!subscription || subscription.subscriptionState !== "active") {
-		return fail(
-			"An active subscription is required to confirm a hire.",
-			"subscription_required",
-		);
-	}
-
 	if (!(await isHireCandidateForMwajiri(payload, actor.id, mjakaziId))) {
-		return fail("This wajakazi is not in your hire list.", "not_found");
+		return fail("This mjakazi is not in your hire list.", "not_found");
 	}
 
 	return confirmHireCore(payload, actor, actor.id, mjakaziId, sourceEoiId ?? null);

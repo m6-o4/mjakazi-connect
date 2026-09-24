@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 
+import { RatingStars } from "@/components/rating-stars";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,7 @@ type DirectoryCardProps = {
 	basePath?: string;
 };
 
-// a single wajakazi in the directory. links to the profile's own detail page and
+// a single mjakazi in the directory. links to the profile's own detail page and
 // deliberately renders no contact fields. `basePath` lets the authenticated
 // mwajiri browse reuse the card against its own route without touching the
 // public directory
@@ -35,6 +36,9 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 		LOCATION_OPTIONS.find((option) => option.value === profile.location)?.label ??
 		profile.location ??
 		null;
+
+	const ratingAverage = profile.ratingAverage ?? null;
+	const ratingCount = profile.ratingCount ?? 0;
 
 	return (
 		<Card className="group h-full gap-0 py-0 transition-all duration-300 hover:shadow-lg">
@@ -68,9 +72,19 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 			</div>
 
 			<CardContent className="flex flex-1 flex-col gap-3 px-6 py-6">
-				<h3 className="text-heading group-hover:text-primary text-xl font-semibold transition-colors">
-					{name}
-				</h3>
+				<div className="flex items-start justify-between gap-2">
+					<h3 className="text-heading group-hover:text-primary text-xl font-semibold transition-colors">
+						{name}
+					</h3>
+					{ratingCount > 0 && ratingAverage !== null ? (
+						<span className="flex shrink-0 items-center gap-1 pt-1">
+							<RatingStars rating={ratingAverage} />
+							<span className="text-muted-foreground text-xs">
+								{ratingAverage.toFixed(1)}
+							</span>
+						</span>
+					) : null}
+				</div>
 
 				<div className="text-muted-foreground flex flex-col gap-1 text-sm">
 					{locationLabel ? (

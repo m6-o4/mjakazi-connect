@@ -17,6 +17,7 @@ type DirectoryPaginationProps = {
 		category?: string;
 		location?: string;
 		experience?: string;
+		minRating?: number;
 		q?: string;
 	};
 	basePath?: string;
@@ -52,6 +53,7 @@ const DirectoryPagination = ({
 		if (baseParams.category) params.set("category", baseParams.category);
 		if (baseParams.location) params.set("location", baseParams.location);
 		if (baseParams.experience) params.set("experience", baseParams.experience);
+		if (baseParams.minRating) params.set("minRating", String(baseParams.minRating));
 		if (baseParams.q) params.set("q", baseParams.q);
 		if (page > 1) params.set("page", String(page));
 

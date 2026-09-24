@@ -11,6 +11,12 @@ import { isAdminOrOwner, isRestricted } from "@/payload/access/access-control";
 // `mpesaReference` is our own unique business reference, minted at initiation and
 // passed to daraja as `AccountReference`. `checkoutRequestId` is daraja's unique
 // per-push id — the key the callback uses to find the record and reject duplicates.
+//
+// a payment reaches `confirmed` one of two ways: the callback, which carries the
+// `mpesaReceiptNumber` in its metadata, or a hand reconciliation when the callback
+// never arrived — a staff or admin member recording the receipt from the payer's
+// own SMS. `reconciledBy`/`reconciledAt` mark the second way so the two are never
+// confused in the ledger. no path confirms a payment without a receipt.
 const Payments: CollectionConfig = {
 	slug: "payments",
 	labels: { singular: "Payment", plural: "Payments" },
@@ -135,6 +141,20 @@ const Payments: CollectionConfig = {
 			admin: { readOnly: true },
 		},
 		{
+			// the code from the payer's m-pesa confirmation sms. it arrives only in
+			// the callback, and never in the express query response, so a payment
+			// completed by hand carries the receipt a person read out instead
+			name: "mpesaReceiptNumber",
+			type: "text",
+			label: "M-Pesa Receipt",
+			index: true,
+			admin: {
+				readOnly: true,
+				description:
+					"The M-Pesa receipt from the payer's confirmation SMS, or from the callback.",
+			},
+		},
+		{
 			name: "merchantRequestId",
 			type: "text",
 			label: "Merchant Request ID",
@@ -169,6 +189,16 @@ const Payments: CollectionConfig = {
 			admin: { readOnly: true, position: "sidebar" },
 		},
 		{
+			// set when the reconciliation sweep has asked m-pesa what happened to
+			// this push. it exists so each payment is asked about exactly once, no
+			// matter how often the sweep runs, and so the queue cadence never decides
+			// how many times daraja is called
+			name: "mpesaStatusCheckedAt",
+			type: "date",
+			label: "M-Pesa Status Checked At",
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
 			name: "failedAt",
 			type: "date",
 			label: "Failed At",
@@ -178,6 +208,26 @@ const Payments: CollectionConfig = {
 			name: "expiredAt",
 			type: "date",
 			label: "Expired At",
+			admin: { readOnly: true, position: "sidebar" },
+		},
+		{
+			// set only when a person completed the payment by hand from the payer's
+			// receipt, because the callback never arrived. empty for every payment
+			// the callback settled
+			name: "reconciledBy",
+			type: "relationship",
+			relationTo: "users",
+			label: "Reconciled By",
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				description: "The staff or admin member who confirmed this payment by hand.",
+			},
+		},
+		{
+			name: "reconciledAt",
+			type: "date",
+			label: "Reconciled At",
 			admin: { readOnly: true, position: "sidebar" },
 		},
 	],

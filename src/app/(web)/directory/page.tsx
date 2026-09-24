@@ -34,6 +34,7 @@ const Page = async ({ searchParams }: Args) => {
 		category: toStr(raw.category),
 		location: toStr(raw.location),
 		experience: toStr(raw.experience),
+		minRating: toStr(raw.minRating),
 		q: toStr(raw.q),
 		page: toStr(raw.page),
 	});
@@ -48,11 +49,16 @@ const Page = async ({ searchParams }: Args) => {
 		category: query.category,
 		location: query.location,
 		experience: query.experience,
+		minRating: query.minRating,
 		q: query.q,
 	};
 
 	const hasActiveFilter = Boolean(
-		active.category || active.location || active.experience || active.q,
+		active.category ||
+		active.location ||
+		active.experience ||
+		active.minRating ||
+		active.q,
 	);
 
 	return (

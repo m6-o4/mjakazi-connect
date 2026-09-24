@@ -1,157 +1,114 @@
-# Memory — Mjakazi verification + M-Pesa journey signed off; mwajiri subscription is next
+# Memory — Subscription upgrades (tier rank), one-way upgrades, and the 1–4 tier cap — dev complete, going live
 
-Last updated: 2026-09-15 05:25 UTC
+Last updated: 2026-09-24 07:53 UTC
 
 ## What was built
 
-**No domain logic changed this session.** A manual validation of the mjakazi verification
-and payment journey was run, then three pieces of feedback from it were built and a review
-pass was completed.
+Everything below is **uncommitted** at the time of writing (Michael commits after
+`/remember save`). It builds on the previous session's committed
+concierge/reviews/hire-card work.
 
-- `src/components/dashboard/mjakazi/verification/submit-verification.tsx` — the submit
-  toast no longer claims review has begun. It was `"Submitted for review"` /
-  `"Our team will review your profile and documents."`, fired at the moment the action
-  moves `draft → pending_payment`. It now reads `"Profile submitted"` /
-  `"Pay the verification fee to send your profile to our team for review."`
-- `src/components/dashboard/mjakazi/verification/verification-payment-flow.tsx` — fires
-  `notifySuccess("Payment received")` (`id: "verification-payment-received"`) on the live
-  transition out of `pending_payment` while a payment was awaiting confirmation, alongside
-  the existing inline `PaymentSuccessNotice`.
-- `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — the same
-  toast (`id: "subscription-payment-received"`) when the newest payment, matched by id,
-  settles at `confirmed`.
-- `src/components/dashboard/mjakazi/document-vault/index.tsx` — exports
-  `DocumentNextStep = { href, label, description }`; takes `nextStep?`; renders a "All
-  required documents uploaded" panel with the step's description and a
-  `buttonVariants()`-styled `Link` whenever the live set is complete and a `nextStep`
-  exists; fires a `"Documents complete"` toast naming that step on the same transition as
-  `documents_uploaded`. The `documents_uploaded` capture and the toast now run in a
-  `useEffect` keyed on `docs` instead of inside the `setDocs` updater, and the updater is
-  back to a pure merge.
-- `src/app/(saas)/dashboard/mjakazi/documents/page.tsx` —
-  `NEXT_STEP_BY_VERIFICATION_STATE` (`draft` → Submit for verification, `pending_payment`
-  → Pay the verification fee, `rejected` → Resubmit for review), `PROFILE_GATED_STATES`,
-  `INCOMPLETE_PROFILE_NEXT_STEP` (→ `/dashboard/mjakazi/profile`) and
-  `getNextStep(state, profileComplete)`. The panel itself moved into `DocumentVault`; the
-  page only resolves the step.
-- Docs: `context/progress-tracker.md` (full entry + review fixes + copy fix + the sign-off
-  and next-session note), `context/ui-registry.md` (`DocumentVault`,
-  `VerificationPaymentFlow`, `PurchaseSubscription`, `SubmitVerification`),
-  `context/library-docs.md` (the payment-confirmation dual-cue convention and the React
-  state-updater trap).
+**1. Tier rank.** `platform-settings.subscriptionTiers` gained `rank` (optional number,
+min 0, unique). `settings.service` resolves every read through `withRanks` into
+`RankedSubscriptionTier` — a stored rank, or the tier's position in the stored array for a
+row saved before the field existed — computed over the full array before inactive tiers
+are filtered. Uniqueness is enforced by the array field's `validate` (the write path both
+the settings form and the Payload admin panel share) and again in
+`updateSubscriptionTiers` for clean action errors.
+
+**2. Upgrade classification.** `subscription.service.classifyPlanChange` labels a purchase
+`upgrade` / `downgrade` / `renewal` / `switch` by rank; the result is recorded as
+`planChange` in the `subscription_activated` audit metadata. The carry-over money path is
+unchanged (still terms-based per invariant #11).
+
+**3. Fresh concierge case on upgrade.** `createConciergeCaseOnPayment` takes
+`{ forceNew }`. An upgrade onto a Concierge tier always creates a fresh case with its own
+replacement guarantee; a same-tier Concierge renewal reuses the open one.
+`concierge-cases` has no per-mwajiri unique index, so multiple open cases are valid.
+
+**4. One-way rule (upgrades only).** `subscription.service.assertPlanChangeAllowed` is
+enforced in `app/actions/subscription.ts` after `beginPurchase` and before
+`initiatePayment`. While a subscription is `active`, a lower-ranked tier is refused with
+code `downgrade_blocked`. `none` / `expired` / `pending_payment` / `suspended` /
+`blacklisted` are not gated.
+
+**5. UI.** The mwajiri purchase page orders tiers by rank, badges the current plan
+"Current", disables lower-ranked tiers while active with a "Below your plan" badge, and
+reads Upgrade / Switch plan / Extend in the heading, CTA and success copy (with a `switch`
+case when the current tier is unresolvable). The admin tiers form gained a Rank input; a
+new row is ranked above the highest existing.
+
+**6. Tier cap.** New `src/lib/subscription-tiers.ts` exports `MIN_SUBSCRIPTION_TIERS = 1`
+and `MAX_SUBSCRIPTION_TIERS = 4`, used by the schema (`minRows`/`maxRows`), the service
+(`too_many_tiers`), and the admin form ("Add tier" disabled at 4 with a helper line).
+
+**7. Docs** updated: `architecture.md`, `build-plan.md`, `progress-tracker.md`,
+`ui-registry.md`.
 
 ## Decisions made
 
-- **A payment confirmation gets both cues.** The inline `PaymentSuccessNotice` is the
-  persistent record; a `notifySuccess` toast is the immediate cue on the live transition.
-  Both pay flows do this, each with a stable `id` so a repeat upserts.
-- **A toast describes the transition that just happened and the step it leaves outstanding
-  — never the end of the journey.** `draft → pending_payment` confirms the submission and
-  names the fee; `"under review"` is only true at `pending_payment → pending_review`. This
-  is now recorded in `library-docs.md` and the progress tracker.
-- **The next-step cue is resolved from the verification state on the server, but
-  completeness is decided on the client.** The server render that supplies `nextStep`
-  happens before the upload that completes the set, so it must not be gated on the server
-  document list — `isDocumentSetComplete(docs)` gates it inside `DocumentVault`. The panel
-  lives in the same client component so it appears without a reload.
-- **`submit` / `resubmit` are only offered once the profile is complete**, because
-  entering review runs through the readiness rule (`SubmitVerification` disables submit
-  otherwise). While the profile is incomplete, the profile is the next step.
-- **`ResubmitVerification`'s `"Resubmitted for review"` toast is correct and stays** — a
-  resubmission goes straight to `pending_review` with no fee.
-- **No new audit action and no new PostHog event.** `documents_uploaded` keeps its
-  meaning.
+- **Money semantics unchanged** on an upgrade: the unexpired window converts at the new
+  tier's daily rate, a fresh window starts from now, nothing is refunded in cash.
+- **Upgrade is defined by an explicit rank field**, not by price.
+- **An upgrade onto a Concierge tier always creates a fresh case**; a same-tier renewal
+  reuses the open one.
+- **Downgrades are blocked only while `active`** — an expired or suspended account may buy
+  any tier.
+- **The plan list is bounded to 1–4** so the owner cannot overwhelm the mwajiri with
+  options.
+- **Legacy tiers without a stored rank fall back to their position**; no migration or
+  backfill (project was in development).
 
 ## Problems solved
 
-- **The next-step cue was inert.** Both the panel and the toast label were derived from
-  the server-rendered document list, which by definition predates the upload that
-  completes the set — so `nextStep` was always `null` at the transition, the toast only
-  ever showed its generic line, and the panel needed a reload that made the cue pointless.
-  Fixed by deriving both from the live client `docs` list. Found by the review, not by me.
-- **The cue overpromised for an incomplete profile.** A `draft` worker with all three
-  slots but an incomplete profile was told to submit, then blocked by the disabled button.
-  `getNextStep` now returns "Complete your profile" for `draft`/`rejected` while
-  `profileComplete !== true`.
-- **The `"Submitted for review"` toast fired before the fee.** It invited the worker to
-  think the next step was unnecessary, exactly as Michael said. Reworded to drive to the
-  fee; the review message now lives only where it is true.
-- **`documents_uploaded` fired twice on the third upload.** A side effect inside the
-  `setDocs` updater, which React double-invokes in development. Moved to an effect and
-  recorded as a trap in `library-docs.md`.
-- **`next build` rewrites generated files in Payload's own unformatted style.**
-  `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js` come back with single
-  quotes and different import order, producing a ~4,370-line phantom diff that wipes the
-  repo's prettier formatting. Run prettier on those two after a build, before committing.
-  They are clean in the working tree right now.
-- **The old `pending_payment` dead-end question is answered — no code change needed.** The
-  pay card re-renders whenever the state is `pending_payment`, and after the 150s poll
-  timeout the button returns, so a fresh STK push can always be started.
-  `expireTimedOutPayments` expires only the payment record and the profile stays
-  `pending_payment` by design.
+- **Rank was `required` with no backfill**, so saving `platform-settings` from the Payload
+  panel could fail validation for legacy rows. Fixed by making `rank` optional and
+  resolving it on read (and by position); uniqueness moved to the array field's `validate`
+  so the panel is covered, not just the custom form.
+- **Server `classifyPlanChange` read `rank` raw while the pages fell back to `index`**, so
+  legacy rank-less config classified every plan change as `renewal` — no fresh concierge
+  case and a wrong audit entry. Fixed by normalising rank once in `settings.service`.
+- **The client had no `switch` case**, so a deactivated current tier read as "Extend"
+  while the server treated it as a plan change. Added.
+- **Guard ordering matters:** `beginPurchase` is a no-op while `active` and moves
+  `expired` to `pending_payment`, so the downgrade guard must run AFTER it — that is what
+  gates the active path while leaving expired ungated.
+- **PowerShell:** always `pnpm.cmd`.
+- **A subagent clobbered `purchase-subscription.tsx` and reconstructed it.** Build and
+  lint pass and the file was read back complete, but it was not diffed against the
+  pre-clobber working copy (which was uncommitted).
 
 ## Current state
 
-- **Michael tested the workflows and reports they all work as required.** This is the
-  sign-off for the mjakazi verification and M-Pesa payment journey.
-- `pnpm lint` 0 errors (1 pre-existing React-Compiler warning in
-  `concierge-brief-form.tsx`); `pnpm build` compiles, type-checks and generates 49 pages.
-  The `sharp` EPERM symlink warnings on Windows are known-harmless.
-- The uncommitted set is exactly five source files — `submit-verification.tsx`,
-  `verification-payment-flow.tsx`, `purchase-subscription.tsx`,
-  `document-vault/index.tsx`, `documents/page.tsx` — plus four context/memory docs.
-  **Nothing else is dirty.**
-- This session's work is **uncommitted by design**. Michael commits after
-  `/remember save`, so a dirty tree is the expected end-of-session state, not an
-  outstanding item.
-- `pnpm` must be invoked as `pnpm.cmd` in this shell — `pnpm` alone is blocked by the
-  PowerShell execution policy.
+- All development work is complete. `pnpm build` green; changed files lint clean.
+  Repo-wide `pnpm lint` still reports the **9 pre-existing errors under
+  `.kilo/worktrees/fortune-trigonometry/design/codebase`** (a separate worktree) —
+  unrelated.
+- Everything from this session is **uncommitted** at the time of writing.
+- The code is being pushed to the **live server with live settings**; the project is
+  moving into **updates / bug-patching** mode ("bugs we did not get in development").
+- **No automated test framework exists.** Acceptance is Michael's sandbox walkthrough
+  (real handset) plus the production run.
 
 ## Next session starts with
 
-- **The mwajiri sign-up and subscription process** — the counterpart journey to the one
-  signed off today. Same shape of work: read the existing flow end to end first, then
-  confirm with Michael whether this is end-to-end validation of what exists or new work,
-  then `/architect` before building anything. Files to read:
-  - `src/services/subscription.service.ts` — the six states, stacking logic, activation.
-  - `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx` — the tier
-    list, phone input, STK push and the confirmation poll (just given the payment toast).
-  - `src/components/dashboard/mwajiri/subscription-status-card.tsx`.
-  - `src/payload/collections/subscriptions/schema.ts` and
-    `src/payload/blocks/globals/platform-settings/schema.ts` (tier prices and durations
-    are read live, never hardcoded).
-  - `src/jobs/subscription-expiry.ts` — hourly; an expired subscription must block new
-    reveals while leaving existing unlocks intact.
-  - `src/components/dashboard/mwajiri/paywall-overlay/index.tsx` and the `contact-unlocks`
-    collection — the contact reveal path.
-  - `context/build-plan.md` Phase 5.1–5.3 for the original acceptance criteria.
-- Then the same loop: implement, `pnpm.cmd format` → `pnpm.cmd lint` → `pnpm.cmd build`,
-  then `/review uncommitted`. After a build, re-run prettier on `src/payload-types.ts` and
-  `src/app/(payload)/admin/importMap.js`.
+Production rollout and bug fixes. First confirm the live deploy and settings:
+`MPESA_ENVIRONMENT=production` with `MPESA_CALLBACK_URL` pointing at the public production
+URL (otherwise payment confirmations never arrive), `NEXT_PUBLIC_SERVER_URL` on the live
+domain, Clerk production-instance keys plus `CLERK_WEBHOOK_SIGNING_SECRET`, fresh
+`PAYLOAD_SECRET`/`PREVIEW_SECRET`/`CRON_SECRET`, and production DB, S3 bucket, and a
+verified Resend sending domain. Then configure the subscription tiers (unique ranks, 1–4)
+in Admin → Settings on the live database — a new DB starts empty, and the pricing page has
+no plans until they exist.
 
 ## Open questions
 
-- **`renewVerification` is still unwired** — `verification_expired → pending_payment`
-  exists in `verification.service.ts` with no Server Action and no button, so the state
-  card's "Renewal will be available shortly" is accurate. Deliberately out of scope today;
-  an expired worker cannot currently renew.
-- **Two forward-looking descriptions skip the fee** and Michael has not ruled on them:
-  `SubmitVerification`'s card description ("…then submit them for our team to review") and
-  the documents-page `draft` panel ("Submit your profile so our team can review your
-  documents"). They instruct toward the journey's end rather than claiming review has
-  started, so they were left as is.
-- **Whether to add `DONE` markers to the `build-plan.md` Phase 3 and 4.4 headings**,
-  matching the precedent on 10.1, 10.2 and 10.5. The file says completion is tracked in
-  `progress-tracker.md`, not there, so it was left untouched.
-- **Not explicitly confirmed:** that a `verified` worker uploading only the missing back
-  slot keeps their badge and directory listing (the `wasVerified && previousId` fix from
-  the previous session). Carried over.
-- **Carried over, still unresolved:** `dateOfBirth` is identity data yet is neither
-  starred nor in the completeness list; `displayName` is schema-required while
-  `PROFILE_REQUIRED_FIELDS` omits it, and its helper text promises a first-name fallback
-  that `toProfileData` does not implement.
-- **Carried over, still unresolved:** the "public free-text must reject contact details"
-  rule lives only in `code-standards.md` — promote it to a numbered invariant in
-  `architecture.md`, or leave it as an implementation rule?
-- If a real worker ever hits the `employer` contact-details rejection as a false positive,
-  revisit the patterns in `profile-schema.ts` rather than removing the check.
+- Production items not yet confirmed: check Cloudflare Security Events for lost M-Pesa
+  callbacks; nothing schedules `/api/payload-jobs/run` in production; no payer cue for a
+  sweep-confirmed payment.
+- The reconstructed `purchase-subscription.tsx` should be eyeballed before/after the push.
+- Carried over: `renewVerification` is unwired; the concierge "who has my contact" view
+  and a worker opt-out remain deliberately out of scope; several small data-model
+  inconsistencies.
+- The mwajiri pricing grid is `md:grid-cols-3`, so four tiers wrap 3+1 — left as-is
+  deliberately.

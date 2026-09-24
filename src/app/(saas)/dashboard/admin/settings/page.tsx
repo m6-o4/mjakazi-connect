@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { getPayload } from "payload";
 
 import { getCurrentUser } from "@/components/admin/get-current-user";
+import { EoiPolicyForm } from "@/components/dashboard/admin/settings/eoi-policy-form";
 import { PlatformSettingsForm } from "@/components/dashboard/admin/settings/platform-settings-form";
 import { SubscriptionTiersForm } from "@/components/dashboard/admin/settings/subscription-tiers-form";
 import { DASHBOARD_BY_ROLE } from "@/lib/roles";
 import config from "@/payload-config";
+import { getAllSubscriptionTiers, getEoiPolicy } from "@/services/settings.service";
 
 export const metadata = { title: "Settings" };
 
@@ -15,12 +17,19 @@ const AdminSettingsPage = async () => {
 	if (user.role !== "admin") redirect(DASHBOARD_BY_ROLE[user.role]);
 
 	const payload = await getPayload({ config });
-	const settings = await payload.findGlobal({ slug: "platform-settings" });
+	const [settings, eoiPolicy, tiers] = await Promise.all([
+		payload.findGlobal({ slug: "platform-settings" }),
+		getEoiPolicy(payload),
+		getAllSubscriptionTiers(payload),
+	]);
 
-	// pass existing tiers so the form pre-populates rather than starting blank
-	const currentTiers = (settings.subscriptionTiers ?? []).map((tier) => ({
+	// pass existing tiers so the form pre-populates rather than starting blank.
+	// ranks are already resolved by the service (stored value, or position for a
+	// row saved before `rank` existed), so this page and the purchase page agree
+	const currentTiers = tiers.map((tier) => ({
 		tierId: tier.tierId ?? "",
 		name: tier.name ?? "",
+		rank: tier.rank,
 		price: tier.price ?? 0,
 		durationDays: tier.durationDays ?? 30,
 		description: tier.description ?? "",
@@ -33,7 +42,7 @@ const AdminSettingsPage = async () => {
 			<div>
 				<h1 className="text-heading text-2xl font-semibold">Settings</h1>
 				<p className="text-muted-foreground mt-1 text-sm">
-					Platform-wide pricing — the verification fee and the mwajiri subscription tiers.
+					Platform-wide pricing and the mwajiri interest policy.
 				</p>
 			</div>
 
@@ -42,6 +51,8 @@ const AdminSettingsPage = async () => {
 			</div>
 
 			<SubscriptionTiersForm initialTiers={currentTiers} />
+
+			<EoiPolicyForm initialPolicy={eoiPolicy} />
 		</div>
 	);
 };

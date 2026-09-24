@@ -1,48 +1,27 @@
-"use client";
-
 import { Star } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-import { setReviewVisibilityAction } from "@/app/actions/reviews";
 import { RatingStars } from "@/components/rating-stars";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { notifySuccess } from "@/lib/notify";
 import type { WorkerReviewItem } from "@/services/review.service";
 
 type ReviewsPanelProps = {
 	reviews: WorkerReviewItem[];
 };
 
-// the worker's published reviews, shown and hidden. the toggle only changes
-// public visibility — a hidden review is still visible here so the worker can
-// learn from it, and it stays published (and audited)
+const formatDate = (value: string | null): string | null =>
+	value
+		? new Intl.DateTimeFormat("en-GB", {
+				day: "numeric",
+				month: "short",
+				year: "numeric",
+				timeZone: "Africa/Nairobi",
+			}).format(new Date(value))
+		: null;
+
+// the worker's published reviews. the written feedback is private to the worker
+// (and to the mwajiri who wrote it, and to staff) — it is never public. the
+// public profile shows only the star average, so there is nothing to hide
 const ReviewsPanel = ({ reviews }: ReviewsPanelProps) => {
-	const router = useRouter();
-	const [busyId, setBusyId] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	const toggle = async (reviewId: string, hidden: boolean) => {
-		setBusyId(reviewId);
-		setError(null);
-		try {
-			const result = await setReviewVisibilityAction({ reviewId, hidden });
-			if (!result.success) {
-				setError(result.error ?? "Could not update the review.");
-				return;
-			}
-			notifySuccess(hidden ? "Review hidden from profile" : "Review shown on profile", {
-				id: `review-visibility-${reviewId}`,
-			});
-			router.refresh();
-		} catch {
-			setError("Could not update the review.");
-		} finally {
-			setBusyId(null);
-		}
-	};
-
 	if (reviews.length === 0) {
 		return (
 			<Card>
@@ -59,38 +38,27 @@ const ReviewsPanel = ({ reviews }: ReviewsPanelProps) => {
 
 	return (
 		<div className="flex flex-col gap-3">
-			{error ? <p className="text-destructive text-xs">{error}</p> : null}
-			{reviews.map((review) => (
-				<Card key={review.id}>
-					<CardContent className="flex flex-col gap-2 py-4">
-						<div className="flex items-center justify-between gap-3">
+			{reviews.map((review) => {
+				const date = formatDate(review.publishedAt);
+				return (
+					<Card key={review.id}>
+						<CardContent className="flex flex-col gap-2 py-4">
 							<div className="flex flex-wrap items-center gap-2">
 								<RatingStars rating={review.rating} />
 								<span className="text-muted-foreground text-xs">
 									{review.reviewerName ?? "A mwajiri"}
 								</span>
+								{date ? (
+									<span className="text-muted-foreground text-xs">{date}</span>
+								) : null}
 							</div>
-							<Button
-								type="button"
-								variant={review.hidden ? "outline" : "ghost"}
-								size="sm"
-								onClick={() => toggle(review.id, !review.hidden)}
-								disabled={busyId === review.id}
-							>
-								{review.hidden ? "Show on profile" : "Hide from profile"}
-							</Button>
-						</div>
-						<p className="text-foreground text-sm leading-relaxed wrap-break-word">
-							{review.comment}
-						</p>
-						{review.hidden ? (
-							<p className="text-muted-foreground text-xs">
-								Hidden from your public profile.
+							<p className="text-foreground text-sm leading-relaxed wrap-break-word">
+								{review.comment}
 							</p>
-						) : null}
-					</CardContent>
-				</Card>
-			))}
+						</CardContent>
+					</Card>
+				);
+			})}
 		</div>
 	);
 };

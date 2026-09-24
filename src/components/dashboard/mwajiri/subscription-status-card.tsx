@@ -110,8 +110,8 @@ const SubscriptionStatusCard = ({
 						Access restricted
 					</CardTitle>
 					<CardDescription>
-						Your account cannot unlock contact details right now. Contact support for
-						help.
+						Your account cannot send expressions of interest right now. Contact support
+						for help.
 					</CardDescription>
 				</CardHeader>
 			</Card>
@@ -127,7 +127,7 @@ const SubscriptionStatusCard = ({
 					{expired ? "Your subscription has expired" : "You don't have a subscription"}
 				</CardTitle>
 				<CardDescription>
-					Subscribe to unlock the phone number and email of verified wajakazi.
+					Subscribe to browse verified wajakazi and send them an expression of interest.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-wrap gap-2">

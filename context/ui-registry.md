@@ -112,7 +112,11 @@ codebase.
   Fires `profile_completed` PostHog event on the first false→true completeness transition.
   The Professional card renders `EmploymentHistoryField` between the
   years-of-experience/education grid and the languages chips — employment history is
-  optional, so it carries no asterisk and does not appear in the completeness checklist
+  optional, so it carries no asterisk and does not appear in the completeness checklist.
+  The mobile phone `Input` (`type="tel"`, placeholder `0712 345 678`) is seeded by the
+  page through `formatKenyanPhone`, so a stored canonical number reads in the local `0…`
+  form the user actually types; the shared schema still accepts any form and normalises on
+  save
 - **Used in**: `(saas)/dashboard/mjakazi/profile/page.tsx`
 
 ### `FormSelect`
@@ -189,15 +193,19 @@ codebase.
 ### `DocumentVault`
 
 - **Location**: `src/components/dashboard/mjakazi/document-vault/index.tsx`
-- **Purpose**: One card per identity document, with a slot per side — National ID front
-  and back, Certificate of Good Conduct as a single slot. Upload, replace, view and remove
-  are per slot, and each remove is guarded by a confirmation
+- **Purpose**: One card per identity document, with a slot per side — National ID and
+  Certificate of Good Conduct both captured as front and back. Upload, replace, view and
+  remove are per slot, and each remove is guarded by a confirmation
 - **Props**:
-  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean; nextStep?: DocumentNextStep | null }`
+  `{ documents: { id: string; documentType: string; side: string; filename: string | null }[]; isVerified?: boolean; locked?: boolean; nextStep?: DocumentNextStep | null }`
   where `DocumentNextStep` = `{ href, label, description }`, exported from the same file.
   `nextStep` is passed **ungated** on purpose: the server render that supplies it predates
   the upload that completes the set, so completeness is decided here, from the live client
-  `docs` state — gating it on the server list would gate it on a stale one
+  `docs` state — gating it on the server list would gate it on a stale one. `locked` is
+  true while the profile is `pending_review`; the server refuses the write regardless, so
+  it only turns failed clicks into a visible locked state (`View` stays enabled, the
+  `upload`/`remove` handlers early-return, and both the file inputs and the upload,
+  replace and remove buttons are disabled). The page banner above the vault says why.
 - **Visual pattern**: a `flex flex-col gap-6` wrapper holding one shadcn `Card` per entry
   in `DOCUMENT_SLOTS` in a `grid gap-4 md:grid-cols-2`; each side is a
   `border-border rounded-lg border p-3` block holding a semibold side label (rendered only
@@ -205,20 +213,25 @@ codebase.
   outline/ghost actions with a `buttonVariants`-styled "View" link; the empty state pairs
   a `FileText`/`ShieldCheck` lucide icon with "Not uploaded yet" and a small `Upload`
   button; per-slot `text-destructive` error line; remove is guarded by `AlertDialog` and
-  hidden entirely while `isVerified` (only `Replace` shows). On the transition to every
-  required `DOCUMENT_SLOTS` slot being present it fires `documents_uploaded` **and** a
-  `notifySuccess` "Documents complete" toast naming `nextStep.label`. Both side effects
+  hidden entirely while `isVerified` (only `Replace` shows). While `locked` every write
+  control is disabled rather than hidden, with `View` still live. On the transition to
+  every required `DOCUMENT_SLOTS` slot being present it fires `documents_uploaded` **and**
+  a `notifySuccess` "Documents complete" toast naming `nextStep.label`. Both side effects
   run in an effect rather than inside the `setDocs` updater: an updater must stay pure,
   and React double-invokes it in development, which had been firing `documents_uploaded`
-  twice. Below the grid it renders the completion panel — `border-success/40`, a
-  `CheckCircle2` in `text-success`, the heading "All required documents uploaded", the
-  step's description and a `buttonVariants()`-styled `Link` — whenever the live set is
-  complete and a `nextStep` exists. The panel and the toast therefore share one source and
-  appear in the session that completes the set, with no reload. Slot identity comes from
-  `documentSlotKey` in `src/lib/vault.ts` — shared with the gate and the dashboard
-  checklist, and it normalizes internally, so a record with no side reads as the front.
-  The upload merge uses a functional `setDocs` update so two slots uploaded in quick
-  succession cannot drop each other
+  twice. An upload by a verified worker reverts the profile to `pending_review`, so the
+  route returns `reverted` and the component then fires a `notifyInfo` "Document changed"
+  toast (stable `id: "document-reverted"`) and calls `router.refresh()`, and the
+  completion toast stands down — the revert news must not be competing with a "you're
+  done" success message. Below the grid it renders the completion panel —
+  `border-success/40`, a `CheckCircle2` in `text-success`, the heading "All required
+  documents uploaded", the step's description and a `buttonVariants()`-styled `Link` —
+  whenever the live set is complete and a `nextStep` exists. The panel and the toast
+  therefore share one source and appear in the session that completes the set, with no
+  reload. Slot identity comes from `documentSlotKey` in `src/lib/vault.ts` — shared with
+  the gate and the dashboard checklist, and it normalizes internally, so a record with no
+  side reads as the front. The upload merge uses a functional `setDocs` update so two
+  slots uploaded in quick succession cannot drop each other
 - **Used in**: `(saas)/dashboard/mjakazi/documents/page.tsx`
 
 ### `VerificationStatusCard`
@@ -270,34 +283,54 @@ codebase.
 
 - **Location**: `src/components/dashboard/mjakazi/verification/pay-verification.tsx`
 - **Purpose**: The `pending_payment` pay flow — an editable M-Pesa phone (prefilled from
-  the profile) sends the STK push via `initiateVerificationPaymentAction`, then polls
-  `router.refresh()` until the callback flips the profile into review
-- **Props**:
-  `{ fee: number | null; phone: string; onAwaitingChange?: (awaiting: boolean) => void }`
+  the profile, shown in the local `0…` form by the page via `formatKenyanPhone`) sends the
+  STK push via `initiateVerificationPaymentAction`, then polls `router.refresh()` until
+  the callback flips the profile into review
+- **Props**: `{ fee: number | null; phone: string; onPaymentInitiated?: () => void }`
 - **Visual pattern**: shadcn `Card`; `Smartphone` lucide icon in `text-accent`; `Label` +
   `Input` phone field; `Button` (default) "Pay KSh {fee}"; `Loader2` spinner + muted copy
-  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success;
-  reports its awaiting state up so `VerificationPaymentFlow` can show the success notice
+  while awaiting; fires `payment_initiated` (`paymentType: "verification"`) on success and
+  reports the push up once via `onPaymentInitiated` so `VerificationPaymentFlow` can show
+  the success notice. After the 150 s `SPINNER_WINDOW_MS` the card switches to
+  `unconfirmed` copy — "do not pay again" plus a `Button variant="outline"` "Check again"
+  — and **keeps polling**; the Pay button does not come back on the clock alone, because a
+  payment may still be live at M-Pesa. Reported once and never retracted: gating the cue
+  on the spinner had let a slow confirmation land with no notice at all
 - **Used in**: `VerificationPaymentFlow`
 
 ### `PurchaseSubscription`
 
 - **Location**: `src/components/dashboard/mwajiri/subscription/purchase-subscription.tsx`
 - **Purpose**: The mwajiri subscription purchase flow — live tier cards, M-Pesa phone
-  input, STK-push payment, and confirmation polling
+  input (prefilled from the profile in the local `0…` form by the page via
+  `formatKenyanPhone`), STK-push payment, and confirmation polling
 - **Props**:
-  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
-  (`TierOption` = `{ tierId, name, price, durationDays, description, isConcierge }`)
+  `{ tiers: TierOption[]; state: SubscriptionState; expiry: string | null; currentTierId: string | null; phone: string | null; latestPaymentId?: string | null; latestPaymentStatus?: string | null }`
+  (`TierOption` = `{ tierId, name, rank, price, durationDays, description, isConcierge }`)
 - **Visual pattern**: tier cards are clickable `<button>`s (`bg-card`, selected =
-  `ring-2 ring-primary`, unselected = `ring-1 ring-border`); `Badge variant="outline"`
-  "Concierge" with a `Crown` icon; active banner `Card` with `CheckCircle2` in
-  `text-primary`; `PaymentSuccessNotice` shown once the newest payment (matched by id, so
-  renewals/upgrades are detected too) settles at `confirmed`, with a matching
-  `notifySuccess` "Payment received" toast (`id: "subscription-payment-received"`) on that
-  transition — inline notice persists, the toast is the immediate cue; phone `Label` +
-  `Input`; `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}"; `Loader2`
-  spinner + muted copy while awaiting; fires `plan_selected` (`tierId`) and
-  `payment_initiated` (`paymentType: "subscription"`, `tierId`) PostHog events
+  `ring-2 ring-primary`, unselected = `ring-1 ring-border`), ordered by `rank`; while the
+  plan is active a lower-ranked tier is disabled (`disabled`/`aria-disabled`,
+  `ring-1 ring-border opacity-60 cursor-not-allowed`, no hover ring), its name muted, with
+  a `Badge variant="outline"` "Below your plan" in `text-muted-foreground` beside the
+  Current/Concierge badges, and `selectTier` ignores it; the effective selection falls
+  back off a now-blocked pick to the current tier (then the lowest-ranked allowed tier) so
+  the pay button is never armed for a downgrade; the active plan carries a
+  `Badge variant="secondary"` "Current", with the `Badge variant="outline"` "Concierge" +
+  `Crown` beside it; selection defaults to the current tier when active, otherwise the
+  lowest-ranked; the M-Pesa card heading and CTA read Upgrade / Change plan / Extend from
+  the selected rank against the current one, and while active the description states
+  remaining time is converted and nothing is refunded; active banner `Card` with
+  `CheckCircle2` in `text-primary`; `PaymentSuccessNotice` shown once the newest payment
+  (matched by id, so renewals/upgrades are detected too) settles at `confirmed`, its copy
+  naming upgrade/change/extend for the plan bought, with a matching `notifySuccess`
+  "Payment received" toast (`id: "subscription-payment-received"`) on that transition —
+  inline notice persists, the toast is the immediate cue; phone `Label` + `Input`;
+  `Button` (default) "Pay KSh {price}" / "Extend — KSh {price}" / "Upgrade — KSh {price}"
+  / "Switch plan — KSh {price}"; `Loader2` spinner + muted copy while awaiting; after the
+  150 s `SPINNER_WINDOW_MS` it switches to `unconfirmed` copy — "do not pay again" plus a
+  `Button variant="outline"` "Check again" — and **keeps polling**, since a late callback
+  still settles. fires `plan_selected` (`tierId`) and `payment_initiated`
+  (`paymentType: "subscription"`, `tierId`) PostHog events
 - **Used in**: `(saas)/dashboard/mwajiri/subscription/page.tsx`
 
 ### `VerificationQueue`
@@ -312,11 +345,31 @@ codebase.
   timestamp; `Inbox` empty state
 - **Used in**: `(saas)/dashboard/staff/verifications/page.tsx`
 
+### `StuckPaymentList`
+
+- **Location**: `src/components/dashboard/staff/payments/stuck-payment-list.tsx`
+- **Purpose**: The payments a lost callback stranded — pushed, never confirmed, never
+  failed — with the one action that recovers them: confirm by hand from the receipt in the
+  payer's own M-Pesa SMS
+- **Props**: `{ items: StuckPaymentItem[] }` (`id`, `paymentType`, `amount`,
+  `phoneNumber`, `mpesaReference`, `payerName`, `initiatedAt`)
+- **Visual pattern**: `bg-card` + `divide-y` rows matching `VerificationQueue`, each with
+  the payer, a capitalized `Badge` for the payment type, the amount as `KSh n`, and one
+  muted line of phone + reference + `Sent {date}` (Africa/Nairobi); a
+  `Button variant="outline"` "Confirm with receipt" opens an `AlertDialog` carrying a
+  `Label` + `Input` for the receipt. The confirm action stays disabled until a receipt is
+  typed, and a per-row `text-destructive` line carries the server's refusal. Success fires
+  `notifySuccess` with a stable `id` (`payment-reconciled`) then `router.refresh()`;
+  `Inbox` empty state reads "Nothing waiting"
+- **Used in**: `(saas)/dashboard/staff/payments/page.tsx`
+- **Note**: the copy tells staff to act only on the customer's own SMS, because the
+  receipt is the proof and no automated check can produce it
+
 ### `DocumentViewer`
 
 - **Location**: `src/components/dashboard/staff/verifications/document-viewer.tsx`
 - **Purpose**: Renders every side of a profile's identity documents through the audited
-  vault route, so a reviewer can compare the National ID front and back
+  vault route, so a reviewer can compare each documented front and back
 - **Props**: `{ documents: ReviewDocument[] }` (`id`, `documentType`, `side`, `filename`)
 - **Visual pattern**: one `Card` per entry in `DOCUMENT_SLOTS` in
   `grid gap-4 md:grid-cols-2`, each described as "N of M uploaded"; inside a multi-sided
@@ -376,13 +429,30 @@ codebase.
 ### `SubscriptionTiersForm`
 
 - **Location**: `src/components/dashboard/admin/settings/subscription-tiers-form.tsx`
-- **Purpose**: Edits the mwajiri subscription tiers (add/remove rows, PUT-replace the
+- **Purpose**: Edits the mwajiri subscription tiers (1–4 rows, add/remove, PUT-replace the
   whole array) via `updateSubscriptionTiersAction`
-- **Props**: `{ initialTiers: Tier[] }` (one empty row shown when none exist)
+- **Props**: `{ initialTiers: Tier[] }` (one empty row shown when none exist; `Tier`
+  includes `rank`)
 - **Visual pattern**: shadcn `Card`; per-tier bordered sub-card with
-  name/id/price/duration `Input`s, description `Textarea`, Active + Concierge checkboxes;
-  ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"; tierId
-  auto-slugified from name; success fires a `notifySuccess` toast
+  name/id/rank/price/duration `Input`s, description `Textarea`, Active + Concierge
+  checkboxes; the rank input (min 0) carries a muted `text-xs` helper — higher is more
+  premium, unique, a move up is an upgrade; a new row is ranked above the highest
+  existing; ghost Remove `Button` (hidden on the last row); `variant="outline"` "Add tier"
+  (disabled at `MAX_SUBSCRIPTION_TIERS`, with a muted `text-xs` "Maximum of 4 plans."
+  helper below it); tierId auto-slugified from name; success fires a `notifySuccess` toast
+- **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
+
+### `EoiPolicyForm`
+
+- **Location**: `src/components/dashboard/admin/settings/eoi-policy-form.tsx`
+- **Purpose**: Edits the expression-of-interest policy (batch min/max, response threshold,
+  interest expiry, re-send cooldown) in one save via `updateEoiPolicyAction`
+- **Props**: `{ initialPolicy: EoiPolicy }`
+- **Visual pattern**: shadcn `Card`; five number `Input`s in a `sm:grid-cols-2` grid, each
+  with a `Label` and a muted `text-xs` helper line; values held as strings (number inputs
+  fight leading zeros); validated together (whole numbers, min ≤ max, threshold 1–100);
+  inline `text-destructive` error (success fires a `notifySuccess` toast); disabled when
+  unchanged
 - **Used in**: `(saas)/dashboard/admin/settings/page.tsx`
 
 ### `ModerationTable`
@@ -478,11 +548,14 @@ codebase.
   `{ state: VerificationState; fee: number | null; phone: string; verificationExpiry?: string | null; rejectionReason?: string | null; freeResubmissionsRemaining?: number | null }`
 - **Visual pattern**: delegates to `PayVerification` (pending) or
   `VerificationStateCard` + optional `ResubmitVerification`; renders
-  `PaymentSuccessNotice` once a payment that was awaiting confirmation leaves
-  `pending_payment`; on that same live transition it also fires a `notifySuccess` "Payment
-  received" toast (`id: "verification-payment-received"`). The inline notice is the
-  persistent record, the toast is the immediate cue — a later visit mounts with the state
-  already past `pending_payment`, so nothing re-fires
+  `PaymentSuccessNotice` once a payment sent from this page leaves `pending_payment`; on
+  that same live transition it also fires a `notifySuccess` "Payment received" toast
+  (`id: "verification-payment-received"`). The inline notice is the persistent record, the
+  toast is the immediate cue — a later visit mounts with the state already past
+  `pending_payment` and nothing initiated there, so nothing re-fires. The gate is a
+  `paymentInitiated` flag owned by this wrapper and **not** the pay card's spinner state:
+  the spinner stops after 150 s, and gating on it made a slow confirmation show no cue at
+  all, losing even the persistent notice
 - **Used in**: `(saas)/dashboard/mjakazi/verification/page.tsx`
 
 ### `PaymentSuccessNotice`
@@ -543,7 +616,8 @@ codebase.
   `/directory`)
 - **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
   `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`,
-  `text-heading` name, job `Badge variant="outline"`; accent `buttonVariants` "View
+  `text-heading` name with a `RatingStars` + muted `N.N` beside it when the profile has a
+  rating (count > 0), job `Badge variant="outline"`; accent `buttonVariants` "View
   Profile" → `{basePath}/{slug}`
 - **Used in**: `src/app/(web)/directory/page.tsx`,
   `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
@@ -551,43 +625,49 @@ codebase.
 ### `DirectoryFilterBar`
 
 - **Location**: `src/components/web/directory/directory-filter-bar.tsx`
-- **Purpose**: The directory's search + filters (name, category, location, experience) —
-  every filter lives in the URL query string; fires `directory_searched` PostHog event
+- **Purpose**: The directory's search + filters (name, category, location, experience,
+  minimum rating) — every filter lives in the URL query string; fires `directory_searched`
+  PostHog event with the filter set including `minRating`
 - **Props**:
-  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number; basePath?: string }`
-- **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
-  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count;
-  navigation via `useRouter` + `URLSearchParams`
-- **Used in**: `src/app/(web)/directory/page.tsx`
+  `{ jobs; locations; current: { category?; location?; experience?; minRating?; q? }; resultCount: number; basePath?: string }`
+- **Visual pattern**: `Input` with `Search` icon + `Button`; four shadcn `Select`s
+  (sentinel "all"; rating offers "4+ / 3+ / 2+ stars"); ghost "Clear" `Button`;
+  `text-muted-foreground` result count; navigation via `useRouter` + `URLSearchParams`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/page.tsx`
 
 ### `DirectoryPagination`
 
 - **Location**: `src/components/web/directory/directory-pagination.tsx`
 - **Purpose**: Numbered pagination (9 per page) with windowed ellipsis; preserves active
-  filters in every link
+  filters (including `minRating`) in every link
 - **Props**:
-  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? }; basePath?: string }`
+  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; minRating?; q? }; basePath?: string }`
 - **Visual pattern**: `Link`s styled `size-9 rounded-md border`; active page
   `bg-primary/10 text-primary`; `ChevronLeft`/`ChevronRight` prev/next; `…` ellipsis spans
-- **Used in**: `src/app/(web)/directory/page.tsx`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/page.tsx`
 
 ### `DirectoryProfileDetail`
 
 - **Location**: `src/components/web/directory/directory-profile-detail.tsx`
 - **Purpose**: The public profile detail — full professional info with no contact fields,
-  and a "Join as a mwajiri" CTA
+  a star rating near the top, and a "Join as a mwajiri" CTA
 - **Props**:
   `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
 - **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
-  content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
-  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; a
-  "Previous employment" timeline (employer in `text-foreground`, role + month/year range
-  in `text-muted-foreground`, `border-l-2` rail per entry, newest first, omitted entirely
-  when empty); CTA `Card` with accent "Join as a mwajiri" + outline "Sign in". Renders
-  wherever profile content renders — the public directory detail and the mwajiri browse
-  detail both use this component, so employment history is in `DIRECTORY_DETAIL_FIELDS`.
-  No compact card shows it, and the list reads deliberately do not select it
-- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+  content right); `text-heading` name + `Verified` pill; a `RatingStars` + muted "N.N · N
+  reviews" line under the name when the profile has a rating (count > 0); icon rows
+  (`MapPin`, `Calendar`, `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in
+  `text-primary`; job `Badge`s; a "Previous employment" timeline (employer in
+  `text-foreground`, role + month/year range in `text-muted-foreground`, `border-l-2` rail
+  per entry, newest first, omitted entirely when empty); CTA `Card` with accent "Join as a
+  mwajiri" + outline "Sign in". Renders wherever profile content renders — the public
+  directory detail and the mwajiri browse detail both use this component, so employment
+  history is in `DIRECTORY_DETAIL_FIELDS`. No compact card shows it, and the list reads
+  deliberately do not select it
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`
 
 ### `DirectoryProfileViewTracker`
 
@@ -602,15 +682,18 @@ codebase.
 ### `BrowseContactCard`
 
 - **Location**: `src/components/dashboard/mwajiri/browse/browse-contact-card.tsx`
-- **Purpose**: The contact area on a mwajiri browse detail, three states — live contact
-  (already unlocked), an "Unlock contact details" reveal button (active subscriber), or a
-  "Subscribe to unlock" link (not active). The reveal calls `revealContactAction`, stores
-  the returned phone/email locally, and fires `contact_unlocked`.
-- **Props**: `{ mjakaziId: string; isActive: boolean; contact: Contact | null }`
+- **Purpose**: The contact area on a mwajiri browse detail. The contact is present only
+  once a mjakazi has accepted an expression of interest; otherwise the card shows masked
+  rows plus one control whose state is the profile's interest status — "Send interest"
+  (single-profile batch), "Interest sent" while pending, a "Subscribe to send interest"
+  link when the subscription is inactive, or the gate / cooldown reason. Fires
+  `interest_sent` (`count`) and refreshes on send.
+- **Props**:
+  `{ mjakaziId: string; contact: Contact | null; interest: ProfileInterestStatus }`
 - **Visual pattern**: shadcn `Card`; a live `ContactRow` (border, `Phone`/`Mail` icon,
   value or "Not provided") or a `MaskedRow` (`Lock` icon + `••••••••` placeholder) —
-  placeholders only, never real values; `Button` reveal (active) or accent
-  `buttonVariants` link to `/dashboard/mwajiri/subscription`; errors in
+  placeholders only, never real values; accent `buttonVariants` link for the subscribe
+  path; a muted `text-xs` note that granted details survive subscription expiry; errors in
   `text-destructive text-xs`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `contactSlot`)
@@ -634,11 +717,12 @@ codebase.
 ### `SaveToggle`
 
 - **Location**: `src/components/dashboard/mwajiri/browse/save-toggle.tsx`
-- **Purpose**: The save/unsave control on a mwajiri browse detail — calls
-  `toggleSaveAction`, fires `profile_saved` (`saved`), then refreshes
+- **Purpose**: The shortlist toggle on a mwajiri browse detail — calls `toggleSaveAction`,
+  fires `profile_saved` (`saved`), then refreshes
 - **Props**: `{ mjakaziId: string; initiallySaved: boolean }`
-- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved);
-  `variant="default"` when saved, `variant="outline"` otherwise; disabled while busy
+- **Visual pattern**: shadcn `Button` (`sm`), `Bookmark` icon (filled when saved); labels
+  `Shortlist` / `Shortlisted`; `variant="default"` when saved, `variant="outline"`
+  otherwise; disabled while busy
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx` (via
   `DirectoryProfileDetail`'s `headerAction`)
 
@@ -646,16 +730,18 @@ codebase.
 
 - **Location**: `src/components/dashboard/mwajiri/saved/eoi-send.tsx`
 - **Purpose**: The batch expression-of-interest send control on the saved page — a mwajiri
-  selects 3–5 of their saved wajakazi and sends each an interest as one batch (gated on an
-  active subscription)
+  selects between the configured minimum and maximum of their saved wajakazi and sends
+  each an interest as one batch. Sending is gated on the `eoiPolicy` bounds, an active
+  subscription and the open-pool gate, all resolved server-side into `canSend`.
 - **Props**:
-  `{ profiles: { id; displayName; location | null }[]; subscriptionActive: boolean }`
+  `{ profiles: { id; displayName; location | null }[]; minBatch: number; maxBatch: number; canSend: boolean; blockCode: ProfileInterestStatus["blockCode"]; blockReason: string | null }`
 - **Visual pattern**: shadcn `Card` with a `Send` icon in `text-accent`; bordered checkbox
   rows (native `<input type="checkbox">` with `accent`-styled classes, `displayName` +
-  muted location); "N selected — select at least 3" counter in `text-muted-foreground`;
-  disabled `Button` until 3–5 selected; accent `buttonVariants` "Subscribe to send
-  interest" link when not active; fires `interest_sent` (`count`) and a `notifySuccess`
-  toast, then `router.refresh()`
+  muted location); "N selected — select at least minBatch" counter in
+  `text-muted-foreground`; disabled `Button` until the selected count is within
+  minBatch–maxBatch; accent `buttonVariants` "Subscribe to send interest" link when the
+  block is the subscription, otherwise the gate/cooldown reason in muted text; fires
+  `interest_sent` (`count`) and a `notifySuccess` toast, then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/saved/page.tsx`
 
 ### `EoiInbox`
@@ -702,21 +788,23 @@ codebase.
 ### `HireConfirmCard`
 
 - **Location**: `src/components/dashboard/mwajiri/hire-confirm-card.tsx`
-- **Purpose**: The mwajiri hire-confirmation card — records a hire against candidates
-  (wajakazi whose interest they accepted or whose contact they unlocked) and shows their
-  hires with agree/reverse/end-contract actions; ending a completed contract opens the
-  review form inline
+- **Purpose**: The mwajiri hire card, split by state so every row offers one valid action
+  and nothing else — "Ready to hire" (people with no open or completed hire), "Active
+  hires" (pending/agreed), "Past hires" (completed). Recording a hire is confirmed inline;
+  ending a completed contract opens the review form inline
 - **Props**:
   `{ candidates: { mjakaziId; displayName; location | null; sourceEoiId | null }[]; hires: { id; mjakaziId; counterpartName; state: "pending_agreement" | "agreed" | "ended"; awaitingYou; reviewed }[] }`
-- **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; "Mark as
-  hired" bordered candidate rows each with a `Button`; "Your hires" list with `Badge`
-  Hired (default) / Completed + Confirming (secondary) / Awaiting their agreement
-  (outline) and Agree / Reverse / Not correct / **End contract** `Button`s, a **Leave a
-  review** `Button` on ended hires, and a Reviewed `Badge`; ending a contract reveals
-  `LeaveReviewForm` inline; calls `confirmHireAction` / `reverseHireAction` /
-  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a
-  `notifySuccess` toast (Hire recorded / Hire confirmed / Hire reversed / Contract ended),
-  then `router.refresh()`
+- **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; three
+  `uppercase` muted section labels. **Ready to hire** — bordered rows, a "Record hire"
+  outline `Button` that opens an inline confirm ("Record that you hired {name}? This
+  awaits their confirmation." → Confirm hire / Cancel). **Active hires** — `Badge` Hired
+  (default) / They confirmed (secondary) / Awaiting their confirmation (outline), with
+  Agree, Reverse / Not correct, and **End contract** `Button`s. **Past hires** — muted
+  name + Completed (secondary) + Reviewed (outline) `Badge`, and a **Leave a review**
+  `Button` only when not reviewed. Ending a contract reveals `LeaveReviewForm` inline;
+  calls `confirmHireAction` / `reverseHireAction` / `endHireAction`; fires
+  `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a `notifySuccess` toast (Hire recorded
+  / Hire confirmed / Hire reversed / Contract ended), then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `RatingStars`
@@ -727,7 +815,8 @@ codebase.
 - **Props**: `{ rating: number }`
 - **Visual pattern**: inline `Star` icons (`size-4`), filled via
   `text-warning fill-current`; `aria-label` "N out of 5 stars"
-- **Used in**: `ReviewsPanel`, `ReviewQueue`, `ProfileReviews`, mwajiri browse detail
+- **Used in**: `ReviewsPanel`, `ReviewQueue`, `DirectoryProfileDetail`, `DirectoryCard`,
+  `StaffCandidateProfile`, mwajiri browse detail
 
 ### `LeaveReviewForm`
 
@@ -744,14 +833,13 @@ codebase.
 ### `ReviewsPanel`
 
 - **Location**: `src/components/dashboard/mjakazi/reviews/reviews-panel.tsx`
-- **Purpose**: The worker's published reviews (shown + hidden) with a show/hide toggle so
-  they choose what appears on their public profile
+- **Purpose**: The worker's published reviews, read-only. The written comment is private
+  to the worker (and the author, and staff) — it is never public, so there is no show/hide
+  control
 - **Props**:
-  `{ reviews: { id; reviewerName | null; rating; comment; hidden; publishedAt | null }[] }`
-- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name;
-  `Button` "Hide from profile" (ghost) / "Show on profile" (outline) calling
-  `setReviewVisibilityAction` then a `notifySuccess` toast and `router.refresh()`; "Hidden
-  from your public profile." muted note; `Star` empty state
+  `{ reviews: { id; reviewerName | null; rating; comment; publishedAt | null }[] }`
+- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name + muted
+  date; comment in `text-foreground`; `Star` empty state
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`
 
 ### `ReviewQueue`
@@ -767,18 +855,6 @@ codebase.
   `approveReviewAction` / `rejectReviewAction` then `router.refresh()`; approve/reject
   success fires a `notifySuccess` toast
 - **Used in**: `src/app/(saas)/dashboard/staff/reviews/page.tsx`
-
-### `ProfileReviews`
-
-- **Location**: `src/components/web/directory/profile-reviews.tsx`
-- **Purpose**: The published, worker-visible reviews on a public profile, with the
-  aggregate (average + count) heading
-- **Props**:
-  `{ reviews: { average: number | null; count: number; reviews: { reviewerName | null; rating; comment; publishedAt | null }[] } }`
-- **Visual pattern**: `text-heading` "Reviews" heading + `RatingStars` + muted "N.N · N
-  reviews" aggregate; per-review `bg-card` bordered rows (`RatingStars`, reviewer name,
-  date, comment); renders `null` when empty
-- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
 
 ### `RevenueCard`
 
@@ -833,5 +909,20 @@ codebase.
   `{ conciergeCase: ConciergeCase; availableCandidates: CandidateOption[]; currentUserId: string }`
 - **Visual pattern**: Brief summary grid; "Claim Case" button; shortlist builder with
   search input, candidate picker, match note textareas, and "Deliver Shortlist to Mwajiri"
-  button
+  button; every candidate row links to the staff candidate detail in the same tab ("View
+  profile" / "View"), carrying the case id so the return link is "Back to Case"
 - **Used in**: `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx`
+
+### `StaffCandidateProfile`
+
+- **Location**: `src/components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`
+- **Purpose**: Read-only staff view of a shortlist candidate — the whole profile plus the
+  contact vault — so a shortlist is never built blind
+- **Props**: `{ profile: WajakaziProfile; email: string | null }`
+- **Visual pattern**: shadcn `Card`s — header with photo, verification/availability/
+  suspended `Badge`s, and "View documents" + "Open full record in admin" links; identity
+  and contact card (legal name, date of birth, nationality, marital status, religion,
+  phone, email); professional card (jobs/skills `Badge`s, about, education, work
+  preference, languages, salary, location); employment history; verification state card.
+  Read-only, no interactivity
+- **Used in**: `src/app/(saas)/dashboard/staff/wajakazi/[id]/page.tsx`

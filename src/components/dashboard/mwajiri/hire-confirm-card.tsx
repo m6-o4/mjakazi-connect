@@ -39,39 +39,46 @@ type HireConfirmCardProps = {
 	hires: HireItem[];
 };
 
-// the mwajiri hire-confirmation card. candidates (accepted interests + unlocked
-// wajakazi) can be marked as hired; active hires show their agreement state and
-// can be agreed to or reversed. the hire is recorded against the active
-// subscription and flips the wajakazi to hired immediately.
+const sectionLabel =
+	"text-muted-foreground text-xs font-semibold tracking-wide uppercase";
+
+// the mwajiri hire card, split by state so every row offers one valid action and
+// nothing else: people who can still be hired, hires still in progress, and past
+// (completed) hires. recording a hire is confirmed inline — it flips the mjakazi
+// to hired and opens a hire awaiting their agreement, so a stray click should not
+// start one. a completed hire never returns to "ready to hire"; only a reversed
+// hire ("did not hold") frees the pair to record a new one
 const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 	const router = useRouter();
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [reviewingId, setReviewingId] = useState<string | null>(null);
+	const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
 	const run = async (
 		key: string,
 		action: () => Promise<{ success: boolean; error?: string }>,
 		successMessage: string,
-	) => {
+	): Promise<boolean> => {
 		setBusy(key);
 		setError(null);
 		try {
 			const result = await action();
 			if (!result.success) {
 				setError(result.error ?? "Something went wrong.");
-				return;
+				return false;
 			}
 			posthog.capture("hire_confirmed", { confirmedBy: "mwajiri" });
 			notifySuccess(successMessage, { id: `hire-${key}` });
 			router.refresh();
+			return true;
 		} finally {
 			setBusy(null);
 		}
 	};
 
-	const markHired = (candidate: HireCandidate) =>
-		run(
+	const markHired = async (candidate: HireCandidate) => {
+		const ok = await run(
 			`mark-${candidate.mjakaziId}`,
 			() =>
 				confirmHireAction({
@@ -80,6 +87,8 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 				}),
 			"Hire recorded",
 		);
+		if (ok) setConfirmingId(null);
+	};
 
 	const agree = (hire: HireItem) =>
 		run(
@@ -104,8 +113,8 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 		}
 	};
 
-	// ends a completed contract, then opens the review form for that wajakazi in
-	// place so the mwajiri can leave a review of the finished engagement
+	// ends a completed contract, then opens the review form for that mjakazi in
+	// place so the mwajiri can review the finished engagement
 	const endContract = async (hire: HireItem) => {
 		setBusy(`end-${hire.id}`);
 		setError(null);
@@ -124,6 +133,8 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 		}
 	};
 
+	const activeHires = hires.filter((hire) => hire.state !== "ended");
+	const pastHires = hires.filter((hire) => hire.state === "ended");
 	const isEmpty = candidates.length === 0 && hires.length === 0;
 
 	return (
@@ -134,7 +145,7 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 					Confirm a hire
 				</CardTitle>
 				<CardDescription>
-					Record when a wajakazi you have been in contact with is hired.
+					Record when a mjakazi you have been in contact with is hired.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-5">
@@ -147,13 +158,11 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 
 				{candidates.length > 0 ? (
 					<div className="flex flex-col gap-2">
-						<p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-							Mark as hired
-						</p>
+						<p className={sectionLabel}>Ready to hire</p>
 						{candidates.map((candidate) => (
 							<div
 								key={candidate.mjakaziId}
-								className="border-border flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+								className="border-border flex flex-col gap-3 rounded-lg border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div className="flex flex-col">
 									<span className="text-sm font-medium">{candidate.displayName}</span>
@@ -163,27 +172,54 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 										</span>
 									) : null}
 								</div>
-								<Button
-									type="button"
-									size="sm"
-									onClick={() => markHired(candidate)}
-									disabled={busy === `mark-${candidate.mjakaziId}`}
-								>
-									{busy === `mark-${candidate.mjakaziId}`
-										? "Recording…"
-										: "Mark as hired"}
-								</Button>
+
+								{confirmingId === candidate.mjakaziId ? (
+									<div className="flex flex-col gap-2 sm:items-end">
+										<p className="text-muted-foreground text-xs sm:text-right">
+											Record that you hired {candidate.displayName}? This awaits their
+											confirmation.
+										</p>
+										<div className="flex gap-2">
+											<Button
+												type="button"
+												size="sm"
+												onClick={() => markHired(candidate)}
+												disabled={busy === `mark-${candidate.mjakaziId}`}
+											>
+												{busy === `mark-${candidate.mjakaziId}`
+													? "Recording…"
+													: "Confirm hire"}
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												onClick={() => setConfirmingId(null)}
+												disabled={busy === `mark-${candidate.mjakaziId}`}
+											>
+												Cancel
+											</Button>
+										</div>
+									</div>
+								) : (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => setConfirmingId(candidate.mjakaziId)}
+									>
+										Record hire
+									</Button>
+								)}
 							</div>
 						))}
 					</div>
 				) : null}
 
-				{hires.length > 0 ? (
+				{activeHires.length > 0 ? (
 					<div className="flex flex-col gap-2">
-						<p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-							Your hires
-						</p>
-						{hires.map((hire) => (
+						<p className={sectionLabel}>Active hires</p>
+						{activeHires.map((hire) => (
 							<div
 								key={hire.id}
 								className="border-border flex flex-col gap-2 rounded-lg border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
@@ -192,16 +228,14 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 									<span className="text-sm font-medium">{hire.counterpartyName}</span>
 									{hire.state === "agreed" ? (
 										<Badge>Hired</Badge>
-									) : hire.state === "ended" ? (
-										<Badge variant="secondary">Completed</Badge>
 									) : hire.awaitingYou ? (
-										<Badge variant="secondary">Confirming</Badge>
+										<Badge variant="secondary">They confirmed</Badge>
 									) : (
-										<Badge variant="outline">Awaiting their agreement</Badge>
+										<Badge variant="outline">Awaiting their confirmation</Badge>
 									)}
 								</div>
 								<div className="flex flex-wrap gap-2">
-									{hire.awaitingYou ? (
+									{hire.state === "pending_agreement" && hire.awaitingYou ? (
 										<Button
 											type="button"
 											size="sm"
@@ -223,19 +257,6 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 										</Button>
 									) : null}
 
-									{hire.state === "ended" && !hire.reviewed ? (
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											onClick={() => setReviewingId(hire.mjakaziId)}
-										>
-											Leave a review
-										</Button>
-									) : null}
-
-									{hire.reviewed ? <Badge variant="outline">Reviewed</Badge> : null}
-
 									{hire.state === "pending_agreement" ? (
 										<Button
 											type="button"
@@ -250,10 +271,40 @@ const HireConfirmCard = ({ candidates, hires }: HireConfirmCardProps) => {
 								</div>
 							</div>
 						))}
-
-						{reviewingId ? <LeaveReviewForm mjakaziId={reviewingId} /> : null}
 					</div>
 				) : null}
+
+				{pastHires.length > 0 ? (
+					<div className="flex flex-col gap-2">
+						<p className={sectionLabel}>Past hires</p>
+						{pastHires.map((hire) => (
+							<div
+								key={hire.id}
+								className="border-border flex flex-col gap-2 rounded-lg border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+							>
+								<div className="flex flex-wrap items-center gap-2">
+									<span className="text-muted-foreground text-sm font-medium">
+										{hire.counterpartyName}
+									</span>
+									<Badge variant="secondary">Completed</Badge>
+									{hire.reviewed ? <Badge variant="outline">Reviewed</Badge> : null}
+								</div>
+								{!hire.reviewed ? (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => setReviewingId(hire.mjakaziId)}
+									>
+										Leave a review
+									</Button>
+								) : null}
+							</div>
+						))}
+					</div>
+				) : null}
+
+				{reviewingId ? <LeaveReviewForm mjakaziId={reviewingId} /> : null}
 
 				{error ? <p className="text-destructive text-xs">{error}</p> : null}
 			</CardContent>

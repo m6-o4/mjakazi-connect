@@ -7,6 +7,7 @@ import { ConciergeStatusCard } from "@/components/dashboard/mwajiri/concierge/co
 import config from "@/payload-config";
 import {
 	getConciergeCaseForMwajiri,
+	hasRecentConfirmedHire,
 	type BriefInput,
 } from "@/services/concierge.service";
 import { getOwnSubscription } from "@/services/subscription.service";
@@ -19,8 +20,11 @@ const Page = async () => {
 	if (user.role !== "mwajiri") redirect(`/dashboard/${user.role}`);
 
 	const payload = await getPayload({ config });
-	const subscription = await getOwnSubscription(payload, user);
-	const conciergeCase = await getConciergeCaseForMwajiri(payload, user);
+	const [subscription, conciergeCase, replacementEligible] = await Promise.all([
+		getOwnSubscription(payload, user),
+		getConciergeCaseForMwajiri(payload, user),
+		hasRecentConfirmedHire(payload, user.id),
+	]);
 
 	return (
 		<div className="max-w-4xl space-y-6">
@@ -61,7 +65,7 @@ const Page = async () => {
 				<div className="space-y-6">
 					<ConciergeStatusCard
 						conciergeCase={conciergeCase}
-						eligibleForReplacement={true}
+						eligibleForReplacement={replacementEligible}
 					/>
 				</div>
 			)}

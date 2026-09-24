@@ -2,6 +2,7 @@
 
 import { ArrowRight, CheckCircle2, FileText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { useEffect, useRef, useState } from "react";
 
@@ -24,7 +25,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { notifySuccess } from "@/lib/notify";
+import { notifyInfo, notifySuccess } from "@/lib/notify";
 import {
 	DOCUMENT_SLOTS,
 	documentSideLabel,
@@ -49,6 +50,10 @@ type DocumentNextStep = {
 type DocumentVaultProps = {
 	documents: DocumentInfo[];
 	isVerified?: boolean;
+	// true while the profile is under review. the server refuses the write either
+	// way, so this exists only so the worker sees a locked control instead of
+	// clicking a button that fails
+	locked?: boolean;
 	// the next step once every required slot is uploaded, resolved by the server
 	// page from the verification state. it is passed ungated on purpose: the
 	// render that supplies it happens before the upload that completes the set,
@@ -64,6 +69,7 @@ type DocumentVaultProps = {
 const DocumentVault = ({
 	documents,
 	isVerified = false,
+	locked = false,
 	nextStep = null,
 }: DocumentVaultProps) => {
 	const [docs, setDocs] = useState<DocumentInfo[]>(documents);
@@ -71,7 +77,12 @@ const DocumentVault = ({
 	const [removing, setRemoving] = useState<string | null>(null);
 	const [confirmingSlot, setConfirmingSlot] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	// set when an upload dropped a verified worker back into review, so the
+	// completion cue below can stand down and let the revert announcement be the
+	// one thing the worker reads
+	const [reverted, setReverted] = useState(false);
 
+	const router = useRouter();
 	const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
 	// fire documents_uploaded and the "you're done" toast once, on the transition
@@ -85,15 +96,20 @@ const DocumentVault = ({
 		if (!isDocumentSetComplete(docs) || firedComplete.current) return;
 		firedComplete.current = true;
 		posthog.capture("documents_uploaded");
+		// the upload that completed the set also sent the profile back for review,
+		// so "documents complete" would read as a success that did not happen — the
+		// revert toast carries the news instead
+		if (reverted) return;
 		notifySuccess("Documents complete", {
 			id: "documents-complete",
 			description: nextStep
 				? `All required documents are uploaded. Next: ${nextStep.label.toLowerCase()}.`
 				: "All required documents are uploaded.",
 		});
-	}, [docs, nextStep]);
+	}, [docs, nextStep, reverted]);
 
 	const upload = async (documentType: string, side: string, file: File) => {
+		if (locked) return;
 		const key = documentSlotKey(documentType, side);
 		setUploading(key);
 		setErrors((prev) => ({ ...prev, [key]: "" }));
@@ -110,6 +126,7 @@ const DocumentVault = ({
 			const result = (await response.json()) as {
 				success: boolean;
 				document?: DocumentInfo;
+				reverted?: boolean;
 				error?: string;
 			};
 
@@ -128,6 +145,19 @@ const DocumentVault = ({
 				...prev.filter((doc) => documentSlotKey(doc.documentType, doc.side) !== key),
 				uploaded,
 			]);
+
+			// changing a verified worker's evidence returns the profile to review.
+			// announce it and refresh so the page reflects the new state rather than
+			// leaving "verified" on screen after the badge has gone
+			if (result.reverted) {
+				setReverted(true);
+				notifyInfo("Document changed", {
+					id: "document-reverted",
+					description:
+						"Your profile has gone back to our team for review. We'll let you know the outcome.",
+				});
+				router.refresh();
+			}
 		} catch {
 			setErrors((prev) => ({ ...prev, [key]: "Could not upload the document." }));
 		} finally {
@@ -136,6 +166,7 @@ const DocumentVault = ({
 	};
 
 	const remove = async (documentType: string, side: string, id: string) => {
+		if (locked) return;
 		const key = documentSlotKey(documentType, side);
 		setRemoving(id);
 		setErrors((prev) => ({ ...prev, [key]: "" }));
@@ -217,7 +248,7 @@ const DocumentVault = ({
 														variant="outline"
 														size="sm"
 														onClick={() => inputRefs.current[key]?.click()}
-														disabled={isUploading || removing === doc.id}
+														disabled={isUploading || removing === doc.id || locked}
 													>
 														Replace
 													</Button>
@@ -227,7 +258,7 @@ const DocumentVault = ({
 															variant="ghost"
 															size="sm"
 															onClick={() => setConfirmingSlot(key)}
-															disabled={removing === doc.id}
+															disabled={removing === doc.id || locked}
 														>
 															Remove
 														</Button>
@@ -248,7 +279,7 @@ const DocumentVault = ({
 													type="button"
 													size="sm"
 													onClick={() => inputRefs.current[key]?.click()}
-													disabled={isUploading}
+													disabled={isUploading || locked}
 												>
 													{isUploading ? "Uploading..." : "Upload"}
 												</Button>
@@ -266,6 +297,7 @@ const DocumentVault = ({
 											type="file"
 											accept="application/pdf,image/jpeg,image/png,image/webp"
 											className="hidden"
+											disabled={locked}
 											onChange={(event) => {
 												const file = event.target.files?.[0];
 												if (file) void upload(document.value, side, file);

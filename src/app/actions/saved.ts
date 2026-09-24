@@ -12,7 +12,7 @@ const toggleSaveSchema = z.object({
 	mjakaziId: z.string().min(1),
 });
 
-// saves or unsaves a wajakazi profile for the signed-in mwajiri. the profile id
+// saves or unsaves a mjakazi profile for the signed-in mwajiri. the profile id
 // is the only client input; identity and authorization come from the session
 const toggleSaveAction = async (
 	input: unknown,
@@ -42,7 +42,7 @@ const toggleSaveAction = async (
 		};
 	} catch (error) {
 		console.error("[actions/saved] toggleSave failed:", error);
-		return { success: false, error: "Could not update saved wajakazi." };
+		return { success: false, error: "Could not update your shortlist." };
 	}
 };
 

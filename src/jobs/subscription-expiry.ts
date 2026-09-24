@@ -4,10 +4,10 @@ import config from "@/payload-config";
 import { expireExpiredSubscriptions } from "@/services/subscription.service";
 
 // polled by the payload job queue hourly (jobs.autoRun). transitions active
-// subscriptions past their tierExpiry to expired, which blocks new reveals
-// (phase 6.4) while leaving existing unlocks intact. the transition and audit
-// entry live in the subscription service — the handler only resolves payload
-// and delegates.
+// subscriptions past their tierExpiry to expired, which blocks new expressions
+// of interest while leaving existing contact grants intact. the transition and
+// audit entry live in the subscription service — the handler only resolves
+// payload and delegates.
 const subscriptionExpiryTask: TaskConfig<{ input: object; output: { expired: number } }> =
 	{
 		slug: "subscription-expiry",

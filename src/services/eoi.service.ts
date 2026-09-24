@@ -19,7 +19,9 @@ import {
 import { loadUserEmail } from "@/lib/user-email";
 import type { ExpressionsOfInterest, User, WajakaziProfile } from "@/payload-types";
 import { DIRECTORY_VISIBLE } from "@/payload/access/access-control";
+import { grantContactFromEoi } from "@/services/contact.service";
 import { getOwnProfile } from "@/services/profile.service";
+import { getEoiPolicy, type EoiPolicy } from "@/services/settings.service";
 import { getOwnSubscription } from "@/services/subscription.service";
 
 type Result<T = void> =
@@ -27,11 +29,6 @@ type Result<T = void> =
 
 type EoiState = NonNullable<ExpressionsOfInterest["state"]>;
 type EoiResponse = Extract<EoiState, "accepted" | "rejected">;
-
-// a batch is 3–5 wajakazi — the product's anti-firehose bound, enforced here and
-// re-checked in the server action
-const MIN_BATCH = 3;
-const MAX_BATCH = 5;
 
 const fail = (
 	error: string,
@@ -44,11 +41,328 @@ const isDuplicatePendingKeyError = (error: unknown): boolean =>
 	error instanceof ValidationError &&
 	Boolean(error.data?.errors?.some((fieldError) => fieldError.path === "pendingKey"));
 
+// every eoi in a batch that still has at least one unanswered member. a batch
+// leaves the pool once all of its members are resolved, so the pool cannot grow
+// without bound — an unanswered interest expires, and expiry resolves it
+type OpenPool = { resolved: number; total: number };
+
+// only the fields the pool needs; selecting keeps the read cheap and the type
+// mirrors what the query returns
+type PoolRow = Pick<ExpressionsOfInterest, "id" | "batchId" | "state">;
+
+type SendEligibility = {
+	allowed: boolean;
+	code: "forbidden" | "subscription_required" | "gate_blocked" | null;
+	reason: string | null;
+	policy: EoiPolicy;
+	pool: OpenPool;
+};
+
+type InterestBlockCode = SendEligibility["code"] | "cooldown" | "granted" | "hired";
+
+type ProfileInterestStatus = {
+	state: EoiState | "none";
+	canSend: boolean;
+	blockReason: string | null;
+	blockCode: InterestBlockCode | null;
+};
+
+const loadOpenPool = async (payload: Payload, mwajiriId: string): Promise<OpenPool> => {
+	const result = await payload.find({
+		collection: "expressions-of-interest",
+		where: { mwajiri: { equals: mwajiriId } },
+		limit: 1000,
+		depth: 0,
+		select: { state: true, batchId: true },
+		overrideAccess: true,
+	});
+
+	// group by batch; a record without a batchId is its own batch
+	const batches = new Map<string, PoolRow[]>();
+	for (const doc of result.docs) {
+		const key = doc.batchId ?? doc.id;
+		const group = batches.get(key);
+		if (group) group.push(doc);
+		else batches.set(key, [doc]);
+	}
+
+	let resolved = 0;
+	let total = 0;
+	for (const group of batches.values()) {
+		if (!group.some((doc) => doc.state === "sent")) continue;
+		total += group.length;
+		resolved += group.filter((doc) => doc.state !== "sent").length;
+	}
+
+	return { resolved, total };
+};
+
+// "more than X% of the open pool resolved" — the anti-firehose gate. an empty
+// pool always passes, so a first batch is never blocked
+const gateBlocks = (pool: OpenPool, thresholdPercent: number): boolean =>
+	pool.total > 0 && pool.resolved * 100 <= pool.total * thresholdPercent;
+
+// whether any of the given profiles is still inside the re-send cooldown, i.e. a
+// rejection or expiry resolved within the window
+const findCoolingDown = async (
+	payload: Payload,
+	mwajiriId: string,
+	mjakaziIds: string[],
+	cooldownDays: number,
+): Promise<boolean> => {
+	if (cooldownDays <= 0) return false;
+
+	const cutoff = new Date(Date.now() - cooldownDays * 24 * 60 * 60 * 1000).toISOString();
+
+	const result = await payload.find({
+		collection: "expressions-of-interest",
+		where: {
+			and: [
+				{ mwajiri: { equals: mwajiriId } },
+				{ mjakazi: { in: mjakaziIds } },
+				{ state: { in: ["rejected", "expired"] } },
+				{
+					// a rejection stamps respondedAt; an expiry only stamps updatedAt
+					or: [
+						{ respondedAt: { greater_than_equal: cutoff } },
+						{ updatedAt: { greater_than_equal: cutoff } },
+					],
+				},
+			],
+		},
+		limit: 1,
+		depth: 0,
+		overrideAccess: true,
+	});
+
+	return result.docs.length > 0;
+};
+
+// whether any recipient already holds a contact grant — interest would add nothing
+const findGranted = async (
+	payload: Payload,
+	mwajiriId: string,
+	mjakaziIds: string[],
+): Promise<boolean> => {
+	const result = await payload.find({
+		collection: "contact-unlocks",
+		where: {
+			and: [{ mwajiri: { equals: mwajiriId } }, { mjakazi: { in: mjakaziIds } }],
+		},
+		limit: 1,
+		depth: 0,
+		overrideAccess: true,
+	});
+	return result.docs.length > 0;
+};
+
+// whether any recipient is already in a live hire with this mwajiri
+const findHired = async (
+	payload: Payload,
+	mwajiriId: string,
+	mjakaziIds: string[],
+): Promise<boolean> => {
+	const result = await payload.find({
+		collection: "hires",
+		where: {
+			and: [
+				{ mwajiri: { equals: mwajiriId } },
+				{ mjakazi: { in: mjakaziIds } },
+				{ state: { in: ["pending_agreement", "agreed"] } },
+			],
+		},
+		limit: 1,
+		depth: 0,
+		overrideAccess: true,
+	});
+	return result.docs.length > 0;
+};
+
+// whether the mwajiri may open a new batch at all, ignoring which wajakazi are
+// selected. the UI reads this to explain a blocked send before the mwajiri picks
+const getEoiSendEligibility = async (
+	payload: Payload,
+	user: User,
+): Promise<SendEligibility> => {
+	const policy = await getEoiPolicy(payload);
+	const empty = { resolved: 0, total: 0 };
+
+	if (user.role !== "mwajiri") {
+		return {
+			allowed: false,
+			code: "forbidden",
+			reason: blockReasonFor("forbidden"),
+			policy,
+			pool: empty,
+		};
+	}
+
+	const subscription = await getOwnSubscription(payload, user);
+	if (!subscription || subscription.subscriptionState !== "active") {
+		return {
+			allowed: false,
+			code: "subscription_required",
+			reason: blockReasonFor("subscription_required"),
+			policy,
+			pool: empty,
+		};
+	}
+
+	const pool = await loadOpenPool(payload, user.id);
+	if (gateBlocks(pool, policy.responseThresholdPercent)) {
+		return {
+			allowed: false,
+			code: "gate_blocked",
+			reason: blockReasonFor("gate_blocked"),
+			policy,
+			pool,
+		};
+	}
+
+	return { allowed: true, code: null, reason: null, policy, pool };
+};
+
+// a mwajiri's relationship with one profile, for the browse detail's contact
+// area: the newest interest on the pair, whether a new one may be sent now, and
+// why not. `blockCode` lets the card choose between a subscribe call to action
+// and a plain explanation
+const blockReasonFor = (code: SendEligibility["code"]): string | null => {
+	switch (code) {
+		case "subscription_required":
+			return "An active subscription is required to send interest.";
+		case "gate_blocked":
+			return "Respond to your open interests before sending a new one.";
+		case "forbidden":
+			return "Only a mwajiri account can send interest.";
+		default:
+			return null;
+	}
+};
+
+const getProfileInterestStatus = async (
+	payload: Payload,
+	user: User,
+	mjakaziId: string,
+): Promise<ProfileInterestStatus> => {
+	const eligibility = await getEoiSendEligibility(payload, user);
+	if (!eligibility.allowed) {
+		return {
+			state: "none",
+			canSend: false,
+			blockReason: eligibility.reason,
+			blockCode: eligibility.code,
+		};
+	}
+
+	const latest = await payload.find({
+		collection: "expressions-of-interest",
+		where: {
+			and: [{ mwajiri: { equals: user.id } }, { mjakazi: { equals: mjakaziId } }],
+		},
+		limit: 1,
+		depth: 0,
+		sort: "-sentAt",
+		select: { state: true },
+		overrideAccess: true,
+	});
+	const state = latest.docs[0]?.state ?? "none";
+
+	// an open or already-accepted interest needs no new send
+	if (state === "sent" || state === "accepted") {
+		return { state, canSend: false, blockReason: null, blockCode: null };
+	}
+
+	if (await findHired(payload, user.id, [mjakaziId])) {
+		return {
+			state,
+			canSend: false,
+			blockReason: "You are already in a hire with this mjakazi.",
+			blockCode: "hired",
+		};
+	}
+
+	if (
+		await findCoolingDown(
+			payload,
+			user.id,
+			[mjakaziId],
+			eligibility.policy.resendCooldownDays,
+		)
+	) {
+		return {
+			state,
+			canSend: false,
+			blockReason: `You approached this mjakazi recently. You can send again after the ${eligibility.policy.resendCooldownDays}-day cooldown.`,
+			blockCode: "cooldown",
+		};
+	}
+
+	// a granted pair needs no interest — the contact is already there
+	if (await findGranted(payload, user.id, [mjakaziId])) {
+		return { state, canSend: false, blockReason: null, blockCode: "granted" };
+	}
+
+	return { state, canSend: true, blockReason: null, blockCode: null };
+};
+
+// the mjakazi ids a mwajiri cannot send a new interest to — an outstanding
+// (sent/accepted) interest, an existing grant, or a live hire. the saved page
+// reads this so its selector holds only profiles the batch would accept
+const listUnavailableForInterest = async (
+	payload: Payload,
+	mwajiriId: string,
+): Promise<Set<string>> => {
+	const [eois, grants, hires] = await Promise.all([
+		payload.find({
+			collection: "expressions-of-interest",
+			where: {
+				and: [
+					{ mwajiri: { equals: mwajiriId } },
+					{ state: { in: ["sent", "accepted"] } },
+				],
+			},
+			limit: 1000,
+			depth: 0,
+			select: { mjakazi: true },
+			overrideAccess: true,
+		}),
+		payload.find({
+			collection: "contact-unlocks",
+			where: { mwajiri: { equals: mwajiriId } },
+			limit: 1000,
+			depth: 0,
+			select: { mjakazi: true },
+			overrideAccess: true,
+		}),
+		payload.find({
+			collection: "hires",
+			where: {
+				and: [
+					{ mwajiri: { equals: mwajiriId } },
+					{ state: { in: ["pending_agreement", "agreed"] } },
+				],
+			},
+			limit: 1000,
+			depth: 0,
+			select: { mjakazi: true },
+			overrideAccess: true,
+		}),
+	]);
+
+	const ids = new Set<string>();
+	for (const doc of [...eois.docs, ...grants.docs, ...hires.docs]) {
+		const id = toId(doc.mjakazi);
+		if (id) ids.add(id);
+	}
+	return ids;
+};
+
 // sends a batch of expressions of interest. the mwajiri must hold an active
-// subscription; every recipient must still be directory-visible; and no
-// outstanding (sent/accepted) interest may already exist for a recipient. the
-// batch is created atomically enough — each eoi is its own record — and one audit
-// entry + one email fire per recipient.
+// subscription; every recipient must still be directory-visible; no outstanding
+// (sent/accepted) interest, existing contact grant or live hire may already exist
+// for a recipient; the open-pool gate must have cleared; and no recipient may
+// still be inside the re-send cooldown. the batch is created atomically enough —
+// each eoi is its own record — and one audit entry + one email fire per recipient
 const sendEoiBatch = async (
 	payload: Payload,
 	actor: User,
@@ -56,10 +370,12 @@ const sendEoiBatch = async (
 ): Promise<Result<{ batchId: string; sent: number }>> => {
 	if (actor.role !== "mwajiri") return fail("Forbidden", "forbidden");
 
+	const policy = await getEoiPolicy(payload);
+
 	const ids = [...new Set(mjakaziIds)];
-	if (ids.length < MIN_BATCH || ids.length > MAX_BATCH) {
+	if (ids.length < policy.minBatch || ids.length > policy.maxBatch) {
 		return fail(
-			`Select between ${MIN_BATCH} and ${MAX_BATCH} wajakazi.`,
+			`Select between ${policy.minBatch} and ${policy.maxBatch} wajakazi.`,
 			"invalid_batch_size",
 		);
 	}
@@ -106,6 +422,35 @@ const sendEoiBatch = async (
 		return fail(
 			"You already have a pending interest with one or more of these wajakazi.",
 			"already_sent",
+		);
+	}
+
+	const pool = await loadOpenPool(payload, actor.id);
+	if (gateBlocks(pool, policy.responseThresholdPercent)) {
+		return fail(
+			"Respond to your open interests before sending a new batch.",
+			"gate_blocked",
+		);
+	}
+
+	if (await findCoolingDown(payload, actor.id, ids, policy.resendCooldownDays)) {
+		return fail(
+			`You approached one or more of these wajakazi recently. Try again after the ${policy.resendCooldownDays}-day cooldown.`,
+			"cooldown_active",
+		);
+	}
+
+	if (await findGranted(payload, actor.id, ids)) {
+		return fail(
+			"You already have the contact details for one or more of these wajakazi.",
+			"already_unlocked",
+		);
+	}
+
+	if (await findHired(payload, actor.id, ids)) {
+		return fail(
+			"You are already in a hire with one or more of these wajakazi.",
+			"already_hired",
 		);
 	}
 
@@ -220,6 +565,7 @@ const listSentEois = async (
 		id: string;
 		mjakaziId: string;
 		mjakaziName: string;
+		mjakaziSlug: string | null;
 		state: EoiState;
 		sentAt: string | null;
 		respondedAt: string | null;
@@ -247,7 +593,8 @@ const listSentEois = async (
 		return {
 			id: doc.id,
 			mjakaziId: profileId,
-			mjakaziName: display.get(profileId)?.displayName ?? "Wajakazi",
+			mjakaziName: display.get(profileId)?.displayName ?? "Mjakazi",
+			mjakaziSlug: display.get(profileId)?.slug ?? null,
 			state: doc.state,
 			sentAt: doc.sentAt ?? null,
 			respondedAt: doc.respondedAt ?? null,
@@ -330,6 +677,19 @@ const respondToEoi = async (
 	}
 
 	const mwajiriId = toId(eoi.mwajiri);
+	if (response === "accepted" && !mwajiriId) {
+		return fail("Interest is missing its sender.", "not_found");
+	}
+
+	// create the durable contact grant first, so an acceptance never lands without
+	// the contact it promises. it is rolled back below if the compare-and-swap
+	// loses its race, and it is idempotent, so a pair already granted costs nothing
+	let grantId: string | null = null;
+	if (response === "accepted" && mwajiriId) {
+		const granted = await grantContactFromEoi(payload, mwajiriId, profile.id, eoi.id);
+		if (!granted.success) return fail(granted.error, "grant_failed");
+		grantId = granted.data.grantId;
+	}
 
 	try {
 		const result = await payload.update({
@@ -340,8 +700,8 @@ const respondToEoi = async (
 			data: {
 				state: response,
 				respondedAt: new Date().toISOString(),
-				// a rejection frees the pair key so the mwajiri may send interest
-				// again later; an acceptance keeps it, blocking a re-send
+				// a rejection frees the pair key; re-approaching is then governed by the
+				// cooldown in sendEoiBatch. an acceptance keeps it, blocking a re-send
 				...(response === "rejected"
 					? { pendingKey: `${mwajiriId ?? "unknown"}:${profile.id}:${eoi.id}` }
 					: {}),
@@ -350,6 +710,17 @@ const respondToEoi = async (
 		});
 
 		if (result.docs.length === 0) {
+			// the acceptance lost its race — remove the grant it pre-created so the
+			// pair is not granted without an accepted interest
+			if (grantId) {
+				await payload
+					.delete({
+						collection: "contact-unlocks",
+						id: grantId,
+						overrideAccess: true,
+					})
+					.catch(() => {});
+			}
 			return fail("Interest changed. Please refresh and try again.", "conflict");
 		}
 
@@ -366,6 +737,20 @@ const respondToEoi = async (
 			metadata: { batchId: eoi.batchId ?? null, mjakaziProfileId: profile.id },
 			source: "user",
 		});
+
+		if (grantId && mwajiriId) {
+			await writeAuditLog({
+				action: "contact_granted",
+				actorId: actor.id,
+				actorLabel: userLabel(actor),
+				targetId: mwajiriId,
+				targetLabel: mwajiriName,
+				previousState: null,
+				newState: "granted",
+				metadata: { eoiId: eoi.id, mjakaziProfileId: profile.id, grantId },
+				source: "user",
+			});
+		}
 
 		await notifyResponse(payload, actor, profile, mwajiriId, mwajiriName, response);
 
@@ -519,7 +904,7 @@ const notifyNudge = async (
 
 	const mwajiriName = (await loadUserName(payload, mwajiriId)) ?? "the employer";
 	const profile = await loadMjakaziOwner(payload, mjakaziId);
-	const mjakaziName = profile?.displayName ?? "the wajakazi";
+	const mjakaziName = profile?.displayName ?? "the mjakazi";
 	const mjakaziOwnerId = profile ? toId(profile.user) : null;
 
 	await writeAuditLog({
@@ -611,11 +996,6 @@ const sendAcceptedEoiNudges = async (payload: Payload): Promise<{ nudged: number
 	return { nudged };
 };
 
-// an unanswered (sent) interest expires 7 days after it was sent — the window in
-// which a mjakazi is expected to respond. expiry frees the pair so the mwajiri
-// may send a fresh batch, and is polled daily by the eoi-expire job
-const EOI_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
-
 // compare-and-swap one unanswered interest to expired. the where-clause pins
 // `state === "sent"` so a response or a concurrent run cannot double-apply; the
 // pendingKey is uniquified (rejection-style) so the pair can be re-sent later
@@ -648,10 +1028,12 @@ const expireEoi = async (
 };
 
 // polled daily by the eoi-expire job. finds unanswered (sent) interests older
-// than 7 days and expires each idempotently. a missed window self-corrects on
-// the next run because the query polls for eligible records rather than relying
-// on being woken at the right moment
+// than the policy's expiry window and expires each idempotently. expiry resolves
+// the interest for the open-pool gate and frees the pair key, so a missed window
+// self-corrects on the next run
 const expireUnansweredEois = async (payload: Payload): Promise<{ expired: number }> => {
+	const policy = await getEoiPolicy(payload);
+	const expiryMs = policy.expiryDays * 24 * 60 * 60 * 1000;
 	const now = Date.now();
 
 	let candidates: ExpressionsOfInterest[];
@@ -675,7 +1057,7 @@ const expireUnansweredEois = async (payload: Payload): Promise<{ expired: number
 		if (!eoi.sentAt) continue;
 
 		const elapsed = now - new Date(eoi.sentAt).getTime();
-		if (elapsed < EOI_EXPIRY_MS) continue;
+		if (elapsed < expiryMs) continue;
 
 		const applied = await expireEoi(payload, eoi);
 		if (!applied) continue;
@@ -701,9 +1083,13 @@ const expireUnansweredEois = async (payload: Payload): Promise<{ expired: number
 
 export {
 	expireUnansweredEois,
+	getEoiSendEligibility,
+	getProfileInterestStatus,
 	listReceivedEois,
 	listSentEois,
+	listUnavailableForInterest,
 	respondToEoi,
 	sendAcceptedEoiNudges,
 	sendEoiBatch,
 };
+export type { OpenPool, ProfileInterestStatus, SendEligibility };

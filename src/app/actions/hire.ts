@@ -32,7 +32,7 @@ const endHireSchema = z.object({
 	hireId: z.string().min(1),
 });
 
-// mwajiri side — marks a hire with a wajakazi, or agrees to one the wajakazi
+// mwajiri side — marks a hire with a mjakazi, or agrees to one the mjakazi
 // already confirmed. the profile id is the only client input; identity, the
 // counterpart and the state machine all resolve server-side
 const confirmHireAction = async (input: unknown): Promise<ActionResult> => {

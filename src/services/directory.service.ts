@@ -27,6 +27,8 @@ const DIRECTORY_PUBLIC_FIELDS = {
 	salaryMin: true,
 	salaryMax: true,
 	location: true,
+	ratingAverage: true,
+	ratingCount: true,
 } as const;
 
 // the detail read adds the one field only a profile-detail page renders. the
@@ -66,6 +68,8 @@ type DirectoryProfile = Pick<
 	| "salaryMin"
 	| "salaryMax"
 	| "location"
+	| "ratingAverage"
+	| "ratingCount"
 >;
 
 // boundary validation for the directory query params. values are validated
@@ -75,6 +79,7 @@ const directoryQuerySchema = z.object({
 	category: z.string().max(64).optional(),
 	location: z.string().max(64).optional(),
 	experience: z.enum(EXPERIENCE_BUCKETS).optional(),
+	minRating: z.coerce.number().int().min(1).max(5).optional(),
 	q: z.string().max(120).optional(),
 	page: z.coerce.number().int().min(1).optional(),
 });
@@ -83,6 +88,7 @@ type DirectoryQuery = {
 	category?: string;
 	location?: string;
 	experience?: ExperienceBucket;
+	minRating?: number;
 	q?: string;
 	page?: number;
 	limit?: number;
@@ -105,13 +111,16 @@ const experienceWhere = (bucket: ExperienceBucket): Where => {
 // read through the guarded path (DIRECTORY_VISIBLE + overrideAccess: false +
 // explicit select) so contact fields never leave the service
 const listDirectoryProfiles = async (payload: Payload, query: DirectoryQuery) => {
-	const { category, location, experience, q, page = 1, limit } = query;
+	const { category, location, experience, q, minRating, page = 1, limit } = query;
 
 	const filters: Where[] = [DIRECTORY_VISIBLE];
 	if (category) filters.push({ jobsSkills: { equals: category } });
 	if (location) filters.push({ location: { equals: location } });
 	if (experience) filters.push(experienceWhere(experience));
 	if (q) filters.push({ displayName: { contains: q } });
+	// a rating threshold only matches profiles that have one — an unrated profile
+	// is excluded from "4 stars and above" rather than treated as a zero
+	if (minRating) filters.push({ ratingAverage: { greater_than_equal: minRating } });
 
 	const result = await payload.find({
 		collection: "wajakazi-profiles",

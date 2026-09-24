@@ -26,8 +26,8 @@ type VerificationPaymentFlowProps = {
 // always-mounted wrapper for the non-draft verification states. it owns the
 // success cue so it survives the pending_payment -> pending_review transition —
 // PayVerification unmounts the moment the callback flips the state, so the
-// detection has to live one level up. when a payment was awaiting confirmation
-// and the state leaves pending_payment, the profile has just been paid for
+// detection has to live one level up. once this page has sent a push and the
+// state then leaves pending_payment, the profile has just been paid for
 const VerificationPaymentFlow = ({
 	state,
 	fee,
@@ -36,17 +36,21 @@ const VerificationPaymentFlow = ({
 	rejectionReason,
 	freeResubmissionsRemaining,
 }: VerificationPaymentFlowProps) => {
-	const [awaiting, setAwaiting] = useState(false);
+	// set the moment this page gets an stk push accepted, and never reset. it is
+	// deliberately not the child's spinner state: a confirmation that landed
+	// after the confirm window would then reach a parent with nothing to show,
+	// losing even the notice that is meant to be the persistent record
+	const [paymentInitiated, setPaymentInitiated] = useState(false);
 	const [justPaid, setJustPaid] = useState(false);
 	const wasPendingRef = useRef(state === "pending_payment");
 
 	useEffect(() => {
-		if (wasPendingRef.current && state !== "pending_payment" && awaiting) {
+		if (wasPendingRef.current && state !== "pending_payment" && paymentInitiated) {
 			setJustPaid(true);
 			// the inline notice is the persistent record; this toast is the
 			// immediate cue the moment the callback lands. it fires once, on the
 			// live transition — a later visit mounts with the state already past
-			// pending_payment, so `awaiting` is false and nothing re-fires
+			// pending_payment and no payment initiated here, so nothing re-fires
 			if (state === "pending_review") {
 				notifySuccess("Payment received", {
 					id: "verification-payment-received",
@@ -56,10 +60,16 @@ const VerificationPaymentFlow = ({
 			}
 		}
 		wasPendingRef.current = state === "pending_payment";
-	}, [state, awaiting]);
+	}, [state, paymentInitiated]);
 
 	if (state === "pending_payment") {
-		return <PayVerification fee={fee} phone={phone} onAwaitingChange={setAwaiting} />;
+		return (
+			<PayVerification
+				fee={fee}
+				phone={phone}
+				onPaymentInitiated={() => setPaymentInitiated(true)}
+			/>
+		);
 	}
 
 	return (

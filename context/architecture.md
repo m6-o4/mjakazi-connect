@@ -421,6 +421,9 @@ Plus `verificationSubmittedAt`, `verificationReviewedAt`, `verificationExpiry`,
 `verificationAttempts`, `rejectionReason`, `verificationNotes`, `blacklistedAt`,
 `deactivatedAt`, `lastVerificationPaymentId`, `profileComplete`.
 
+`ratingAverage` / `ratingCount` carry the denormalized review signal — see `reviews`
+below. Both are service-managed: only `review.service` writes them.
+
 There is **no `isVerified` boolean**. `verificationState` replaces it entirely.
 
 **`waajiri-profiles`** — 1:1 with a `mwajiri` user. `user`, `phone`, `location`,
@@ -447,11 +450,11 @@ cleanly on account erasure. `wajakazi-profiles.photo` points here.
 `uploadedAt`.
 
 A slot is a (documentType, side) pair, and it is the unit uploaded, replaced, removed and
-checked — so a National ID front, a National ID back and a Certificate of Good Conduct are
-three separate records. The required set is declared once in `DOCUMENT_SLOTS`
-(`src/lib/vault.ts`) and read by the collection options, the upload UI, the staff viewer
-and the pre-submission gate. A record stored before `side` existed has no side and is read
-as the front.
+checked — so a National ID front, a National ID back, a Certificate of Good Conduct front
+and a Certificate of Good Conduct back are four separate records. The required set is
+declared once in `DOCUMENT_SLOTS` (`src/lib/vault.ts`) and read by the collection options,
+the upload UI, the staff viewer and the pre-submission gate. A record stored before `side`
+existed has no side and is read as the front.
 
 Access: `staff` and `admin`, plus the owning Mjakazi. No one else, ever.
 
@@ -467,28 +470,80 @@ purchase), `tierName` (text — snapshot), `tierStartedAt`, `tierExpiry`, `suspe
 
 Stores no amounts.
 
+**Tier rank is the ordering key; an upgrade is a rank increase.** Each
+`platform-settings.subscriptionTiers` entry carries a `rank`. A purchase whose rank is
+above the subscription's current tier is an upgrade, below a downgrade, equal a renewal
+(`subscription.service.classifyPlanChange`), and the classification is recorded in the
+`subscription_activated` audit metadata as `planChange`. Rank is not required on the
+stored row — a tier saved before the field existed has none — so `settings.service`
+resolves every read through `withRanks`, falling back to the tier's position in the stored
+array; reading over the full array before filtering inactive tiers keeps the ordering
+stable. Uniqueness is enforced by the array field's `validate`, the one write path both
+the settings form and the Payload admin panel share. The list is bounded to 1–4 entries
+(`MIN_SUBSCRIPTION_TIERS` / `MAX_SUBSCRIPTION_TIERS` in `lib/subscription-tiers.ts`): the
+array `minRows`/`maxRows` make the Payload admin panel refuse a fifth row,
+`updateSubscriptionTiers` refuses more than four (`too_many_tiers`), and the admin form
+disables "Add tier" at the cap. Rank never changes the carry-over arithmetic, which stays
+terms-based per invariant #11. While a subscription is `active`, a purchase may only renew
+or move up: a lower-ranked tier is refused server-side (`assertPlanChangeAllowed`, code
+`downgrade_blocked`) before any STK push, and the purchase UI disables those tiers. A
+subscription that is not active (`none`, `expired`, `pending_payment`, `suspended`,
+`blacklisted`) is not gated — there is no live plan to downgrade from.
+
 **`payments`** — immutable once confirmed.
 
 `user`, `paymentType` (`verification | subscription`), `status`
 (`initiated | stk_sent | callback_received | confirmed | failed | expired | cancelled`),
 `amount` (integer KSh), `tierId` + `tierName` (text snapshots, null for verification
-payments), `phoneNumber`, `mpesaReference` (unique), `merchantRequestId`,
-`checkoutRequestId`, `callbackPayload` (json), `initiatedAt`, `confirmedAt`, `failedAt`,
-`expiredAt`.
+payments), `phoneNumber`, `mpesaReference` (unique), `mpesaReceiptNumber` (the code from
+the payer's SMS or the callback — the one thing a confirmation must carry),
+`merchantRequestId`, `checkoutRequestId`, `callbackPayload` (json),
+`mpesaStatusCheckedAt`, `reconciledBy` + `reconciledAt`, `initiatedAt`, `confirmedAt`,
+`failedAt`, `expiredAt`.
 
-**`contact-unlocks`** — durable access grants.
+A payment reaches `confirmed` two ways: the callback, or a hand reconciliation by staff or
+admin when no callback arrived — recording the receipt from the payer's own SMS. Both
+write `confirmedAt`; only the second sets `reconciledBy`/`reconciledAt`, so the ledger
+distinguishes them. **No path confirms a payment without a receipt.**
 
-`mwajiri`, `mjakazi`, `tierAtUnlock`, `unlockedAt`, `subscription`, `payment`. Unique on
-(`mwajiri`, `mjakazi`).
+**`contact-unlocks`** — durable contact grants.
 
-Unlocks are permanent. A contact revealed during an active window remains visible after
-expiry. New reveals require an active subscription.
+`mwajiri`, `mjakazi`, `source` (`eoi | concierge | subscription_reveal`), `sourceEoi`,
+`tierAtUnlock`, `unlockedAt`, `subscription`. Unique on (`mwajiri`, `mjakazi`).
+
+Grants are permanent. A grant created by an accepted expression of interest remains
+visible after the subscription expires, and is the only path a mwajiri has to a mjakazi's
+contact: an active subscription buys the right to _send interest_, never the contact
+itself. `subscription_reveal` marks grants created before the interest gate existed;
+`concierge` marks a staff-delivered shortlist.
+
+**Concierge is the one deliberate exception to the interest gate.** A staff-delivered
+shortlist writes its `concierge` grants directly, with no expression of interest — the
+mjakazi is matched by staff, not chosen by the mwajiri, and has no accept step. Because
+the worker never opted in, delivery notifies each shortlisted mjakazi by email that their
+contact was shared; that notification is the compensating control, not an accept flow.
+Delivery re-checks every candidate is verified, available and not suspended at the moment
+the grants are written, and rolls the grants back if the case write fails. This is
+recorded so a future reader does not mistake the missing consent step for a bug.
+
+An **upgrade onto a concierge tier creates a fresh case** even when a case is still open —
+each paid upgrade window carries its own replacement guarantee. A same-tier concierge
+renewal reuses the open case instead. `concierge-cases` carries no per-mwajiri unique
+index, so more than one open case per mwajiri is valid.
 
 ### Interactions
 
 **`expressions-of-interest`** — `mwajiri`, `mjakazi`, `batchId`, `state`
-(`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`. Sent in batches of 3
-to 5.
+(`sent | accepted | rejected | expired`), `sentAt`, `respondedAt`, `nudgesSent`,
+`lastNudgedAt`, `pendingKey`. Sent in batches of 1 to 5. One outstanding interest per
+pair, enforced by the unique `pendingKey`.
+
+A mwajiri may only open a new batch once more than the configured share (default 50%) of
+the **open pool** — every EOI in a batch that still has an unanswered member, resolved
+siblings included — has resolved, and may not re-approach a mjakazi rejected or expired
+inside the re-send cooldown (default 14 days). Acceptance creates the contact grant and is
+permanent. The batch bounds, threshold, expiry window and cooldown all live in the
+`eoiPolicy` group on `platform-settings`; `eoi.service.ts` reads them, never constants.
 
 **`hires`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `subscription` (→
 subscriptions, snapshotted at confirmation), `confirmedBy` (`mwajiri | mjakazi`),
@@ -502,12 +557,19 @@ collection in Phase 11.
 
 **`reviews`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `reviewerName`
 (snapshot of first name + last initial), `rating` (1–5), `comment`, `state`
-(`pending | published | rejected`), `rejectionReason`, `reviewedAt`, `hiddenByWorker`. One
-record per (mwajiri, mjakazi) — compound unique index. Gated on an existing
-`contact-unlock` **and** a hire that reached `agreed` **or** `ended` (a hire that never
-held earns no review). Starts `pending`; staff publish or reject (terminal, reason
-required). The worker can hide/show each `published` review; hidden reviews are excluded
-from the public profile and its aggregate.
+(`pending | published | rejected`), `rejectionReason`, `reviewedAt`. One record per
+(mwajiri, mjakazi) — compound unique index. Gated on an existing `contact-unlock` **and**
+a hire that reached `agreed` **or** `ended` (a hire that never held earns no review).
+Starts `pending`; staff publish or reject (terminal, reason required).
+
+**The comment is private; only the rating is public.** The written `comment` is readable
+by the worker it is about, the mwajiri who wrote it, and staff/admin for moderation — it
+is never sent to a public surface. The public profile shows only a star average. That
+average is **denormalized onto the profile** as `ratingAverage` (unrounded, 2dp) and
+`ratingCount`, recomputed by `review.service.recomputeProfileRating` whenever a review is
+published — the one transition that changes the published set. There is no worker
+hide/show control: every published review counts, so a low rating cannot be kept out of
+the average.
 
 **`concierge-cases`** — `mwajiri`, `subscription`, `state`
 (`intake | in_review | shortlist_delivered | closed | replacement_requested`), `brief`,
@@ -538,8 +600,10 @@ Everything in the Identity, Domain profiles, Documents, Commerce, Interactions a
 Operations sections above is **not yet built**. The marketing half is done; the SaaS half
 is greenfield.
 
-`platform-settings` holds the verification fee and the subscription tier list. Prices are
-never hardcoded in application code.
+`platform-settings` holds the verification fee, the subscription tier list, and the
+expression-of-interest policy (`eoiPolicy`: batch bounds, response threshold, expiry
+window, re-send cooldown). Prices, limits and durations are never hardcoded in application
+code.
 
 ### Relationships
 
@@ -605,8 +669,8 @@ Therefore:
 1. Contact fields are **never selected by default**. Directory and profile queries pass an
    explicit `select` that omits them.
 2. Contact fields are read by exactly one function, in `contact.service.ts`, which checks
-   for an active subscription and an existing or newly created unlock before returning
-   anything.
+   for an existing grant — created by an accepted expression of interest, a concierge
+   shortlist, or a legacy unlock — before returning anything.
 3. Every Local API read that can reach a profile passes `overrideAccess: false` and the
    authenticated `req`. The only exemptions are the Clerk strategy, the Clerk webhook,
    `lib/audit.ts`, `contact.service.ts` (which reads contact fields after its own
@@ -646,9 +710,9 @@ IDs and Certificates of Good Conduct are sensitive personal data.
   the subject, the document type and the time. No exceptions, including for `admin`.
 - **Locking.** Documents cannot be edited while verification is `pending_review`, and the
   lock is per slot (a document type and a side). A `verified` worker can only _replace_ a
-  slot — never remove one — and replacing one reverts them to `pending_review`. Adding a
-  slot that did not exist when they were verified is not a replacement, so it does not
-  cost them the badge.
+  slot — never remove one — and **any** upload reverts them to `pending_review`, including
+  a slot added after they were verified: the badge stands on the document set, so evidence
+  the required set grew to include is still evidence the review must see.
 - **The badge boundary is the enforced one.** The required-slot gate runs on the way into
   `pending_payment`, but the vault stays editable until `pending_review` — so
   `approveVerification` checks the required set again before granting `verified`. A
@@ -675,8 +739,14 @@ into a client component.
   transaction-ID uniqueness before confirming anything.
 - Duplicate callbacks are ignored and logged. A confirmed payment never activates anything
   twice.
-- `stk_sent` transitions to `expired` after a timeout, driven by the `payment-timeout`
-  task on Payload's job queue.
+- **A payment is never written off because time passed.** When a push goes unanswered past
+  the two-minute window, the `payment-timeout` task asks M-Pesa directly what happened to
+  it (`queryStkStatus`). Only a definitive "the push did not complete" moves it to
+  `failed`. A "paid but no callback" verdict leaves it at `stk_sent`, writes a
+  `payment_confirmation_missing` audit entry and puts it on the staff list — because the
+  receipt is required and the query cannot supply one. An inconclusive answer changes
+  nothing. Each payment is asked about once (`mpesaStatusCheckedAt`), so the queue cadence
+  never decides how often Daraja is called.
 - Amounts are integer KSh. No floats anywhere in the money path.
 - If activation fails after a confirmed payment, the payment stays confirmed, an error
   state is flagged, an admin is alerted and activation is retried. It is never
@@ -696,8 +766,11 @@ An earlier dev-only `simulatePaymentCallbackAction` (`src/app/actions/dev.ts`) e
 work around a callback that never arrived; it was removed once the real callback was
 correctly parsed (Daraja 3.0 omits `Value` on some metadata items like `Balance`, which
 the old strict parser rejected). Development and production now settle payments
-identically, and a payment with no callback self-expires after the timeout. M-Pesa is an
-online-only flow, so there is no offline testing path by design.
+identically. A payment whose callback never arrives is **not** expired on a timer: the
+sweep asks M-Pesa, marks `failed` only on a definitive "not completed", and otherwise
+leaves it visible to staff, who complete it from the payer's receipt on
+`/dashboard/staff/payments`. M-Pesa is an online-only flow, so there is no offline testing
+path by design.
 
 ---
 
@@ -710,13 +783,13 @@ Payload's built-in job queue. Configured in `payload.config.ts` with `jobs.autoR
 Access to the queue is granted to `admin` and `staff` from the panel, or to an external
 scheduler presenting `CRON_SECRET` as a bearer token against `/api/payload-jobs/run`.
 
-| Task                  | Frequency    | Effect                                                                            |
-| --------------------- | ------------ | --------------------------------------------------------------------------------- |
-| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email              |
-| `subscription-expiry` | hourly       | `active` → `expired` past expiry; block new reveals; email                        |
-| `payment-timeout`     | every minute | `stk_sent` → `expired` past the window                                            |
-| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest |
-| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` 7 days after `sentAt`; frees the pair    |
+| Task                  | Frequency    | Effect                                                                                                       |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `verification-expiry` | daily        | `verified` → `verification_expired` past expiry; hide profile; email                                         |
+| `subscription-expiry` | hourly       | `active` → `expired` past expiry; blocks new interest; email                                                 |
+| `payment-timeout`     | every minute | asks M-Pesa about unanswered pushes; `failed` only on a definitive "not completed", otherwise left for staff |
+| `eoi-nudge`           | daily        | hire-confirmation prompt at 3 and 5 days after an accepted expression of interest                            |
+| `eoi-expire`          | daily        | unanswered (`sent`) interest → `expired` after the policy window; frees the pair and counts toward the gate  |
 
 Every task calls a domain service. None writes to the database directly. Every one is
 idempotent, writes an audit entry per transition, and must survive running twice against
@@ -806,8 +879,10 @@ ask.
 
 ### Access
 
-14. Contact fields are never returned without an active subscription or an existing
-    unlock. Absence from the payload, not masking in the UI.
+14. Contact fields are never returned without an existing contact grant — created by an
+    accepted expression of interest, a concierge shortlist, or a legacy unlock. An active
+    subscription buys the right to send interest, not the contact. Absence from the
+    payload, not masking in the UI.
 15. Every Local API read that can reach a profile passes `overrideAccess: false` and the
     authenticated `req`. Exemptions: the Clerk strategy, the Clerk webhook,
     `lib/audit.ts`, `contact.service.ts` (the only reader of contact fields),

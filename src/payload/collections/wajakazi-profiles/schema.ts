@@ -29,7 +29,7 @@ import {
 // interest. created by identity.service.ts, never by the user directly.
 const WajakaziProfiles: CollectionConfig = {
 	slug: "wajakazi-profiles",
-	labels: { singular: "Mjakazi Profile", plural: "Mjakazi Profiles" },
+	labels: { singular: "Mjakazi Profile", plural: "Wajakazi Profiles" },
 	admin: {
 		useAsTitle: "displayName",
 		defaultColumns: ["user", "verificationState", "availabilityStatus", "updatedAt"],
@@ -282,6 +282,36 @@ const WajakaziProfiles: CollectionConfig = {
 			// computed by the profile service, never set by the user directly
 			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
 			admin: { readOnly: true, position: "sidebar" },
+		},
+		// --- review trust signal (service-managed) ---
+		// denormalized from published reviews by review.service, so the profile can
+		// show a star rating and the directory can filter/sort by it without an
+		// aggregation at request time. never written by a user directly
+		{
+			name: "ratingAverage",
+			type: "number",
+			label: "Rating Average",
+			min: 0,
+			max: 5,
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				description: "Average of all published reviews. Written by review.service.",
+			},
+		},
+		{
+			name: "ratingCount",
+			type: "number",
+			label: "Rating Count",
+			defaultValue: 0,
+			min: 0,
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				description: "Number of published reviews behind the average.",
+			},
 		},
 		// --- verification bookkeeping (service-managed, staff/admin only) ---
 		// every field below is written by the verification service, never by a

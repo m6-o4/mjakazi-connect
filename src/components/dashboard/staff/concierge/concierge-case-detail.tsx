@@ -1,6 +1,7 @@
 "use client";
 
 import { Crown, Loader2, Plus, Send, Trash2, UserCheck } from "lucide-react";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import {
@@ -8,7 +9,7 @@ import {
 	deliverConciergeShortlistAction,
 } from "@/app/actions/concierge";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -260,14 +261,25 @@ const ConciergeCaseDetail = ({
 													{item.displayName}
 												</span>
 											</div>
-											<Button
-												size="icon"
-												variant="ghost"
-												className="text-destructive size-8"
-												onClick={() => handleRemoveCandidate(item.candidateId)}
-											>
-												<Trash2 className="size-4" />
-											</Button>
+											<div className="flex items-center gap-1">
+												<Link
+													href={`/dashboard/staff/wajakazi/${item.candidateId}?caseId=${conciergeCase.id}`}
+													className={buttonVariants({
+														variant: "outline",
+														size: "sm",
+													})}
+												>
+													View profile
+												</Link>
+												<Button
+													size="icon"
+													variant="ghost"
+													className="text-destructive size-8"
+													onClick={() => handleRemoveCandidate(item.candidateId)}
+												>
+													<Trash2 className="size-4" />
+												</Button>
+											</div>
 										</div>
 
 										<div className="space-y-1">
@@ -325,15 +337,26 @@ const ConciergeCaseDetail = ({
 												{cand.salaryMax?.toLocaleString()}
 											</p>
 										</div>
-										<Button
-											size="sm"
-											variant="outline"
-											disabled={selectedCandidates.length >= 5}
-											onClick={() => handleAddCandidate(cand)}
-										>
-											<Plus className="mr-1 size-3" />
-											Add
-										</Button>
+										<div className="flex items-center gap-1">
+											<Link
+												href={`/dashboard/staff/wajakazi/${cand.id}?caseId=${conciergeCase.id}`}
+												className={buttonVariants({
+													variant: "ghost",
+													size: "sm",
+												})}
+											>
+												View
+											</Link>
+											<Button
+												size="sm"
+												variant="outline"
+												disabled={selectedCandidates.length >= 5}
+												onClick={() => handleAddCandidate(cand)}
+											>
+												<Plus className="mr-1 size-3" />
+												Add
+											</Button>
+										</div>
 									</div>
 								))
 							)}
