@@ -1,3 +1,19 @@
+# [2.14.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.13.0...v2.14.0) (2026-09-24)
+
+
+### Bug Fixes
+
+* **payments:** keep polling past the confirm window and stop prompting a second payment ([843ddf4](https://github.com/m6-o4/mjakazi-connect/commit/843ddf4c17af2d4adc6701616225c25e7414072e))
+
+
+### Features
+
+* **eoi:** gate contact reveal on an accepted expression of interest ([130d94c](https://github.com/m6-o4/mjakazi-connect/commit/130d94cb2fe819e7c2f43c30bae43380efa431fd))
+* make reviews private and harden concierge and hire flows ([74860e6](https://github.com/m6-o4/mjakazi-connect/commit/74860e628e8520483693e9be16d3eeea43bf0fdb))
+* **payments:** add hand reconciliation and M-Pesa status query ([39ba3f1](https://github.com/m6-o4/mjakazi-connect/commit/39ba3f11ce6138387e0eb8ea28a06da8643b9704))
+* **phone:** show Kenyan phone inputs in local 0… format ([4a97115](https://github.com/m6-o4/mjakazi-connect/commit/4a97115e075447138d0a44448375d7f853b87e8a))
+* **subscription:** add tier rank and one-way plan upgrades ([672d67a](https://github.com/m6-o4/mjakazi-connect/commit/672d67af0e9023f0ccb49d963ddcfc164465cd87))
+
 # [2.13.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.12.0...v2.13.0) (2026-09-15)
 
 ### Bug Fixes
