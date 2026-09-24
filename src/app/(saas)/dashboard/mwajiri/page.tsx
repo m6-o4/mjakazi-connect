@@ -18,7 +18,10 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import config from "@/payload-config";
-import { getConciergeCaseForMwajiri } from "@/services/concierge.service";
+import {
+	getConciergeCaseForMwajiri,
+	hasRecentConfirmedHire,
+} from "@/services/concierge.service";
 import { listDirectoryProfiles } from "@/services/directory.service";
 import { listSentEois } from "@/services/eoi.service";
 import {
@@ -38,15 +41,23 @@ const MwajiriDashboardPage = async () => {
 
 	// limit: 1 keeps the fetch cheap — only totalDocs (the live verified+available
 	// count) is needed, which comes from the same guarded path as the directory
-	const [subscription, conciergeCase, directory, sentEois, hireCandidates, hires] =
-		await Promise.all([
-			getOwnSubscription(payload, user),
-			getConciergeCaseForMwajiri(payload, user),
-			listDirectoryProfiles(payload, { limit: 1 }),
-			listSentEois(payload, user),
-			listHireCandidatesForMwajiri(payload, user),
-			listHiresForMwajiri(payload, user),
-		]);
+	const [
+		subscription,
+		conciergeCase,
+		directory,
+		sentEois,
+		hireCandidates,
+		hires,
+		replacementEligible,
+	] = await Promise.all([
+		getOwnSubscription(payload, user),
+		getConciergeCaseForMwajiri(payload, user),
+		listDirectoryProfiles(payload, { limit: 1 }),
+		listSentEois(payload, user),
+		listHireCandidatesForMwajiri(payload, user),
+		listHiresForMwajiri(payload, user),
+		hasRecentConfirmedHire(payload, user.id),
+	]);
 
 	const reviewedIds = await listReviewedMjakaziIds(
 		payload,
@@ -80,7 +91,7 @@ const MwajiriDashboardPage = async () => {
 			{conciergeCase && (
 				<ConciergeStatusCard
 					conciergeCase={conciergeCase}
-					eligibleForReplacement={true}
+					eligibleForReplacement={replacementEligible}
 				/>
 			)}
 

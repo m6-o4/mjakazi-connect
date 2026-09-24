@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { RatingStars } from "@/components/rating-stars";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -100,6 +101,8 @@ const DirectoryProfileDetail = ({
 	const educationLabel = labelFor(EDUCATION_LEVEL_OPTIONS, profile.educationLevel);
 	const workPreferenceLabel = labelFor(WORK_PREFERENCE_OPTIONS, profile.workPreference);
 	const salaryLabel = formatSalary(profile);
+	const ratingAverage = profile.ratingAverage ?? null;
+	const ratingCount = profile.ratingCount ?? 0;
 
 	// newest placement first, so the timeline always reads most recent at the top.
 	// the stored order is whatever the worker typed, which carries no meaning
@@ -163,6 +166,15 @@ const DirectoryProfileDetail = ({
 								<Briefcase className="size-4" />
 								{workPreferenceLabel}
 							</p>
+						) : null}
+						{ratingCount > 0 && ratingAverage !== null ? (
+							<div className="mt-2 flex items-center gap-2">
+								<RatingStars rating={ratingAverage} />
+								<span className="text-muted-foreground text-sm">
+									{ratingAverage.toFixed(1)} · {ratingCount}{" "}
+									{ratingCount === 1 ? "review" : "reviews"}
+								</span>
+							</div>
 						) : null}
 					</div>
 

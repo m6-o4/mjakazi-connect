@@ -421,6 +421,9 @@ Plus `verificationSubmittedAt`, `verificationReviewedAt`, `verificationExpiry`,
 `verificationAttempts`, `rejectionReason`, `verificationNotes`, `blacklistedAt`,
 `deactivatedAt`, `lastVerificationPaymentId`, `profileComplete`.
 
+`ratingAverage` / `ratingCount` carry the denormalized review signal — see `reviews`
+below. Both are service-managed: only `review.service` writes them.
+
 There is **no `isVerified` boolean**. `verificationState` replaces it entirely.
 
 **`waajiri-profiles`** — 1:1 with a `mwajiri` user. `user`, `phone`, `location`,
@@ -494,6 +497,15 @@ contact: an active subscription buys the right to _send interest_, never the con
 itself. `subscription_reveal` marks grants created before the interest gate existed;
 `concierge` marks a staff-delivered shortlist.
 
+**Concierge is the one deliberate exception to the interest gate.** A staff-delivered
+shortlist writes its `concierge` grants directly, with no expression of interest — the
+mjakazi is matched by staff, not chosen by the mwajiri, and has no accept step. Because
+the worker never opted in, delivery notifies each shortlisted mjakazi by email that their
+contact was shared; that notification is the compensating control, not an accept flow.
+Delivery re-checks every candidate is verified, available and not suspended at the moment
+the grants are written, and rolls the grants back if the case write fails. This is
+recorded so a future reader does not mistake the missing consent step for a bug.
+
 ### Interactions
 
 **`expressions-of-interest`** — `mwajiri`, `mjakazi`, `batchId`, `state`
@@ -520,12 +532,19 @@ collection in Phase 11.
 
 **`reviews`** — `mwajiri` (→ users), `mjakazi` (→ wajakazi-profiles), `reviewerName`
 (snapshot of first name + last initial), `rating` (1–5), `comment`, `state`
-(`pending | published | rejected`), `rejectionReason`, `reviewedAt`, `hiddenByWorker`. One
-record per (mwajiri, mjakazi) — compound unique index. Gated on an existing
-`contact-unlock` **and** a hire that reached `agreed` **or** `ended` (a hire that never
-held earns no review). Starts `pending`; staff publish or reject (terminal, reason
-required). The worker can hide/show each `published` review; hidden reviews are excluded
-from the public profile and its aggregate.
+(`pending | published | rejected`), `rejectionReason`, `reviewedAt`. One record per
+(mwajiri, mjakazi) — compound unique index. Gated on an existing `contact-unlock` **and**
+a hire that reached `agreed` **or** `ended` (a hire that never held earns no review).
+Starts `pending`; staff publish or reject (terminal, reason required).
+
+**The comment is private; only the rating is public.** The written `comment` is readable
+by the worker it is about, the mwajiri who wrote it, and staff/admin for moderation — it
+is never sent to a public surface. The public profile shows only a star average. That
+average is **denormalized onto the profile** as `ratingAverage` (unrounded, 2dp) and
+`ratingCount`, recomputed by `review.service.recomputeProfileRating` whenever a review is
+published — the one transition that changes the published set. There is no worker
+hide/show control: every published review counts, so a low rating cannot be kept out of
+the average.
 
 **`concierge-cases`** — `mwajiri`, `subscription`, `state`
 (`intake | in_review | shortlist_delivered | closed | replacement_requested`), `brief`,

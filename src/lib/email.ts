@@ -689,8 +689,92 @@ const sendConciergeShortlistDeliveredEmail = async ({
 	});
 };
 
+type SendConciergeBriefSubmittedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+	jobCategory: string | null;
+	location: string | null;
+	caseId: string;
+};
+
+// internal notification — a concierge brief has arrived and a case is waiting
+// for a shortlist. sent to staff/admin so the queue is not something anyone has
+// to remember to check
+const sendConciergeBriefSubmittedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+	jobCategory,
+	location,
+	caseId,
+}: SendConciergeBriefSubmittedEmailArgs): Promise<void> => {
+	const caseUrl = SERVER_URL
+		? `${SERVER_URL}/dashboard/staff/concierge/${encodeURIComponent(caseId)}`
+		: null;
+	const briefLine = [jobCategory, location].filter(Boolean).join(" · ");
+
+	const content = `
+    ${h1("New Concierge Brief")}
+    ${p(`Hi ${escapeHtml(firstName)}, <strong>${escapeHtml(mwajiriName)}</strong> has submitted their requirements brief and is waiting for a shortlist.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">Brief Summary</p>
+      <p style="margin:0 0 4px;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Requirements:</strong> ${escapeHtml(briefLine || "See case")}</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Target:</strong> first shortlist within 5 working days.</p>
+    `)}
+    ${caseUrl ? p(`Open the case: <a href="${caseUrl}" style="color:${HEADING_COLOR};font-weight:600;">${caseUrl}</a>`) : ""}
+    ${muted("Log in to the staff console to claim the case and build the shortlist.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: `New Concierge brief from ${mwajiriName}`,
+		html: baseTemplate(content),
+	});
+};
+
+type SendConciergeShortlistSharedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	mwajiriName: string;
+};
+
+// sent to a mjakazi whose contact was included in a staff-delivered concierge
+// shortlist. they did not opt in, so the copy is explicit that their details
+// were shared and offers a way to raise it — the counterpart to the direct grant
+const sendConciergeShortlistSharedEmail = async ({
+	payload,
+	to,
+	firstName,
+	mwajiriName,
+}: SendConciergeShortlistSharedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Your Profile Was Shortlisted")}
+    ${p(`Hi ${escapeHtml(firstName)}, as part of our Concierge service an employer, <strong>${escapeHtml(mwajiriName)}</strong>, was given your contact details because our team matched your profile to their requirements.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">They may contact you directly about the position. Accepting a job is entirely your choice.</p>
+    `)}
+    ${p("If you would prefer not to be contacted in this way, reply to this email and our team will help.")}
+    ${muted("This is an automated message from Mjakazi Connect.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your profile was shared through our Concierge service",
+		html: baseTemplate(content),
+	});
+};
+
 export {
+	sendConciergeBriefSubmittedEmail,
 	sendConciergeShortlistDeliveredEmail,
+	sendConciergeShortlistSharedEmail,
 	sendEoiBatchSentEmail,
 	sendEoiNudgeEmail,
 	sendEoiReceivedEmail,

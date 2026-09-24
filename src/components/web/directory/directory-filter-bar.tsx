@@ -24,6 +24,12 @@ const EXPERIENCE_OPTIONS: Option[] = [
 	{ value: "10+", label: "10+ years" },
 ];
 
+const RATING_OPTIONS: Option[] = [
+	{ value: "4", label: "4+ stars" },
+	{ value: "3", label: "3+ stars" },
+	{ value: "2", label: "2+ stars" },
+];
+
 type DirectoryFilterBarProps = {
 	jobs: readonly Option[];
 	locations: readonly Option[];
@@ -31,6 +37,7 @@ type DirectoryFilterBarProps = {
 		category?: string;
 		location?: string;
 		experience?: string;
+		minRating?: number;
 		q?: string;
 	};
 	resultCount: number;
@@ -52,28 +59,34 @@ const DirectoryFilterBar = ({
 	const category = current.category ?? "";
 	const location = current.location ?? "";
 	const experience = current.experience ?? "";
+	const minRating = current.minRating ? String(current.minRating) : "";
 	const q = current.q ?? "";
 
 	const [query, setQuery] = useState(q);
 
 	useEffect(() => {
-		if (!category && !location && !experience && !q) return;
+		if (!category && !location && !experience && !minRating && !q) return;
 		posthog.capture("directory_searched", {
 			filters: {
 				category: category || null,
 				location: location || null,
 				experience: experience || null,
+				minRating: minRating || null,
 				q: q || null,
 			},
 			resultCount,
 		});
-	}, [category, location, experience, q, resultCount]);
+	}, [category, location, experience, minRating, q, resultCount]);
 
-	const navigate = (key: "category" | "location" | "experience" | "q", value: string) => {
+	const navigate = (
+		key: "category" | "location" | "experience" | "minRating" | "q",
+		value: string,
+	) => {
 		const next: Record<string, string> = {};
 		if (category) next.category = category;
 		if (location) next.location = location;
 		if (experience) next.experience = experience;
+		if (minRating) next.minRating = minRating;
 		if (q.trim()) next.q = q.trim();
 
 		if (value === "all" || value === "") {
@@ -94,7 +107,7 @@ const DirectoryFilterBar = ({
 		router.push(basePath);
 	};
 
-	const hasActiveFilter = Boolean(category || location || experience || q);
+	const hasActiveFilter = Boolean(category || location || experience || minRating || q);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -165,6 +178,23 @@ const DirectoryFilterBar = ({
 					<SelectContent>
 						<SelectItem value="all">Any experience</SelectItem>
 						{EXPERIENCE_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+
+				<Select
+					value={minRating || "all"}
+					onValueChange={(value) => navigate("minRating", value ?? "all")}
+				>
+					<SelectTrigger className="w-44">
+						<SelectValue placeholder="Any rating" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">Any rating</SelectItem>
+						{RATING_OPTIONS.map((option) => (
 							<SelectItem key={option.value} value={option.value}>
 								{option.label}
 							</SelectItem>

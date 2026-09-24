@@ -91,16 +91,6 @@ const Reviews: CollectionConfig = {
 			label: "Reviewed At",
 			admin: { readOnly: true, position: "sidebar" },
 		},
-		{
-			// worker-controlled. a hidden review stays published (and counted in
-			// the audit trail) but is excluded from the public profile and its
-			// aggregate — the worker sees it on their own dashboard and learns
-			name: "hiddenByWorker",
-			type: "checkbox",
-			label: "Hidden By Worker",
-			defaultValue: false,
-			admin: { readOnly: true, position: "sidebar" },
-		},
 	],
 	indexes: [
 		{ fields: ["mwajiri", "mjakazi"], unique: true },

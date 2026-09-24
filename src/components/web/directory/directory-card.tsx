@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 
+import { RatingStars } from "@/components/rating-stars";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,9 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 		profile.location ??
 		null;
 
+	const ratingAverage = profile.ratingAverage ?? null;
+	const ratingCount = profile.ratingCount ?? 0;
+
 	return (
 		<Card className="group h-full gap-0 py-0 transition-all duration-300 hover:shadow-lg">
 			<div className="bg-muted relative aspect-16/10 overflow-hidden">
@@ -68,9 +72,19 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 			</div>
 
 			<CardContent className="flex flex-1 flex-col gap-3 px-6 py-6">
-				<h3 className="text-heading group-hover:text-primary text-xl font-semibold transition-colors">
-					{name}
-				</h3>
+				<div className="flex items-start justify-between gap-2">
+					<h3 className="text-heading group-hover:text-primary text-xl font-semibold transition-colors">
+						{name}
+					</h3>
+					{ratingCount > 0 && ratingAverage !== null ? (
+						<span className="flex shrink-0 items-center gap-1 pt-1">
+							<RatingStars rating={ratingAverage} />
+							<span className="text-muted-foreground text-xs">
+								{ratingAverage.toFixed(1)}
+							</span>
+						</span>
+					) : null}
+				</div>
 
 				<div className="text-muted-foreground flex flex-col gap-1 text-sm">
 					{locationLabel ? (

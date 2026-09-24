@@ -342,6 +342,14 @@ const confirmHireCore = async (
 		return { success: true, data: existing };
 	}
 
+	// a completed hire is terminal for this pair. without this guard an `ended`
+	// hire falls through to the create branch below, the unique index rejects it,
+	// and the catch re-runs this function — a retry loop that also flips
+	// availability. the UI no longer offers it, but the guard is the real stop
+	if (existing?.state === "ended") {
+		return fail("This hire was already completed.", "already_completed");
+	}
+
 	if (existing?.state === "pending_agreement") {
 		if (existing.confirmedBy === actorRole) {
 			return { success: true, data: existing };
@@ -546,7 +554,9 @@ const reverseHireRecord = async (
 };
 
 // mwajiri side — the candidates they can mark as hired: wajakazi whose interest
-// they accepted, or whose contact they unlocked, minus any active hire
+// they accepted, or whose contact they unlocked, minus anyone whose hire is still
+// open or already completed. only a reversed hire ("did not hold") frees the pair
+// to record a new one
 const listHireCandidatesForMwajiri = async (
 	payload: Payload,
 	user: User,
@@ -590,12 +600,12 @@ const listHireCandidatesForMwajiri = async (
 
 	if (profileIds.size === 0) return [];
 
-	const activeHires = await payload.find({
+	const blockingHires = await payload.find({
 		collection: "hires",
 		where: {
 			and: [
 				{ mwajiri: { equals: user.id } },
-				{ state: { in: ["pending_agreement", "agreed"] } },
+				{ state: { in: ["pending_agreement", "agreed", "ended"] } },
 			],
 		},
 		limit: 100,
@@ -603,13 +613,13 @@ const listHireCandidatesForMwajiri = async (
 		select: { mjakazi: true },
 		overrideAccess: true,
 	});
-	const activeProfileIds = new Set(
-		activeHires.docs
+	const blockedProfileIds = new Set(
+		blockingHires.docs
 			.map((doc) => toId(doc.mjakazi))
 			.filter((id): id is string => id !== null),
 	);
 
-	const ids = [...profileIds].filter((id) => !activeProfileIds.has(id));
+	const ids = [...profileIds].filter((id) => !blockedProfileIds.has(id));
 	const display = await loadProfileDisplay(payload, ids);
 
 	return ids.map((id) => ({
@@ -621,7 +631,8 @@ const listHireCandidatesForMwajiri = async (
 };
 
 // mjakazi side — the waajiri they may attribute a hire to: those who unlocked
-// their contact or sent an expression of interest, minus any active hire
+// their contact or sent an expression of interest, minus any whose hire is still
+// open or already completed (only a reversed hire frees the pair to re-record)
 const listHireCandidatesForMjakazi = async (
 	payload: Payload,
 	user: User,
@@ -663,12 +674,12 @@ const listHireCandidatesForMjakazi = async (
 
 	if (userIds.size === 0) return [];
 
-	const activeHires = await payload.find({
+	const blockingHires = await payload.find({
 		collection: "hires",
 		where: {
 			and: [
 				{ mjakazi: { equals: resolvedId } },
-				{ state: { in: ["pending_agreement", "agreed"] } },
+				{ state: { in: ["pending_agreement", "agreed", "ended"] } },
 			],
 		},
 		limit: 100,
@@ -676,13 +687,13 @@ const listHireCandidatesForMjakazi = async (
 		select: { mwajiri: true },
 		overrideAccess: true,
 	});
-	const activeUserIds = new Set(
-		activeHires.docs
+	const blockedUserIds = new Set(
+		blockingHires.docs
 			.map((doc) => toId(doc.mwajiri))
 			.filter((id): id is string => id !== null),
 	);
 
-	const ids = [...userIds].filter((id) => !activeUserIds.has(id));
+	const ids = [...userIds].filter((id) => !blockedUserIds.has(id));
 	const senders = await loadSenderInfo(payload, ids);
 
 	return ids.map((id) => ({

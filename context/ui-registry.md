@@ -601,7 +601,8 @@ codebase.
   `/directory`)
 - **Visual pattern**: shadcn `Card` (`group h-full gap-0 py-0 hover:shadow-lg`);
   `aspect-16/10` photo + hover zoom, `Verified` pill `bg-card text-success`,
-  `text-heading` name, job `Badge variant="outline"`; accent `buttonVariants` "View
+  `text-heading` name with a `RatingStars` + muted `N.N` beside it when the profile has a
+  rating (count > 0), job `Badge variant="outline"`; accent `buttonVariants` "View
   Profile" → `{basePath}/{slug}`
 - **Used in**: `src/app/(web)/directory/page.tsx`,
   `src/payload/blocks/wajakazi-archive/component.tsx` (via `RenderBlocks`)
@@ -609,43 +610,49 @@ codebase.
 ### `DirectoryFilterBar`
 
 - **Location**: `src/components/web/directory/directory-filter-bar.tsx`
-- **Purpose**: The directory's search + filters (name, category, location, experience) —
-  every filter lives in the URL query string; fires `directory_searched` PostHog event
+- **Purpose**: The directory's search + filters (name, category, location, experience,
+  minimum rating) — every filter lives in the URL query string; fires `directory_searched`
+  PostHog event with the filter set including `minRating`
 - **Props**:
-  `{ jobs; locations; current: { category?; location?; experience?; q? }; resultCount: number; basePath?: string }`
-- **Visual pattern**: `Input` with `Search` icon + `Button`; three shadcn `Select`s
-  (sentinel "all"); ghost "Clear" `Button`; `text-muted-foreground` result count;
-  navigation via `useRouter` + `URLSearchParams`
-- **Used in**: `src/app/(web)/directory/page.tsx`
+  `{ jobs; locations; current: { category?; location?; experience?; minRating?; q? }; resultCount: number; basePath?: string }`
+- **Visual pattern**: `Input` with `Search` icon + `Button`; four shadcn `Select`s
+  (sentinel "all"; rating offers "4+ / 3+ / 2+ stars"); ghost "Clear" `Button`;
+  `text-muted-foreground` result count; navigation via `useRouter` + `URLSearchParams`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/page.tsx`
 
 ### `DirectoryPagination`
 
 - **Location**: `src/components/web/directory/directory-pagination.tsx`
 - **Purpose**: Numbered pagination (9 per page) with windowed ellipsis; preserves active
-  filters in every link
+  filters (including `minRating`) in every link
 - **Props**:
-  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; q? }; basePath?: string }`
+  `{ currentPage; totalPages; baseParams: { category?; location?; experience?; minRating?; q? }; basePath?: string }`
 - **Visual pattern**: `Link`s styled `size-9 rounded-md border`; active page
   `bg-primary/10 text-primary`; `ChevronLeft`/`ChevronRight` prev/next; `…` ellipsis spans
-- **Used in**: `src/app/(web)/directory/page.tsx`
+- **Used in**: `src/app/(web)/directory/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/page.tsx`
 
 ### `DirectoryProfileDetail`
 
 - **Location**: `src/components/web/directory/directory-profile-detail.tsx`
 - **Purpose**: The public profile detail — full professional info with no contact fields,
-  and a "Join as a mwajiri" CTA
+  a star rating near the top, and a "Join as a mwajiri" CTA
 - **Props**:
   `{ profile: DirectoryProfile; backHref?: string; contactSlot?: ReactNode; headerAction?: ReactNode }`
 - **Visual pattern**: `ArrowLeft` back link; two-column grid (photo `aspect-4/5` left,
-  content right); `text-heading` name + `Verified` pill; icon rows (`MapPin`, `Calendar`,
-  `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in `text-primary`; job `Badge`s; a
-  "Previous employment" timeline (employer in `text-foreground`, role + month/year range
-  in `text-muted-foreground`, `border-l-2` rail per entry, newest first, omitted entirely
-  when empty); CTA `Card` with accent "Join as a mwajiri" + outline "Sign in". Renders
-  wherever profile content renders — the public directory detail and the mwajiri browse
-  detail both use this component, so employment history is in `DIRECTORY_DETAIL_FIELDS`.
-  No compact card shows it, and the list reads deliberately do not select it
-- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
+  content right); `text-heading` name + `Verified` pill; a `RatingStars` + muted "N.N · N
+  reviews" line under the name when the profile has a rating (count > 0); icon rows
+  (`MapPin`, `Calendar`, `GraduationCap`, `Languages`, `Wallet`, `Briefcase`) in
+  `text-primary`; job `Badge`s; a "Previous employment" timeline (employer in
+  `text-foreground`, role + month/year range in `text-muted-foreground`, `border-l-2` rail
+  per entry, newest first, omitted entirely when empty); CTA `Card` with accent "Join as a
+  mwajiri" + outline "Sign in". Renders wherever profile content renders — the public
+  directory detail and the mwajiri browse detail both use this component, so employment
+  history is in `DIRECTORY_DETAIL_FIELDS`. No compact card shows it, and the list reads
+  deliberately do not select it
+- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`,
+  `src/app/(saas)/dashboard/mwajiri/browse/[slug]/page.tsx`
 
 ### `DirectoryProfileViewTracker`
 
@@ -766,21 +773,23 @@ codebase.
 ### `HireConfirmCard`
 
 - **Location**: `src/components/dashboard/mwajiri/hire-confirm-card.tsx`
-- **Purpose**: The mwajiri hire-confirmation card — records a hire against candidates
-  (wajakazi whose interest they accepted or whose contact they unlocked) and shows their
-  hires with agree/reverse/end-contract actions; ending a completed contract opens the
-  review form inline
+- **Purpose**: The mwajiri hire card, split by state so every row offers one valid action
+  and nothing else — "Ready to hire" (people with no open or completed hire), "Active
+  hires" (pending/agreed), "Past hires" (completed). Recording a hire is confirmed inline;
+  ending a completed contract opens the review form inline
 - **Props**:
   `{ candidates: { mjakaziId; displayName; location | null; sourceEoiId | null }[]; hires: { id; mjakaziId; counterpartName; state: "pending_agreement" | "agreed" | "ended"; awaitingYou; reviewed }[] }`
-- **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; "Mark as
-  hired" bordered candidate rows each with a `Button`; "Your hires" list with `Badge`
-  Hired (default) / Completed + Confirming (secondary) / Awaiting their agreement
-  (outline) and Agree / Reverse / Not correct / **End contract** `Button`s, a **Leave a
-  review** `Button` on ended hires, and a Reviewed `Badge`; ending a contract reveals
-  `LeaveReviewForm` inline; calls `confirmHireAction` / `reverseHireAction` /
-  `endHireAction`; fires `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a
-  `notifySuccess` toast (Hire recorded / Hire confirmed / Hire reversed / Contract ended),
-  then `router.refresh()`
+- **Visual pattern**: shadcn `Card` with a `Handshake` icon in `text-accent`; three
+  `uppercase` muted section labels. **Ready to hire** — bordered rows, a "Record hire"
+  outline `Button` that opens an inline confirm ("Record that you hired {name}? This
+  awaits their confirmation." → Confirm hire / Cancel). **Active hires** — `Badge` Hired
+  (default) / They confirmed (secondary) / Awaiting their confirmation (outline), with
+  Agree, Reverse / Not correct, and **End contract** `Button`s. **Past hires** — muted
+  name + Completed (secondary) + Reviewed (outline) `Badge`, and a **Leave a review**
+  `Button` only when not reviewed. Ending a contract reveals `LeaveReviewForm` inline;
+  calls `confirmHireAction` / `reverseHireAction` / `endHireAction`; fires
+  `hire_confirmed` (`confirmedBy: "mwajiri"`) plus a `notifySuccess` toast (Hire recorded
+  / Hire confirmed / Hire reversed / Contract ended), then `router.refresh()`
 - **Used in**: `src/app/(saas)/dashboard/mwajiri/page.tsx`
 
 ### `RatingStars`
@@ -791,7 +800,8 @@ codebase.
 - **Props**: `{ rating: number }`
 - **Visual pattern**: inline `Star` icons (`size-4`), filled via
   `text-warning fill-current`; `aria-label` "N out of 5 stars"
-- **Used in**: `ReviewsPanel`, `ReviewQueue`, `ProfileReviews`, mwajiri browse detail
+- **Used in**: `ReviewsPanel`, `ReviewQueue`, `DirectoryProfileDetail`, `DirectoryCard`,
+  `StaffCandidateProfile`, mwajiri browse detail
 
 ### `LeaveReviewForm`
 
@@ -808,14 +818,13 @@ codebase.
 ### `ReviewsPanel`
 
 - **Location**: `src/components/dashboard/mjakazi/reviews/reviews-panel.tsx`
-- **Purpose**: The worker's published reviews (shown + hidden) with a show/hide toggle so
-  they choose what appears on their public profile
+- **Purpose**: The worker's published reviews, read-only. The written comment is private
+  to the worker (and the author, and staff) — it is never public, so there is no show/hide
+  control
 - **Props**:
-  `{ reviews: { id; reviewerName | null; rating; comment; hidden; publishedAt | null }[] }`
-- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name;
-  `Button` "Hide from profile" (ghost) / "Show on profile" (outline) calling
-  `setReviewVisibilityAction` then a `notifySuccess` toast and `router.refresh()`; "Hidden
-  from your public profile." muted note; `Star` empty state
+  `{ reviews: { id; reviewerName | null; rating; comment; publishedAt | null }[] }`
+- **Visual pattern**: stacked shadcn `Card`s; `RatingStars` + muted reviewer name + muted
+  date; comment in `text-foreground`; `Star` empty state
 - **Used in**: `src/app/(saas)/dashboard/mjakazi/page.tsx`
 
 ### `ReviewQueue`
@@ -831,18 +840,6 @@ codebase.
   `approveReviewAction` / `rejectReviewAction` then `router.refresh()`; approve/reject
   success fires a `notifySuccess` toast
 - **Used in**: `src/app/(saas)/dashboard/staff/reviews/page.tsx`
-
-### `ProfileReviews`
-
-- **Location**: `src/components/web/directory/profile-reviews.tsx`
-- **Purpose**: The published, worker-visible reviews on a public profile, with the
-  aggregate (average + count) heading
-- **Props**:
-  `{ reviews: { average: number | null; count: number; reviews: { reviewerName | null; rating; comment; publishedAt | null }[] } }`
-- **Visual pattern**: `text-heading` "Reviews" heading + `RatingStars` + muted "N.N · N
-  reviews" aggregate; per-review `bg-card` bordered rows (`RatingStars`, reviewer name,
-  date, comment); renders `null` when empty
-- **Used in**: `src/app/(web)/directory/[slug]/page.tsx`
 
 ### `RevenueCard`
 
@@ -897,5 +894,20 @@ codebase.
   `{ conciergeCase: ConciergeCase; availableCandidates: CandidateOption[]; currentUserId: string }`
 - **Visual pattern**: Brief summary grid; "Claim Case" button; shortlist builder with
   search input, candidate picker, match note textareas, and "Deliver Shortlist to Mwajiri"
-  button
+  button; every candidate row links to the staff candidate detail in the same tab ("View
+  profile" / "View"), carrying the case id so the return link is "Back to Case"
 - **Used in**: `src/app/(saas)/dashboard/staff/concierge/[id]/page.tsx`
+
+### `StaffCandidateProfile`
+
+- **Location**: `src/components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`
+- **Purpose**: Read-only staff view of a shortlist candidate — the whole profile plus the
+  contact vault — so a shortlist is never built blind
+- **Props**: `{ profile: WajakaziProfile; email: string | null }`
+- **Visual pattern**: shadcn `Card`s — header with photo, verification/availability/
+  suspended `Badge`s, and "View documents" + "Open full record in admin" links; identity
+  and contact card (legal name, date of birth, nationality, marital status, religion,
+  phone, email); professional card (jobs/skills `Badge`s, about, education, work
+  preference, languages, salary, location); employment history; verification state card.
+  Read-only, no interactivity
+- **Used in**: `src/app/(saas)/dashboard/staff/wajakazi/[id]/page.tsx`

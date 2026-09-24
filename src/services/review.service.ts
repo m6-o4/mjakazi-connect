@@ -25,21 +25,7 @@ type WorkerReviewItem = {
 	reviewerName: string | null;
 	rating: number;
 	comment: string;
-	hidden: boolean;
 	publishedAt: string | null;
-};
-
-type PublicReview = {
-	reviewerName: string | null;
-	rating: number;
-	comment: string;
-	publishedAt: string | null;
-};
-
-type PublicReviews = {
-	average: number | null;
-	count: number;
-	reviews: PublicReview[];
 };
 
 type ReviewFormState = {
@@ -132,6 +118,44 @@ const findExistingReview = async (
 		return result.docs[0] ?? null;
 	} catch {
 		return null;
+	}
+};
+
+// recomputes a profile's denormalized star signal from every published review.
+// called after a review is published — the only transition that changes the
+// published set. the average is stored unrounded (to 2dp) so a `>= 4` filter
+// compares against the true value rather than a rounded one
+const recomputeProfileRating = async (
+	payload: Payload,
+	mjakaziId: string,
+): Promise<void> => {
+	try {
+		const result = await payload.find({
+			collection: "reviews",
+			where: {
+				and: [{ mjakazi: { equals: mjakaziId } }, { state: { equals: "published" } }],
+			},
+			pagination: false,
+			depth: 0,
+			overrideAccess: true,
+		});
+
+		const ratings = result.docs.map((review) => review.rating);
+		const count = ratings.length;
+		const average =
+			count > 0
+				? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / count) * 100) /
+					100
+				: null;
+
+		await payload.update({
+			collection: "wajakazi-profiles",
+			id: mjakaziId,
+			data: { ratingAverage: average, ratingCount: count },
+			overrideAccess: true,
+		});
+	} catch (error) {
+		console.error("[services/review] recomputeProfileRating failed:", error);
 	}
 };
 
@@ -303,6 +327,10 @@ const approveReview = async (
 			source: "user",
 		});
 
+		// publishing is what moves the public star average, so recompute it here
+		const mjakaziId = toId(review.mjakazi);
+		if (mjakaziId) await recomputeProfileRating(payload, mjakaziId);
+
 		return { success: true, data: review };
 	} catch (error) {
 		console.error("[services/review] approveReview failed:", error);
@@ -355,56 +383,8 @@ const rejectReview = async (
 	}
 };
 
-// toggles whether a published review appears on the worker's public profile.
-// the worker owns this — it never changes the review's published state and is
-// not a moderation action
-const setReviewVisibility = async (
-	payload: Payload,
-	user: User,
-	reviewId: string,
-	hidden: boolean,
-): Promise<Result<Review>> => {
-	if (user.role !== "mjakazi") return fail("Forbidden.", "forbidden");
-
-	const profile = await getOwnProfile(payload, user);
-	if (!profile) return fail("Profile not found.", "not_found");
-
-	try {
-		const result = await payload.update({
-			collection: "reviews",
-			where: {
-				and: [
-					{ id: { equals: reviewId } },
-					{ mjakazi: { equals: profile.id } },
-					{ state: { equals: "published" } },
-				],
-			},
-			data: { hiddenByWorker: hidden },
-			overrideAccess: true,
-		});
-		const review = result.docs[0];
-		if (!review) return fail("Review not found.", "not_found");
-
-		await writeAuditLog({
-			action: hidden ? "review_hidden" : "review_shown",
-			actorId: user.id,
-			actorLabel: userLabel(user),
-			targetId: toId(review.mwajiri),
-			metadata: { reviewId, rating: review.rating },
-			previousState: hidden ? "visible" : "hidden",
-			newState: hidden ? "hidden" : "visible",
-			source: "user",
-		});
-
-		return { success: true, data: review };
-	} catch (error) {
-		console.error("[services/review] setReviewVisibility failed:", error);
-		return fail("Could not update the review.");
-	}
-};
-
-// the worker's own published reviews — shown and hidden — so they can learn from
-// all of them and choose what the public sees
+// the worker's own published reviews — the written feedback is theirs to read,
+// but it is never public: the public profile shows only the star average
 const listWorkerReviews = async (
 	payload: Payload,
 	user: User,
@@ -430,54 +410,12 @@ const listWorkerReviews = async (
 			reviewerName: review.reviewerName ?? null,
 			rating: review.rating,
 			comment: review.comment,
-			hidden: review.hiddenByWorker ?? false,
 			publishedAt: review.reviewedAt ?? review.createdAt ?? null,
 		}));
 		return { success: true, data: items };
 	} catch (error) {
 		console.error("[services/review] listWorkerReviews failed:", error);
 		return fail("Could not load your reviews.");
-	}
-};
-
-// published, worker-visible reviews for a profile, plus the public aggregate.
-// hidden reviews are excluded from both — the aggregate reflects only what the
-// worker chose to show
-const getPublicReviews = async (
-	payload: Payload,
-	profileId: string,
-): Promise<PublicReviews> => {
-	try {
-		const result = await payload.find({
-			collection: "reviews",
-			where: {
-				and: [
-					{ mjakazi: { equals: profileId } },
-					{ state: { equals: "published" } },
-					{ hiddenByWorker: { not_equals: true } },
-				],
-			},
-			sort: "-reviewedAt",
-			limit: 50,
-			depth: 0,
-			overrideAccess: true,
-		});
-
-		const reviews = result.docs.map((review) => ({
-			reviewerName: review.reviewerName ?? null,
-			rating: review.rating,
-			comment: review.comment,
-			publishedAt: review.reviewedAt ?? review.createdAt ?? null,
-		}));
-
-		const count = reviews.length;
-		const average =
-			count > 0 ? reviews.reduce((sum, review) => sum + review.rating, 0) / count : null;
-
-		return { average, count, reviews };
-	} catch (error) {
-		console.error("[services/review] getPublicReviews failed:", error);
-		return { average: null, count: 0, reviews: [] };
 	}
 };
 
@@ -513,19 +451,12 @@ const listReviewedMjakaziIds = async (
 
 export {
 	approveReview,
-	getPublicReviews,
 	getReviewFormState,
 	listPendingReviews,
 	listReviewedMjakaziIds,
 	listWorkerReviews,
+	recomputeProfileRating,
 	rejectReview,
-	setReviewVisibility,
 	submitReview,
 };
-export type {
-	PendingReviewItem,
-	PublicReview,
-	PublicReviews,
-	ReviewFormState,
-	WorkerReviewItem,
-};
+export type { PendingReviewItem, ReviewFormState, WorkerReviewItem };

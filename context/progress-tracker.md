@@ -20,6 +20,113 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-24 — Hire card rework: one action per state, no re-record of a completed pair
+
+- **Why**: the "Confirm hire" card offered "Mark as hired" for a mjakazi whose hire was
+  already completed and reviewed. Root cause: the candidate lists excluded only active
+  hires (`pending_agreement | agreed`), so an `ended` hire re-entered the candidate list.
+  Clicking it fed `confirmHireCore` an `ended` hire, which fell through to the create
+  branch, hit the unique `(mwajiri, mjakazi)` index, and re-invoked itself from the catch
+  — an unbounded retry loop that also set availability to `hired`.
+- **Built**:
+  - Service: both candidate lists now exclude `pending_agreement | agreed | ended` — only
+    a `reversed` hire frees the pair to re-record. `confirmHireCore` treats `ended` as
+    terminal (`already_completed`), so the loop can never start even from a stale page.
+  - UI (`HireConfirmCard`): three sections — "Ready to hire", "Active hires", "Past
+    hires". One affordance per state; completed hires read as history (muted, Completed +
+    Reviewed) with no action once reviewed. Recording a hire is confirmed inline before it
+    fires, since it flips availability and opens a pending hire.
+- **Files touched**: `services/hire.service.ts`,
+  `components/dashboard/mwajiri/hire-confirm-card.tsx`, `context/ui-registry.md`.
+- **Notes**: re-recording the same (mwajiri, mjakazi) after a completed hire is now
+  blocked at the service; a reversed hire still re-opens. `pnpm build` green; changed
+  files lint clean. Working tree uncommitted.
+
+### 2026-09-24 — Reviews: private comments, public star rating, rating filter
+
+- **Why**: the review comment should stop being public. The feedback process itself is
+  unchanged; what changes is that the written comment is private, only the star average is
+  displayed (near the top of the profile), and the average can be used to filter.
+- **Decisions**: the comment is readable by the worker, the author, and staff/admin, never
+  public; every published review counts toward the average — the worker hide/show control
+  is removed, so a low rating cannot be kept out; the star shows from the first published
+  review (no minimum).
+- **Built**:
+  - `wajakazi-profiles` gained `ratingAverage` (unrounded, 2dp) and `ratingCount`, both
+    service-managed and field-locked. Types regenerated.
+  - `review.service.recomputeProfileRating` recomputes the star signal from published
+    reviews; called from `approveReview`, the only transition that changes that set.
+  - The public comment list is gone (`ProfileReviews` + `getPublicReviews` removed). The
+    star now renders near the top of `DirectoryProfileDetail`, on `DirectoryCard`, and on
+    the staff `StaffCandidateProfile`.
+  - Directory rating filter: `directoryQuerySchema.minRating` →
+    `ratingAverage >= minRating` (unrated profiles are excluded, not treated as zero). A
+    "4+ / 3+ / 2+ stars" select was added to `DirectoryFilterBar` and wired through
+    pagination. It applies to both the public directory and the mwajiri browse, which
+    share the component.
+  - Removed the worker hide/show control: `setReviewVisibility`, its action, the panel
+    toggle, and the `hiddenByWorker` field.
+  - No backfill script: the project is still in development and no reviews need migrating.
+    A one-off backfill would only be needed at a production cutover that already had
+    published reviews.
+- **Files touched**: `payload/collections/{wajakazi-profiles,reviews}/schema.ts`,
+  `services/{review,directory}.service.ts`, `app/actions/reviews.ts`,
+  `components/rating-stars.tsx`, `components/web/directory/*`,
+  `components/dashboard/mjakazi/reviews/reviews-panel.tsx`,
+  `components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`,
+  `app/(web)/directory/page.tsx`, `app/(web)/directory/[slug]/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/browse/page.tsx`, docs.
+- **Notes**: `reviews.hiddenByWorker` is gone from the schema; old Mongo values are
+  ignored. No sort-by-rating was added — filtering was the requirement. `pnpm build`
+  green; changed files lint clean. The working tree is uncommitted.
+
+### 2026-09-24 — Concierge v1: staff candidate view, notifications, delivery hardening
+
+- **Why**: concierge was left delivering contacts directly and deferred. Michael chose to
+  keep the direct grant (a deliberate staff-run exception to the interest gate) but to
+  inform the shortlisted mjakazi, and to make the flow production-usable rather than
+  rework it onto the EOI path.
+- **Built**:
+  - **Staff candidate detail** — a read-only `/dashboard/staff/wajakazi/[id]` page and
+    `StaffCandidateProfile` component (full profile, identity, contact, verification,
+    employment history), linked from every candidate row in the shortlist builder, with an
+    "Open full record in admin" link for anything not surfaced.
+  - **Staff notification** — `sendConciergeBriefSubmittedEmail` emails staff and admin
+    when a brief is submitted, so a case does not sit unseen in the queue.
+  - **Mjakazi notification** — `sendConciergeShortlistSharedEmail` emails each shortlisted
+    mjakazi that their contact was shared through concierge. This is the compensating
+    control for the direct grant, since the worker never opted in.
+  - **Delivery hardening** — `deliverConciergeShortlist` now requires state
+    `in_review`/`replacement_requested`, re-checks every candidate is verified +
+    available + not suspended at delivery time, and rolls back the grants it created if
+    the case write fails.
+  - **Guards** — a closed case cannot be claimed; a replacement can only be requested from
+    `closed`.
+  - **Replacement gating** — the card's button is gated on `hasRecentConfirmedHire` (a
+    30-day, both-sides-agreed hire) instead of a hardcoded `true`.
+- **Files touched**: `services/concierge.service.ts`, `lib/email.ts`,
+  `components/dashboard/staff/wajakazi/staff-candidate-profile.tsx`,
+  `components/dashboard/staff/concierge/concierge-case-detail.tsx`,
+  `app/(saas)/dashboard/staff/wajakazi/[id]/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/page.tsx`,
+  `app/(saas)/dashboard/mwajiri/concierge/page.tsx`, `context/architecture.md`,
+  `context/ui-registry.md`.
+- **Review fixes** (after a `/review uncommitted` pass): `requestConciergeReplacement` now
+  also requires `outcome === "hired"`, matching the card; the `contact_unlocked` audit
+  entries are written only after the case write commits, so a rolled-back delivery leaves
+  no audit claiming a shared contact; delivery eligibility reads the shared
+  `DIRECTORY_VISIBLE` gate instead of restating it; the brief notification sends
+  sequentially rather than fanning out one concurrent request per staff member; and
+  `StaffCandidateProfile` renders the shared `VERIFICATION_BADGE` map instead of a local
+  copy.
+- **Notes**: concierge still bypasses the EOI gate by design — staff choose the mjakazi
+  and the grant is written on delivery. Explicitly not built: an in-app "who has my
+  contact" view, and an opt-out. `concierge.service.ts` no longer reads profiles with
+  `overrideAccess: true` (candidate loads now use the actor's request). `pnpm build`
+  green; changed files lint clean (the repo-wide `pnpm lint` still reports 9 pre-existing
+  errors under `.kilo/worktrees/fortune-trigonometry/design/codebase`, unrelated to this
+  work). The whole working tree remains uncommitted, per the session loop.
+
 ### 2026-09-23 — Interest gate validated live on the Essentials and Standard plans
 
 - **Outcome**: Michael tested the interest-gated flow end to end and confirmed it works on

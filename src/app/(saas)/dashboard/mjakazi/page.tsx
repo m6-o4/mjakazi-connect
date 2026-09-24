@@ -123,9 +123,7 @@ const MjakaziDashboardPage = async () => {
 
 			<div>
 				<h2 className="text-heading text-lg font-semibold">Your reviews</h2>
-				<p className="text-muted-foreground mt-1 text-sm">
-					What waajiri say about you. Choose what appears on your public profile.
-				</p>
+				<p className="text-muted-foreground mt-1 text-sm">What waajiri say about you.</p>
 			</div>
 			<ReviewsPanel reviews={reviews} />
 		</div>
