@@ -3,3 +3,17 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - "@aws-sdk/s3-request-presigner@3.1141.0"
+  - "@clerk/backend@3.20.1"
+  - "@clerk/nextjs@7.9.7"
+  - "@clerk/react@6.17.2"
+  - "@clerk/shared@4.36.0"
+  - "@types/node@26.6.3"
+  - dotenv@18.0.4
+  - framer-motion@13.4.4
+  - motion-dom@13.4.4
+  - motion@13.4.4
+  - posthog-js@1.434.14
+  - posthog-node@5.54.1
+  - '@aws-sdk/client-s3@3.1141.0'

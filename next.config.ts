@@ -35,9 +35,8 @@ const nextConfig: NextConfig = {
 	outputFileTracingIncludes: {
 		"/*": [
 			"node_modules/sharp/**/*",
-			"node_modules/@img/**/*",
-			"node_modules/.pnpm/sharp@*/**/*",
-			"node_modules/.pnpm/@img*/**/*",
+			"node_modules/.pnpm/sharp@*/node_modules/sharp/**/*",
+			"node_modules/.pnpm/@img+*/node_modules/@img/*/**/*",
 		],
 	},
 	turbopack: {
