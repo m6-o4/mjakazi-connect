@@ -1,3 +1,16 @@
+# [2.15.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.14.0...v2.15.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **build:** stop Turbopack panic on symlinked pnpm [@img](https://github.com/img) dirs ([041a213](https://github.com/m6-o4/mjakazi-connect/commit/041a213b4849d37b3e058965fa578d9906636440))
+
+
+### BREAKING CHANGES
+
+* **build:** engines.pnpm tightened from ^9 || ^10 || ^11 to
+>=10.26.0, the floor required by the committed allowBuilds setting.
+
 # [2.14.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.13.0...v2.14.0) (2026-09-24)
 
 
