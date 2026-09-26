@@ -17,3 +17,4 @@ minimumReleaseAgeExclude:
   - posthog-js@1.434.14
   - posthog-node@5.54.1
   - '@aws-sdk/client-s3@3.1141.0'
+  - react-hook-form@7.89.0
