@@ -186,6 +186,7 @@ export interface Media {
   id: string;
   alt: string;
   caption?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -927,6 +928,7 @@ export interface ProfilePhoto {
   id: string;
   user: string | User;
   alt?: string | null;
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -984,6 +986,7 @@ export interface VaultDocument {
   uploadedBy: string | User;
   documentType: 'national_id' | 'certificate_of_good_conduct';
   side: 'front' | 'back';
+  _objectKey?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1472,6 +1475,7 @@ export interface PayloadMigration {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -1978,6 +1982,7 @@ export interface WaajiriProfilesSelect<T extends boolean = true> {
 export interface ProfilePhotosSelect<T extends boolean = true> {
   user?: T;
   alt?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -2023,6 +2028,7 @@ export interface VaultDocumentsSelect<T extends boolean = true> {
   uploadedBy?: T;
   documentType?: T;
   side?: T;
+  _objectKey?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -2749,7 +2755,10 @@ export interface TaskSchedulePublish {
           value: string | Post;
         } | null);
     global?: string | null;
-    user?: (string | null) | User;
+    user?: {
+      relationTo: 'users';
+      value: string | User;
+    } | null;
   };
   output?: unknown;
 }
