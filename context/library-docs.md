@@ -405,6 +405,17 @@ Recent enough that training data is wrong about several things.
   committed. Always wrap revalidation in try/catch inside `afterChange`/`afterDelete`
   hooks, or set `context.disableRevalidate` on the write (see
   `wajakazi-profiles/hooks/revalidate-profile.ts`).
+- **Next 16.3 hashes every `outputFileTracingIncludes` entry, and a symlink-to-directory
+  crashes the build.** `NftJsonAsset::content` reads and hashes each matched path; on
+  Windows that surfaces as `TurbopackInternalError: Access is denied (os error 5)` (EISDIR
+  elsewhere) from `FileContent::hash`. pnpm's isolated store makes this easy to hit: a
+  glob like `node_modules/@img/**/*` resolves through the hoisted store
+  (`.pnpm/node_modules/@img`) and `node_modules/.pnpm/sharp@*/**/*` walks
+  `sharp@*/node_modules/@img`, where `colour` and `sharp-win32-x64` are symlinks to
+  directories. `outputFileTracingExcludes` does **not** help — the panic happens while
+  hashing, before excludes apply. Scope includes to real directories (e.g.
+  `node_modules/.pnpm/@img+*/node_modules/@img/*/**/*`) or to extensions, never a bare
+  `**/*` over a pnpm store path. Upstream: vercel/next.js#96255, #96626, #97550.
 
 ### Project rules
 
@@ -543,6 +554,33 @@ verification succeeded but whose email bounced is verified, not pending.
 
 Requires Conventional Commits. **This is Michael's workflow, not the agent's** — the agent
 never commits, so this entry is context, not instruction.
+
+---
+
+# pnpm
+
+- **Version**: 12.6.0 locally; `engines.pnpm` requires `>=10.26.0`
+- **Why**: the only package manager. `node-linker=hoisted` in `.npmrc` was the project
+  intent, but pnpm ≥11 reads **only auth and registry settings** from `.npmrc`; every
+  other setting lives in `pnpm-workspace.yaml` (or the global
+  `~/.config/pnpm/config.yaml`). The `.npmrc` was deleted — its `node-linker`,
+  `legacy-peer-deps` and `supported-architectures` entries were silently inert, and the
+  Dockerfile never copies `.npmrc` anyway.
+- **Project rules**:
+  - The install uses pnpm's default **isolated** linker, matching what the Docker `deps`
+    stage produces on `node:24-alpine`. Do not add `nodeLinker` to `pnpm-workspace.yaml`
+    without also re-tuning `outputFileTracingIncludes` — hoisted puts `sharp`/`@img` at
+    the top level instead of under `.pnpm/`, so the current store-path globs would match
+    nothing.
+  - `allowBuilds` needs pnpm ≥10.26; `minimumReleaseAgeExclude` needs ≥10.16. These are
+    the reason `engines.pnpm` is `>=10.26.0`.
+  - The Docker `deps` stage runs `corepack enable pnpm` with no `packageManager` field, so
+    it resolves whatever pnpm corepack defaults to. If the image ever fails on the build
+    scripts `allowBuilds` approves, add `"packageManager": "pnpm@12.6.0"` to pin it.
+- **Traps**:
+  - ESLint and Prettier do not read `.git/info/exclude`, so `.kilo/worktrees/` (excluded
+    there) is still traversed by both. It is listed explicitly in `eslint.config.mjs` and
+    `.prettierignore`; `pnpm format` would otherwise rewrite an entire worktree clone.
 
 ---
 

@@ -20,6 +20,48 @@ finished.
 - **Notes**: anything future work should know (decisions made, deviations from plan, known
   follow-ups)
 
+### 2026-09-26 — Fix Turbopack `next build` panic on pnpm symlinked `@img/colour`
+
+- **Why**: `pnpm build` died with `TurbopackInternalError: Access is denied (os error 5)`
+  while hashing `node_modules/.pnpm/node_modules/@img/colour`. Turbopack 16.3 (Next
+  16.3.6) now content-hashes every file in the NFT include list, and reading a **symlink
+  to a directory** fails; the server build emitted nothing.
+- **Cause**: `outputFileTracingIncludes` used `node_modules/@img/**/*` and
+  `node_modules/.pnpm/sharp@*/**/*`. Under pnpm's isolated linker the first resolves to
+  the hoisted store `.pnpm/node_modules/@img`, and the second walks
+  `.pnpm/sharp@*/node_modules/@img`, where `colour` and `sharp-win32-x64` are symlinks to
+  directories. Every such symlink was classified as a file and hashed, so the build
+  panicked.
+- **Fix**: narrowed the globs to real directories only — `node_modules/sharp/**/*`,
+  `node_modules/.pnpm/sharp@*/node_modules/sharp/**/*`, and
+  `node_modules/.pnpm/@img+*/node_modules/@img/*/**/*`. These reach the same native assets
+  (`lib/libvips-*.dll`, `lib/sharp-win32-x64-0.35.4.node`) without traversing a symlinked
+  directory.
+- **Files touched**: `next.config.ts`, `eslint.config.mjs`, `.prettierignore` (new),
+  `.npmrc` (deleted), `package.json`, `pnpm-workspace.yaml`, `context/library-docs.md`.
+- **Verified**: `pnpm build` green, `pnpm lint` 0 errors (1 pre-existing
+  `react-hooks/incompatible-library` warning in `concierge-brief-form.tsx`), and
+  `prettier --check .` clean. `.next/standalone` contains the 0.35.4 `sharp-win32-x64`
+  `.node` and both `libvips` DLLs; the `.pnpm/node_modules/@img` links resolve inside the
+  standalone tree.
+- **Also fixed (tooling inconsistencies)**:
+  - `pnpm lint` failed on 9 errors because ESLint traversed the Agent Manager worktree at
+    `.kilo/worktrees/foamy-talon/` (a full clone). `.kilo/` and `.kilocode/` are now
+    ignored. The worktrees are only excluded from git via `.git/info/exclude`, which
+    ESLint and Prettier do not read, so both need explicit ignores.
+  - `.npmrc` held `node-linker`, `legacy-peer-deps` and `supported-architectures`, all of
+    which pnpm ≥11 ignores (`.npmrc` is auth/registry only from v11; settings live in
+    `pnpm-workspace.yaml`). The Dockerfile never copies `.npmrc` either, so the settings
+    were inert everywhere. Deleted the file rather than migrating: the current isolated
+    layout matches the Docker build, sharp's musl variants come from Alpine's own libc,
+    and peer deps resolve without `legacy-peer-deps`. `engines.pnpm` tightened from
+    `^9 || ^10 || ^11 || ^12` to `>=10.26.0`, the true floor for the committed
+    `allowBuilds` setting.
+  - Added `.prettierignore` for the worktrees plus generated files (`CHANGELOG.md`,
+    `pnpm-lock.yaml`, `src/payload-types.ts`, `src/payload-generated-schema.ts`,
+    `src/app/(payload)/admin/importMap.js`); `pnpm format` was otherwise rewriting the
+    worktree clone and the generated/lockfile artifacts.
+
 ### 2026-09-24 — Subscription upgrades: tier rank, upgrade UI, fresh concierge case
 
 - **Why**: a mid-cycle plan change already worked through the stacking path, but the app
