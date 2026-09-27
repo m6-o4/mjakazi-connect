@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
 		remotePatterns: [
 			{
 				protocol: "https",
+				hostname: "mjakaziconnect.co.ke",
+			},
+			{
+				protocol: "https",
+				hostname: "*.mjakaziconnect.co.ke",
+			},
+			{
+				protocol: "https",
 				hostname: "s3.co.ke",
 			},
 			{
@@ -21,13 +29,13 @@ const nextConfig: NextConfig = {
 				hostname: "*.s3.co.ke",
 			},
 			{
+				protocol: "https",
+				hostname: "images.unsplash.com",
+			},
+			{
 				protocol: "http",
 				hostname: "localhost",
 				port: "3000",
-			},
-			{
-				protocol: "https",
-				hostname: "images.unsplash.com",
 			},
 		],
 	},
