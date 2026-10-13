@@ -1,3 +1,11 @@
+# [2.16.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.15.0...v2.16.0) (2026-10-13)
+
+
+### Features
+
+* **config:** allow mjakaziconnect.co.ke remote images ([9168799](https://github.com/m6-o4/mjakazi-connect/commit/916879913169bfa1d69367aa1778f0e4738311fd))
+* **referrals:** add off-platform referral invites and moderation ([60dbe78](https://github.com/m6-o4/mjakazi-connect/commit/60dbe78a32748153a440db4e1cb329ef10db0864))
+
 # [2.15.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.14.0...v2.15.0) (2026-09-26)
 
 
