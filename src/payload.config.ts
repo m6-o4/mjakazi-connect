@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { eoiExpireTask } from "@/jobs/eoi-expire";
 import { eoiNudgeTask } from "@/jobs/eoi-nudge";
 import { paymentTimeoutTask } from "@/jobs/payment-timeout";
+import { referralExpiryTask } from "@/jobs/referral-expiry";
 import { subscriptionExpiryTask } from "@/jobs/subscription-expiry";
 import { verificationExpiryTask } from "@/jobs/verification-expiry";
 import { globals } from "@/payload/blocks/globals";
@@ -87,6 +88,7 @@ export default buildConfig({
 			verificationExpiryTask,
 			eoiNudgeTask,
 			eoiExpireTask,
+			referralExpiryTask,
 		],
 	},
 	plugins: [...plugins],

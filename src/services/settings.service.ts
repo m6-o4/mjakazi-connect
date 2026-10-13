@@ -1,5 +1,6 @@
 import type { Payload } from "payload";
 
+import { DEFAULT_REFERRAL_POLICY } from "@/lib/referral";
 import { MAX_SUBSCRIPTION_TIERS, MIN_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import type { PlatformSetting, User } from "@/payload-types";
 
@@ -52,6 +53,17 @@ const DEFAULT_EOI_POLICY: EoiPolicy = {
 	expiryDays: 7,
 	resendCooldownDays: 14,
 };
+
+// the normalized referral policy the rest of the app reads. every value is
+// required because getReferralPolicy fills unset fields from the defaults in
+// lib/referral — the raw global type is entirely optional fields
+type ReferralPolicy = {
+	inviteExpiryDays: number;
+	resendCooldownDays: number;
+	maxOutstandingInvites: number;
+};
+
+type RawReferralPolicy = NonNullable<PlatformSetting["referralPolicy"]>;
 
 // reads one policy number, falling back to its default when the stored value is
 // missing, non-integer or out of range. the fallback is deliberate: a single bad
@@ -263,6 +275,38 @@ const getEoiPolicy = async (payload: Payload): Promise<EoiPolicy> => {
 	return policy;
 };
 
+// reads the off-platform referral policy from platform-settings, filling any
+// unset or malformed field with its default so callers always get a usable,
+// internally consistent policy. mirrors getEoiPolicy
+const getReferralPolicy = async (payload: Payload): Promise<ReferralPolicy> => {
+	let raw: RawReferralPolicy | undefined;
+	try {
+		const settings = await payload.findGlobal({ slug: "platform-settings" });
+		raw = settings.referralPolicy ?? undefined;
+	} catch (error) {
+		console.error("[services/settings] getReferralPolicy failed:", error);
+		return DEFAULT_REFERRAL_POLICY;
+	}
+
+	return {
+		inviteExpiryDays: policyNumber(
+			raw?.inviteExpiryDays,
+			DEFAULT_REFERRAL_POLICY.inviteExpiryDays,
+			1,
+		),
+		resendCooldownDays: policyNumber(
+			raw?.resendCooldownDays,
+			DEFAULT_REFERRAL_POLICY.resendCooldownDays,
+			0,
+		),
+		maxOutstandingInvites: policyNumber(
+			raw?.maxOutstandingInvites,
+			DEFAULT_REFERRAL_POLICY.maxOutstandingInvites,
+			1,
+		),
+	};
+};
+
 // admin-only write of the whole policy. validated here so a malformed value can
 // never reach the global; minBatch > maxBatch is refused rather than stored
 const updateEoiPolicy = async (
@@ -307,6 +351,7 @@ const updateEoiPolicy = async (
 export {
 	getAllSubscriptionTiers,
 	getEoiPolicy,
+	getReferralPolicy,
 	getSubscriptionTiers,
 	getTierById,
 	getVerificationFee,
@@ -314,4 +359,4 @@ export {
 	updateSubscriptionTiers,
 	updateVerificationFee,
 };
-export type { EoiPolicy, RankedSubscriptionTier, SubscriptionTier };
+export type { EoiPolicy, RankedSubscriptionTier, ReferralPolicy, SubscriptionTier };

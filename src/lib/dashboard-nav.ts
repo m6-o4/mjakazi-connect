@@ -10,6 +10,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 		{ href: "/dashboard/staff/verifications", label: "Verifications" },
 		{ href: "/dashboard/staff/concierge", label: "Concierge" },
 		{ href: "/dashboard/staff/reviews", label: "Reviews" },
+		{ href: "/dashboard/staff/referrals", label: "References" },
 		{ href: "/dashboard/staff/payments", label: "Payments" },
 		{ href: "/dashboard/accounts/wajakazi", label: "Wajakazi" },
 		{ href: "/dashboard/accounts/waajiri", label: "Waajiri" },
@@ -23,6 +24,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 		{ href: "/dashboard/staff/verifications", label: "Verifications" },
 		{ href: "/dashboard/staff/concierge", label: "Concierge" },
 		{ href: "/dashboard/staff/reviews", label: "Reviews" },
+		{ href: "/dashboard/staff/referrals", label: "References" },
 		{ href: "/dashboard/staff/payments", label: "Payments" },
 		{ href: "/dashboard/accounts/wajakazi", label: "Wajakazi" },
 		{ href: "/dashboard/accounts/waajiri", label: "Waajiri" },
@@ -43,6 +45,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
 		{ href: "/dashboard/mjakazi/documents", label: "Documents" },
 		{ href: "/dashboard/mjakazi/verification", label: "Verification" },
 		{ href: "/dashboard/mjakazi/opportunities", label: "Opportunities" },
+		{ href: "/dashboard/mjakazi/references", label: "References" },
 		{ href: "/dashboard/mjakazi/settings", label: "Settings" },
 	],
 };

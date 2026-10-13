@@ -1,5 +1,6 @@
 import type { GlobalConfig } from "payload";
 
+import { DEFAULT_REFERRAL_POLICY } from "@/lib/referral";
 import { MAX_SUBSCRIPTION_TIERS, MIN_SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { isAdmin } from "@/payload/access/access-control";
 
@@ -241,6 +242,64 @@ const PlatformSettings: GlobalConfig = {
 					admin: {
 						description:
 							"How long before a mwajiri may approach the same mjakazi again after a rejection or expiry.",
+					},
+				},
+			],
+		},
+		{
+			// the off-platform referral policy. admin-tunable so the invite limits
+			// move without a deploy — referral.service reads them at runtime and
+			// falls back to the defaults in lib/referral when the global is unset.
+			name: "referralPolicy",
+			type: "group",
+			label: "Referral Policy",
+			fields: [
+				{
+					name: "inviteExpiryDays",
+					type: "number",
+					label: "Invite Expiry (Days)",
+					required: true,
+					min: 1,
+					defaultValue: DEFAULT_REFERRAL_POLICY.inviteExpiryDays,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The expiry must be a whole number of days, at least 1.",
+					admin: {
+						description:
+							"How long a former employer has to answer a referral invite before the link expires.",
+					},
+				},
+				{
+					name: "resendCooldownDays",
+					type: "number",
+					label: "Re-invite Cooldown (Days)",
+					required: true,
+					min: 0,
+					defaultValue: DEFAULT_REFERRAL_POLICY.resendCooldownDays,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 0
+							? true
+							: "The cooldown must be a whole number of days, 0 or more.",
+					admin: {
+						description:
+							"How long before a mjakazi may invite the same employer again after an expiry, rejection or withdrawal.",
+					},
+				},
+				{
+					name: "maxOutstandingInvites",
+					type: "number",
+					label: "Maximum Outstanding Invites",
+					required: true,
+					min: 1,
+					defaultValue: DEFAULT_REFERRAL_POLICY.maxOutstandingInvites,
+					validate: (value: unknown) =>
+						typeof value === "number" && Number.isInteger(value) && value >= 1
+							? true
+							: "The maximum must be a whole number, at least 1.",
+					admin: {
+						description:
+							"Most unanswered invites a mjakazi may hold at once, so invites stay deliberate.",
 					},
 				},
 			],

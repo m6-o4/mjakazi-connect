@@ -12,6 +12,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { RatingStars } from "@/components/rating-stars";
+import { ReferenceCount } from "@/components/reference-count";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,6 +104,7 @@ const DirectoryProfileDetail = ({
 	const salaryLabel = formatSalary(profile);
 	const ratingAverage = profile.ratingAverage ?? null;
 	const ratingCount = profile.ratingCount ?? 0;
+	const referralCount = profile.referralCount ?? 0;
 
 	// newest placement first, so the timeline always reads most recent at the top.
 	// the stored order is whatever the worker typed, which carries no meaning
@@ -174,6 +176,11 @@ const DirectoryProfileDetail = ({
 									{ratingAverage.toFixed(1)} · {ratingCount}{" "}
 									{ratingCount === 1 ? "review" : "reviews"}
 								</span>
+							</div>
+						) : null}
+						{referralCount > 0 ? (
+							<div className="mt-2">
+								<ReferenceCount count={referralCount} />
 							</div>
 						) : null}
 					</div>

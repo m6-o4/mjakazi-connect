@@ -771,6 +771,88 @@ const sendConciergeShortlistSharedEmail = async ({
 	});
 };
 
+type SendReferralInviteEmailArgs = {
+	payload: Payload;
+	to: string;
+	referrerName: string;
+	mjakaziName: string;
+	roleLabel: string;
+	inviteUrl: string;
+	expiresAt: string;
+};
+
+// the invite a mjakazi sends a former employer. the referrer has no account —
+// this link is the whole capability, so the copy is explicit that it is
+// single-use, expiring, and needs no sign-up. the raw token appears only here
+const sendReferralInviteEmail = async ({
+	payload,
+	to,
+	referrerName,
+	mjakaziName,
+	roleLabel,
+	inviteUrl,
+	expiresAt,
+}: SendReferralInviteEmailArgs): Promise<void> => {
+	const expires = new Date(expiresAt).toLocaleDateString("en-GB", {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+		timeZone: "Africa/Nairobi",
+	});
+
+	const content = `
+    ${h1("A Referral Request")}
+    ${p(`Hello ${escapeHtml(referrerName)}, <strong>${escapeHtml(mjakaziName)}</strong> has listed you as a former employer and invited you to give them a private referral on Mjakazi Connect.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What They Have Recorded</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;"><strong>Role:</strong> ${escapeHtml(roleLabel)}</p>
+    `)}
+    ${p(`To write your referral, open this link:<br /><a href="${inviteUrl}" style="color:${HEADING_COLOR};font-weight:600;word-break:break-all;">${inviteUrl}</a>`)}
+    ${p("It only takes a few minutes, and you do not need an account.")}
+    ${muted(`This link expires on ${expires} and can only be used once. If you did not expect it, you can ignore this email.`)}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: `${mjakaziName} asked you for a referral`,
+		html: baseTemplate(content),
+	});
+};
+
+type SendReferralPublishedEmailArgs = {
+	payload: Payload;
+	to: string;
+	firstName: string;
+	referrerName: string;
+};
+
+// sent to the mjakazi when staff publish a referral, so the worker knows it now
+// counts. the note stays private — the copy says so
+const sendReferralPublishedEmail = async ({
+	payload,
+	to,
+	firstName,
+	referrerName,
+}: SendReferralPublishedEmailArgs): Promise<void> => {
+	const content = `
+    ${h1("Referral Published")}
+    ${p(`Hi ${escapeHtml(firstName)}, the referral from <strong>${escapeHtml(referrerName)}</strong> has been reviewed and is now published on your profile.`)}
+    ${divider()}
+    ${infoBox(`
+      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:0.5px;">What This Means</p>
+      <p style="margin:0;font-size:14px;color:${TEXT_COLOR};line-height:1.6;">It now counts toward the references shown on your profile.</p>
+    `)}
+    ${muted("Referrals are private — only you, the person who wrote it, and our team can read the note.")}
+  `;
+
+	await sendEmail(payload, {
+		to,
+		subject: "Your referral has been published",
+		html: baseTemplate(content),
+	});
+};
+
 export {
 	sendConciergeBriefSubmittedEmail,
 	sendConciergeShortlistDeliveredEmail,
@@ -785,6 +867,8 @@ export {
 	sendHireEndedEmail,
 	sendHireReversedEmail,
 	sendPaymentConfirmedEmail,
+	sendReferralInviteEmail,
+	sendReferralPublishedEmail,
 	sendSubscriptionActivatedEmail,
 	sendSubscriptionReceiptEmail,
 	sendVerificationApprovedEmail,

@@ -2,6 +2,7 @@ import { ExternalLink, FileText, ShieldCheck, UserCheck } from "lucide-react";
 import Link from "next/link";
 
 import { RatingStars } from "@/components/rating-stars";
+import { ReferenceCount } from "@/components/reference-count";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -82,6 +83,7 @@ const StaffCandidateProfile = ({ profile, email }: Props) => {
 
 	const ratingAverage = profile.ratingAverage ?? null;
 	const ratingCount = profile.ratingCount ?? 0;
+	const referralCount = profile.referralCount ?? 0;
 
 	const employmentEntries = [...(profile.employmentHistory ?? [])].sort((a, b) =>
 		b.startDate.localeCompare(a.startDate),
@@ -152,6 +154,11 @@ const StaffCandidateProfile = ({ profile, email }: Props) => {
 											{ratingAverage.toFixed(1)} · {ratingCount}{" "}
 											{ratingCount === 1 ? "review" : "reviews"}
 										</span>
+									</div>
+								) : null}
+								{referralCount > 0 ? (
+									<div>
+										<ReferenceCount count={referralCount} />
 									</div>
 								) : null}
 							</div>

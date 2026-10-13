@@ -54,6 +54,12 @@ type AuditAction =
 	| "concierge_shortlist_delivered"
 	| "concierge_outcome_recorded"
 	| "concierge_replacement_requested"
+	| "referral_invited"
+	| "referral_submitted"
+	| "referral_published"
+	| "referral_rejected"
+	| "referral_withdrawn"
+	| "referral_expired"
 	| "document_uploaded"
 	| "document_deleted"
 	| "document_viewed";

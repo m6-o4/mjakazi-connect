@@ -29,6 +29,7 @@ const DIRECTORY_PUBLIC_FIELDS = {
 	location: true,
 	ratingAverage: true,
 	ratingCount: true,
+	referralCount: true,
 } as const;
 
 // the detail read adds the one field only a profile-detail page renders. the
@@ -70,6 +71,7 @@ type DirectoryProfile = Pick<
 	| "location"
 	| "ratingAverage"
 	| "ratingCount"
+	| "referralCount"
 >;
 
 // boundary validation for the directory query params. values are validated
