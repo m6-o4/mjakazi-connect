@@ -85,6 +85,7 @@ export interface Config {
     'expressions-of-interest': ExpressionsOfInterest;
     hires: Hire;
     reviews: Review;
+    referrals: Referral;
     'concierge-cases': ConciergeCase;
     redirects: Redirect;
     'payload-kv': PayloadKv;
@@ -113,6 +114,7 @@ export interface Config {
     'expressions-of-interest': ExpressionsOfInterestSelect<false> | ExpressionsOfInterestSelect<true>;
     hires: HiresSelect<false> | HiresSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
+    referrals: ReferralsSelect<false> | ReferralsSelect<true>;
     'concierge-cases': ConciergeCasesSelect<false> | ConciergeCasesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -151,6 +153,7 @@ export interface Config {
       'verification-expiry': TaskVerificationExpiry;
       'eoi-nudge': TaskEoiNudge;
       'eoi-expire': TaskEoiExpire;
+      'referral-expiry': TaskReferralExpiry;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -718,6 +721,12 @@ export interface AuditLog {
     | 'concierge_shortlist_delivered'
     | 'concierge_outcome_recorded'
     | 'concierge_replacement_requested'
+    | 'referral_invited'
+    | 'referral_submitted'
+    | 'referral_published'
+    | 'referral_rejected'
+    | 'referral_withdrawn'
+    | 'referral_expired'
     | 'document_uploaded'
     | 'document_deleted'
     | 'document_viewed';
@@ -909,6 +918,10 @@ export interface WajakaziProfile {
    * Number of published reviews behind the average.
    */
   ratingCount?: number | null;
+  /**
+   * Number of published off-platform referrals. Written by referral.service.
+   */
+  referralCount?: number | null;
   verificationSubmittedAt?: string | null;
   verificationReviewedAt?: string | null;
   verificationExpiry?: string | null;
@@ -1146,6 +1159,44 @@ export interface Review {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referrals".
+ */
+export interface Referral {
+  id: string;
+  mjakazi: string | WajakaziProfile;
+  referrerName: string;
+  referrerEmail: string;
+  role:
+    | 'nanny'
+    | 'housekeeping'
+    | 'chef'
+    | 'driver'
+    | 'gardener'
+    | 'caregiver'
+    | 'laundry'
+    | 'security'
+    | 'personal_assistant'
+    | 'tutor';
+  startDate: string;
+  endDate: string;
+  note?: string | null;
+  state: 'invited' | 'pending' | 'published' | 'rejected' | 'withdrawn' | 'expired';
+  activeKey?: string | null;
+  inviteTokenHash?: string | null;
+  inviteExpiresAt?: string | null;
+  invitedAt?: string | null;
+  submittedAt?: string | null;
+  publishedAt?: string | null;
+  rejectedAt?: string | null;
+  withdrawnAt?: string | null;
+  expiredAt?: string | null;
+  rejectionReason?: string | null;
+  reviewedBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "concierge-cases".
  */
 export interface ConciergeCase {
@@ -1280,6 +1331,7 @@ export interface PayloadJob {
           | 'verification-expiry'
           | 'eoi-nudge'
           | 'eoi-expire'
+          | 'referral-expiry'
           | 'schedulePublish';
         taskID: string;
         input?:
@@ -1321,6 +1373,7 @@ export interface PayloadJob {
         | 'verification-expiry'
         | 'eoi-nudge'
         | 'eoi-expire'
+        | 'referral-expiry'
         | 'schedulePublish'
       )
     | null;
@@ -1417,6 +1470,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'reviews';
         value: string | Review;
+      } | null)
+    | ({
+        relationTo: 'referrals';
+        value: string | Referral;
       } | null)
     | ({
         relationTo: 'concierge-cases';
@@ -1951,6 +2008,7 @@ export interface WajakaziProfilesSelect<T extends boolean = true> {
   profileComplete?: T;
   ratingAverage?: T;
   ratingCount?: T;
+  referralCount?: T;
   verificationSubmittedAt?: T;
   verificationReviewedAt?: T;
   verificationExpiry?: T;
@@ -2159,6 +2217,33 @@ export interface ReviewsSelect<T extends boolean = true> {
   state?: T;
   rejectionReason?: T;
   reviewedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referrals_select".
+ */
+export interface ReferralsSelect<T extends boolean = true> {
+  mjakazi?: T;
+  referrerName?: T;
+  referrerEmail?: T;
+  role?: T;
+  startDate?: T;
+  endDate?: T;
+  note?: T;
+  state?: T;
+  activeKey?: T;
+  inviteTokenHash?: T;
+  inviteExpiresAt?: T;
+  invitedAt?: T;
+  submittedAt?: T;
+  publishedAt?: T;
+  rejectedAt?: T;
+  withdrawnAt?: T;
+  expiredAt?: T;
+  rejectionReason?: T;
+  reviewedBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2493,6 +2578,20 @@ export interface PlatformSetting {
      */
     resendCooldownDays: number;
   };
+  referralPolicy: {
+    /**
+     * How long a former employer has to answer a referral invite before the link expires.
+     */
+    inviteExpiryDays: number;
+    /**
+     * How long before a mjakazi may invite the same employer again after an expiry, rejection or withdrawal.
+     */
+    resendCooldownDays: number;
+    /**
+     * Most unanswered invites a mjakazi may hold at once, so invites stay deliberate.
+     */
+    maxOutstandingInvites: number;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -2673,6 +2772,13 @@ export interface PlatformSettingsSelect<T extends boolean = true> {
         expiryDays?: T;
         resendCooldownDays?: T;
       };
+  referralPolicy?:
+    | T
+    | {
+        inviteExpiryDays?: T;
+        resendCooldownDays?: T;
+        maxOutstandingInvites?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -2734,6 +2840,14 @@ export interface TaskEoiNudge {
  * via the `definition` "TaskEoi-expire".
  */
 export interface TaskEoiExpire {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskReferral-expiry".
+ */
+export interface TaskReferralExpiry {
   input?: unknown;
   output?: unknown;
 }

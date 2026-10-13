@@ -313,6 +313,24 @@ const WajakaziProfiles: CollectionConfig = {
 				description: "Number of published reviews behind the average.",
 			},
 		},
+		{
+			// a count, never the note or the employer — the referral content stays
+			// private to the referrer, the mjakazi and staff. denormalized so the
+			// public cue needs no aggregation at request time. written only by
+			// referral.service
+			name: "referralCount",
+			type: "number",
+			label: "Reference Count",
+			defaultValue: 0,
+			min: 0,
+			access: { create: isAdminOrStaffField, update: isAdminOrStaffField },
+			admin: {
+				readOnly: true,
+				position: "sidebar",
+				description:
+					"Number of published off-platform referrals. Written by referral.service.",
+			},
+		},
 		// --- verification bookkeeping (service-managed, staff/admin only) ---
 		// every field below is written by the verification service, never by a
 		// mjakazi directly — a mjakazi can only ever trigger a transition through

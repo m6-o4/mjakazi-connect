@@ -102,6 +102,13 @@ const AuditLogs: CollectionConfig = {
 					label: "Concierge Replacement Requested",
 					value: "concierge_replacement_requested",
 				},
+				// referral lifecycle
+				{ label: "Referral Invited", value: "referral_invited" },
+				{ label: "Referral Submitted", value: "referral_submitted" },
+				{ label: "Referral Published", value: "referral_published" },
+				{ label: "Referral Rejected", value: "referral_rejected" },
+				{ label: "Referral Withdrawn", value: "referral_withdrawn" },
+				{ label: "Referral Expired", value: "referral_expired" },
 				// document vault
 				{ label: "Document Uploaded", value: "document_uploaded" },
 				{ label: "Document Deleted", value: "document_deleted" },

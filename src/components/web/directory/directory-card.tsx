@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 
 import { RatingStars } from "@/components/rating-stars";
+import { ReferenceCount } from "@/components/reference-count";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +40,7 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 
 	const ratingAverage = profile.ratingAverage ?? null;
 	const ratingCount = profile.ratingCount ?? 0;
+	const referralCount = profile.referralCount ?? 0;
 
 	return (
 		<Card className="group h-full gap-0 py-0 transition-all duration-300 hover:shadow-lg">
@@ -85,6 +87,12 @@ const DirectoryCard = ({ profile, basePath = "/directory" }: DirectoryCardProps)
 						</span>
 					) : null}
 				</div>
+
+				{referralCount > 0 ? (
+					<div>
+						<ReferenceCount count={referralCount} />
+					</div>
+				) : null}
 
 				<div className="text-muted-foreground flex flex-col gap-1 text-sm">
 					{locationLabel ? (

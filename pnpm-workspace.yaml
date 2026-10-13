@@ -15,6 +15,7 @@ minimumReleaseAgeExclude:
   - motion-dom@13.4.4
   - motion@13.4.4
   - posthog-js@1.434.14
-  - posthog-node@5.54.1
+  - posthog-node@5.54.1 || 5.55.2
   - '@aws-sdk/client-s3@3.1141.0'
-  - react-hook-form@7.89.0
+  - react-hook-form@7.89.0 || 7.90.0
+  - zod@4.6.6

@@ -10,6 +10,7 @@ import { Pages } from "@/payload/collections/pages/schema";
 import { Payments } from "@/payload/collections/payments/schema";
 import { Posts } from "@/payload/collections/posts/schema";
 import { ProfilePhotos } from "@/payload/collections/profile-photos/schema";
+import { Referrals } from "@/payload/collections/referrals/schema";
 import { Reviews } from "@/payload/collections/reviews/schema";
 import { SavedWajakazi } from "@/payload/collections/saved-wajakazi/schema";
 import { Subscriptions } from "@/payload/collections/subscriptions/schema";
@@ -37,6 +38,7 @@ const collections = [
 	ExpressionsOfInterest,
 	Hires,
 	Reviews,
+	Referrals,
 	ConciergeCases,
 ];
 

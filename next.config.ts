@@ -14,19 +14,11 @@ const nextConfig: NextConfig = {
 		remotePatterns: [
 			{
 				protocol: "https",
-				hostname: "mjakaziconnect.co.ke",
+				hostname: "**.mjakaziconnect.co.ke",
 			},
 			{
 				protocol: "https",
-				hostname: "*.mjakaziconnect.co.ke",
-			},
-			{
-				protocol: "https",
-				hostname: "s3.co.ke",
-			},
-			{
-				protocol: "https",
-				hostname: "*.s3.co.ke",
+				hostname: "**.s3.co.ke",
 			},
 			{
 				protocol: "https",
