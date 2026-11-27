@@ -10,6 +10,8 @@ const JOB_OPTIONS = [
 	{ label: "Driver", value: "driver" },
 	{ label: "Gardener", value: "gardener" },
 	{ label: "Caregiver (Elderly)", value: "caregiver" },
+	{ label: "Caregiver (Postnatal)", value: "caregiver_postnatal" },
+	{ label: "Nurse", value: "nurse" },
 	{ label: "Laundry", value: "laundry" },
 	{ label: "Security / Guard", value: "security" },
 	{ label: "Personal Assistant", value: "personal_assistant" },
