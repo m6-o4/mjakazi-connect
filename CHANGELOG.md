@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.16.0...v2.17.0) (2026-11-27)
+
+
+### Features
+
+* **profile:** add postnatal caregiver and nurse job options ([3a7207d](https://github.com/m6-o4/mjakazi-connect/commit/3a7207df37540c058569ce19839c40d5bb17a2cb))
+
 # [2.16.0](https://github.com/m6-o4/mjakazi-connect/compare/v2.15.0...v2.16.0) (2026-10-13)
 
 
